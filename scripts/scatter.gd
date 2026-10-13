@@ -8,6 +8,7 @@ const KINDS := {
 	"flower_petal_w": {"model": "res://models/flower_petal_w.glb", "tint": false},
 }
 ## bucket size for trampling (matches NavGrid / PathWear cells)
+const TUFT_SHADER := preload("res://scripts/world/grass_tuft.gdshader")
 const BUCKET := 0.5
 const ORIGIN := Vector2(-17, -17)
 const BW := 68
@@ -62,6 +63,10 @@ func _build(kind: String, rows: Array, cfg: Dictionary, rng: RandomNumberGenerat
 	for i in rows.size():
 		var a: Array = rows[i]
 		var b := Basis(Vector3(a[0], a[1], a[2]), Vector3(a[3], a[4], a[5]), Vector3(a[6], a[7], a[8]))
+		var lush := Meadow.sample(a[9], a[11])
+		if cfg["tint"]:
+			# lush patches grow taller, dry patches stay short
+			b = b.scaled(Vector3(1.0, lerpf(0.7, 1.45, lush) * rng.randf_range(0.85, 1.15), 1.0))
 		xfs[i] = Transform3D(b, Vector3(a[9], a[10], a[11]))
 		mm.set_instance_transform(i, xfs[i])
 		var bi := _bucket_of(a[9], a[11])
@@ -69,20 +74,16 @@ func _build(kind: String, rows: Array, cfg: Dictionary, rng: RandomNumberGenerat
 			if not _buckets.has(bi): _buckets[bi] = []
 			_buckets[bi].append([kind, i])
 		if cfg["tint"]:
-			# olive-to-yellow green, like the Blender blade material
-			var t := rng.randf()
-			var c := Color(0.20, 0.33, 0.06).lerp(Color(0.52, 0.55, 0.16), t * t)
-			mm.set_instance_color(i, c.darkened(rng.randf_range(0.0, 0.35)))
+			# hue follows the meadow patches, with a little per-tuft jitter
+			var c := Meadow.grass_color(clampf(lush + rng.randf_range(-0.12, 0.12), 0.0, 1.0))
+			mm.set_instance_color(i, c.darkened(rng.randf_range(0.0, 0.15)).lightened(rng.randf_range(0.0, 0.08)))
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = kind
 	mmi.multimesh = mm
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if kind == "tuft" else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	if cfg["tint"]:
-		var m := StandardMaterial3D.new()
-		m.vertex_color_use_as_albedo = true
-		m.albedo_color = Color.WHITE
-		m.roughness = 0.9
-		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		var m := ShaderMaterial.new()
+		m.shader = TUFT_SHADER
 		mmi.material_override = m
 	add_child(mmi)
 	var hidden := PackedByteArray(); hidden.resize(rows.size())

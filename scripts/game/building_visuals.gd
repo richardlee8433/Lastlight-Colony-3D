@@ -116,27 +116,28 @@ static func _quarry(r: Node3D, rng: RandomNumberGenerator) -> void:
 	cyl(r, 0.01, 0.75, Vector3(-0.15, 1.85, 0.9), wood_dark())
 
 static func _farm(r: Node3D, rng: RandomNumberGenerator) -> void:
-	box(r, Vector3(3.7, 0.08, 3.7), Vector3(0, 0.03, 0), soil())
-	var rows := 6
-	for i in rows:
+	# tilled soil with raised ridges, a ripe wheat crop in rows, fence posts and a scarecrow
+	box(r, Vector3(3.75, 0.07, 3.75), Vector3(0, 0.025, 0), soil())
+	var rows: Array = []
+	for i in 6:
 		var z := -1.5 + i * 0.6
-		box(r, Vector3(3.3, 0.1, 0.22), Vector3(0, 0.1, z), soil())
-		for k in 9:
-			var x := -1.5 + k * 0.375 + rng.randf_range(-0.05, 0.05)
-			var h := rng.randf_range(0.35, 0.55)
-			var stem := cyl(r, 0.035, h, Vector3(x, 0.12 + h / 2, z), crop(), Vector3.ZERO, 5)
-			stem.rotation = Vector3(rng.randf_range(-0.15, 0.15), 0, rng.randf_range(-0.15, 0.15))
-			cyl(r, 0.06, 0.16, Vector3(x, 0.14 + h, z), wheat(), Vector3.ZERO, 5)
-	# corner fence posts and a scarecrow
+		rows.append(z)
+		box(r, Vector3(3.4, 0.08, 0.34), Vector3(0, 0.07, z), soil_ridge())
+	Wheat.field(r, rows, 1.58, 0.1, rng)
 	for x in [-1.85, 1.85]:
 		for z in [-1.85, 1.85]:
 			cyl(r, 0.06, 0.7, Vector3(x, 0.35, z), wood())
-	cyl(r, 0.05, 1.5, Vector3(1.3, 0.75, 1.3), wood_dark())
-	cyl(r, 0.04, 0.9, Vector3(1.3, 1.15, 1.3), wood_dark(), Vector3(0, 0, PI / 2))
-	var head := SphereMesh.new(); head.radius = 0.14; head.height = 0.28
-	_add(r, head, wheat(), Vector3(1.3, 1.55, 1.3))
-	var hat := CylinderMesh.new(); hat.top_radius = 0.05; hat.bottom_radius = 0.22; hat.height = 0.15
-	_add(r, hat, thatch(), Vector3(1.3, 1.72, 1.3))
+	# scarecrow standing in the gap at the end of a furrow
+	var sx := 1.72; var sz := 1.2
+	cyl(r, 0.045, 1.5, Vector3(sx, 0.75, sz), wood_dark())
+	cyl(r, 0.035, 0.85, Vector3(sx, 1.15, sz), wood_dark(), Vector3(PI / 2, 0, 0))
+	box(r, Vector3(0.22, 0.4, 0.3), Vector3(sx, 1.05, sz), mat("rag", Color(0.55, 0.32, 0.22), 0.95))
+	var head := SphereMesh.new(); head.radius = 0.13; head.height = 0.26
+	_add(r, head, mat("sackhead", Color(0.78, 0.66, 0.44), 0.95), Vector3(sx, 1.42, sz))
+	var hat := CylinderMesh.new(); hat.top_radius = 0.06; hat.bottom_radius = 0.24; hat.height = 0.14
+	_add(r, hat, thatch(), Vector3(sx, 1.58, sz))
+
+static func soil_ridge() -> StandardMaterial3D: return mat("soil_ridge", Color(0.36, 0.25, 0.15), 0.95, 0.1)
 
 static func _storehouse(r: Node3D, rng: RandomNumberGenerator) -> void:
 	# open-fronted barn on a stone plinth, goods stacked inside, front = +z

@@ -5,6 +5,11 @@ uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_disabl
 uniform sampler2D wear_tex : filter_linear, repeat_disable;
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform vec4 wear_rect;                                   // x0, z0, size_x, size_z (world)
+uniform sampler2D meadow_tex : filter_linear, repeat_disable;   // Meadow lushness 0 dry .. 1 lush
+uniform vec4 meadow_rect;
+uniform vec3 grass_dry : source_color = vec3(0.56, 0.56, 0.22);
+uniform vec3 grass_mid : source_color = vec3(0.31, 0.50, 0.13);
+uniform vec3 grass_lush : source_color = vec3(0.17, 0.38, 0.08);
 uniform vec3 dirt_light : source_color = vec3(0.56, 0.45, 0.31);
 uniform vec3 dirt_dark : source_color = vec3(0.38, 0.29, 0.19);
 
@@ -16,6 +21,13 @@ void vertex() {
 
 void fragment() {
 	vec3 base = texture(albedo_tex, UV).rgb;
+	// recolour the baked grass with meadow patches (dirt in the bake is left alone)
+	float lush = texture(meadow_tex, (wpos.xz - meadow_rect.xy) / meadow_rect.zw).r;
+	vec3 target = lush < 0.5 ? mix(grass_dry, grass_mid, lush * 2.0) : mix(grass_mid, grass_lush, (lush - 0.5) * 2.0);
+	float grassy = smoothstep(-0.01, 0.04, base.g - base.r);
+	float lum = dot(base, vec3(0.3, 0.55, 0.15));
+	vec3 recol = target * (0.6 + lum * 1.2);                 // keep the baked light/dark detail
+	base = mix(base, recol, grassy * 0.9);
 	vec2 wuv = (wpos.xz - wear_rect.xy) / wear_rect.zw;
 	float w = texture(wear_tex, wuv).r;
 	float n1 = texture(noise_tex, wpos.xz * 0.11).r;      // large wobble of the path edge

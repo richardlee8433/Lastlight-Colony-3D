@@ -51,6 +51,8 @@ func _setup_ground() -> void:
 		sm.set_shader_parameter("albedo_tex", albedo)
 		sm.set_shader_parameter("wear_tex", _tex)
 		sm.set_shader_parameter("wear_rect", Vector4(ORIGIN.x, ORIGIN.y, SIZE * RES, SIZE * RES))
+		sm.set_shader_parameter("meadow_tex", Meadow.texture())
+		sm.set_shader_parameter("meadow_rect", Vector4(Meadow.ORIGIN.x, Meadow.ORIGIN.y, Meadow.SIZE_M, Meadow.SIZE_M))
 		var n := FastNoiseLite.new(); n.frequency = 0.05; n.fractal_octaves = 4
 		var nt := NoiseTexture2D.new(); nt.noise = n; nt.seamless = true; nt.width = 256; nt.height = 256
 		sm.set_shader_parameter("noise_tex", nt)
