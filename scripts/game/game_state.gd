@@ -9,6 +9,7 @@ signal building_removed(b: Dictionary)
 signal toast(text: String)
 signal quest_changed
 signal day_passed(day: int)
+signal reset                                     # new game started (paths, villagers clear)
 
 const SAVE_PATH := "user://save.json"
 const SAVE_VERSION := 1
@@ -41,6 +42,7 @@ func new_game() -> void:
 		building_removed.emit(b)
 	_next_id = 1
 	_assign_workers()
+	reset.emit()
 	changed.emit(); quest_changed.emit()
 
 # ---------------- queries ----------------

@@ -261,6 +261,12 @@ func _fill_info(id: int) -> void:
 			lines.append("進度：%d%%" % int(b["progress"] * 100))
 	if d.has("housing"):
 		lines.append("提供 %d 人居住" % d["housing"])
+	var vm := get_node_or_null(^"../Villagers")
+	if vm and d.get("workers", 0) > 0:
+		var who := "無"
+		for v in vm.villagers:
+			if v.job_id == id: who = "%s（%s）" % [v.vname, v.status_text()]
+		lines.append("工人：" + who)
 	_info_body.text = "\n".join(lines)
 
 # ---------------- toasts ----------------

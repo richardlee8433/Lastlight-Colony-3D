@@ -6,3 +6,4 @@
 # local test output
 _*.png
 _glog.txt
+_village_*.png

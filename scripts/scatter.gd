@@ -1,14 +1,23 @@
 extends Node3D
 ## Rebuilds the grass and flower scatter from Blender as MultiMeshes (one draw call each).
+## Instances can be hidden under buildings and flattened where villagers wear a road.
 
 const KINDS := {
 	"tuft": {"model": "res://models/tuft.glb", "tint": true},
 	"flower_petal_v": {"model": "res://models/flower_petal_v.glb", "tint": false},
 	"flower_petal_w": {"model": "res://models/flower_petal_w.glb", "tint": false},
 }
+## bucket size for trampling (matches NavGrid / PathWear cells)
+const BUCKET := 0.5
+const ORIGIN := Vector2(-17, -17)
+const BW := 68
 
-## per kind: {"mm": MultiMesh, "xf": Array[Transform3D]} so instances can be hidden under buildings
+## per kind: {"mm": MultiMesh, "xf": Array[Transform3D], "hidden": PackedByteArray}
 var _sets := {}
+## bucket index -> Array of [kind, instance index]
+var _buckets := {}
+## bucket index -> 0..1 grass scale (1 = untouched)
+var _trample := {}
 
 func _ready() -> void:
 	var f := FileAccess.open("res://data/scatter.json", FileAccess.READ)
@@ -31,6 +40,11 @@ func _find_mesh(n: Node) -> Mesh:
 			return m
 	return null
 
+func _bucket_of(x: float, z: float) -> int:
+	var i := floori((x - ORIGIN.x) / BUCKET); var j := floori((z - ORIGIN.y) / BUCKET)
+	if i < 0 or j < 0 or i >= BW or j >= BW: return -1
+	return j * BW + i
+
 func _build(kind: String, rows: Array, cfg: Dictionary, rng: RandomNumberGenerator) -> void:
 	var src: Node = (load(cfg["model"]) as PackedScene).instantiate()
 	var mesh := _find_mesh(src)
@@ -50,6 +64,10 @@ func _build(kind: String, rows: Array, cfg: Dictionary, rng: RandomNumberGenerat
 		var b := Basis(Vector3(a[0], a[1], a[2]), Vector3(a[3], a[4], a[5]), Vector3(a[6], a[7], a[8]))
 		xfs[i] = Transform3D(b, Vector3(a[9], a[10], a[11]))
 		mm.set_instance_transform(i, xfs[i])
+		var bi := _bucket_of(a[9], a[11])
+		if bi >= 0:
+			if not _buckets.has(bi): _buckets[bi] = []
+			_buckets[bi].append([kind, i])
 		if cfg["tint"]:
 			# olive-to-yellow green, like the Blender blade material
 			var t := rng.randf()
@@ -67,7 +85,18 @@ func _build(kind: String, rows: Array, cfg: Dictionary, rng: RandomNumberGenerat
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
 		mmi.material_override = m
 	add_child(mmi)
-	_sets[kind] = {"mm": mm, "xf": xfs}
+	var hidden := PackedByteArray(); hidden.resize(rows.size())
+	_sets[kind] = {"mm": mm, "xf": xfs, "hidden": hidden}
+
+func _apply(kind: String, i: int) -> void:
+	var s: Dictionary = _sets[kind]
+	var base: Transform3D = s["xf"][i]
+	var k := 0.0
+	if not s["hidden"][i]:
+		var bi := _bucket_of(base.origin.x, base.origin.z)
+		k = float(_trample.get(bi, 1.0))
+		if kind != "tuft": k = 0.0 if k < 0.7 else k   # flowers vanish early on a path
+	(s["mm"] as MultiMesh).set_instance_transform(i, Transform3D(base.basis.scaled(Vector3(1, k, 1) if k > 0.0 else Vector3.ZERO), base.origin))
 
 ## Hides grass/flowers inside an XZ rectangle (world units), e.g. under a new building.
 func clear_rect(r: Rect2) -> void:
@@ -78,11 +107,25 @@ func restore_rect(r: Rect2) -> void:
 	_apply_rect(r, false)
 
 func _apply_rect(r: Rect2, hide: bool) -> void:
-	var hidden := Transform3D(Basis().scaled(Vector3.ZERO), Vector3.ZERO)
 	for kind in _sets:
-		var mm: MultiMesh = _sets[kind]["mm"]
 		var xfs: Array[Transform3D] = _sets[kind]["xf"]
+		var hidden: PackedByteArray = _sets[kind]["hidden"]
 		for i in xfs.size():
 			var o := xfs[i].origin
 			if r.has_point(Vector2(o.x, o.z)):
-				mm.set_instance_transform(i, Transform3D(hidden.basis, o) if hide else xfs[i])
+				hidden[i] = 1 if hide else 0
+				_apply(kind, i)
+
+## Flattens grass in one bucket. f: 1 = untouched, 0 = gone.
+func set_trample(bucket: int, f: float) -> void:
+	if is_equal_approx(float(_trample.get(bucket, 1.0)), f): return
+	if f >= 0.999: _trample.erase(bucket)
+	else: _trample[bucket] = f
+	for e in _buckets.get(bucket, []):
+		_apply(e[0], e[1])
+
+func trampled_count() -> int:
+	var n := 0
+	for b in _trample:
+		if _trample[b] < 0.5: n += _buckets.get(b, []).size()
+	return n

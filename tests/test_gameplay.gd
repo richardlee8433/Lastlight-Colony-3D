@@ -4,6 +4,7 @@ extends SceneTree
 
 var _frame := 0
 var _fails := 0
+var _done := false
 var game: Node
 var ctl: Node
 
@@ -14,8 +15,9 @@ func _process(_d: float) -> bool:
 	_frame += 1
 	if _frame == 5:
 		_run()
-		print("RESULT: ", "PASS" if _fails == 0 else "FAIL (%d)" % _fails)
-		quit(0 if _fails == 0 else 1)
+		var ok := _fails == 0 and _done
+		print("RESULT: ", "PASS" if ok else "FAIL (%d%s)" % [_fails, "" if _done else ", crashed"])
+		quit(0 if ok else 1)
 	return false
 
 func check(cond: bool, msg: String) -> void:
@@ -94,3 +96,4 @@ func _run() -> void:
 	ctl.cancel_place()
 	check(ctl.placing == "", "cancel placement")
 	game.delete_save()
+	_done = true
