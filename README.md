@@ -21,6 +21,7 @@ Open Godot, choose **Import**, and select `project.godot`. Wait for the first as
 ## Gameplay (MVP)
 - **Opening**: the map starts as open meadow. Three settlers walk in from the south road to the **supply cart**. The cart is the temporary storage (holding the starting wood 60, stone 20, food 40), and the campfire beside it has 4 sleeping spots. The cart can't be demolished. Saves from before this change get a supply cart automatically.
 - **Resources**: wood, stone, food. **Resources only count once a villager carries them into a storage.** After each work session the worker carries one load (woodcutter 8 wood, farm 5 food, quarry 6 stone) to the **nearest storage**, so the farther the trip, the less gets produced. The resource bar shows how much was brought into storage yesterday.
+- **Stone deposits**: four rock outcrops on the map. A quarry can only be built on a free deposit (one quarry each): while placing one, the deposits get a glowing ring and the quarry snaps onto the nearest; any rotation works. The mason works the rock face and hauls stone to the nearest storage, so a storehouse next to the quarry pays off.
 - **Woodcutters (Foundation-style)**: a woodcutter's lodge plus a painted forest area. Every tree inside the map is a separate model; only trees inside an area are felled. A grown tree gives 3 trips of wood, falls and leaves a stump; the stump sprouts after a day and grows back in about three days, and empty spots in the area fill with saplings (up to one tree per 5 m²). Trees outside areas are scenery and are never cut. While painting, trees inside the area are tinted green.
 - **Farms (Foundation-style)**: a farm is a farmhouse plus a field you paint. The field turns into furrowed soil with wheat rows, grass is cleared, and the farmer works anywhere in it. Food per trip = field size / 3 m² (min 2 m² to produce, max 8 food at 24 m²). Fields can't overlap other fields, zones, buildings or trees; nothing can be built on a field.
 - **Buildings**: woodcutter, farmhouse, quarry, storehouse (a delivery point: build one near your production to cut down hauling)
@@ -47,6 +48,7 @@ scripts/game/building_visuals.gd building models (temporary placeholders; the ho
 scripts/ui/hud.gd                all UI (rebuilt when the language changes)
 scripts/game/loc.gd              English -> Traditional Chinese table, language setting
 scripts/world/nav_grid.gd        walkable grid (0.5 m) + A* pathfinding; buildings block cells, worn paths lower the cost
+scripts/world/deposits.gd        stone deposits: outcrop models, quarry placement queries, highlight rings
 scripts/world/forest.gd          trees in the map (growth, felling, stumps, saplings) and woodcutter forest areas
 scripts/world/fields.gd          farm fields: painted cells per farmhouse, soil/wheat visuals, yield per trip
 scripts/world/path_wear.gd       wear map, path decay, trampled grass, path saving
@@ -68,12 +70,14 @@ godot --headless --path . --script res://tests/test_gameplay.gd    # economy, qu
 godot --headless --path . --script res://tests/test_villagers.gd   # pathfinding, jobs, paths, moving in and out
 godot --headless --path . --script res://tests/test_zones.gd      # residential zones: painting, erasing, auto-built houses, saving
 godot --headless --path . --script res://tests/test_i18n.gd       # every UI string translated, font covers all glyphs, runtime switching
+godot --headless --path . --script res://tests/test_deposits.gd   # stone deposits: quarry placement rules, snapping, mason at work
 godot --headless --path . --script res://tests/test_forest.gd     # forest areas: felling, stumps, regrowth, saplings, saving
 godot --headless --path . --script res://tests/test_fields.gd     # farm fields: starter field, painting rules, erase / clear, yield, saving
 godot --headless --path . --script res://tests/sim_balance.gd     # follow a fixed build order for 30 days and print each day's economy (for checking balance)
 godot --path . --script res://tests/shot_village.gd -- 6          # render a screenshot after 6 minutes of time-lapse (needs a display)
 godot --path . --script res://tests/shot_opening.gd               # render the opening screenshots (needs a display)
 godot --path . --script res://tests/shot_ui.gd                    # render the UI in English and Chinese (needs a display)
+godot --path . --script res://tests/shot_quarry.gd                # render deposits while placing, then a working quarry (needs a display)
 godot --path . --script res://tests/shot_forest.gd                # render a woodcutter with its forest area (needs a display)
 godot --path . --script res://tests/shot_fields.gd                # render a farmhouse + painted field (needs a display)
 ```
@@ -86,7 +90,7 @@ python3 tools/export_world_data.py data/world.json empty   # walkable grid, grou
 python3 tools/villager.py models                           # villager model (add "preview" to also render a preview image)
 python3 tools/house_variants.py models 6 preview           # 6 house variants → models/houses/
 python3 tools/farmhouse.py models                          # farmhouse → models/farmhouse.glb
-python3 tools/buildings.py models                          # woodcutter's lodge + storehouse → models/*.glb
+python3 tools/buildings.py models                          # woodcutter's lodge, storehouse, quarry, stone deposits → models/*.glb
 python3 tools/trees.py models                              # choppable tree variants + stumps → models/trees/
 python3 tools/bake_export.py <output folder> empty nature_only   # only re-export nature.glb (scenery outside the map's trees)
 ```

@@ -30,6 +30,16 @@ func _ready() -> void:
 	_height = PackedFloat32Array(data["height"])
 	for i in data["blocked"]:
 		_static[int(i)] = 1
+	# stone deposits are solid rock
+	for d in Defs.DEPOSITS:
+		var dp: Vector2 = d["pos"]
+		var r: float = Defs.DEPOSIT["radius"]
+		for zz in range(-4, 5):
+			for xx in range(-4, 5):
+				var cpos := Vector2(origin.x + (floori((dp.x - origin.x) / cell) + xx + 0.5) * cell, origin.y + (floori((dp.y - origin.y) / cell) + zz + 0.5) * cell)
+				if cpos.distance_to(dp) <= r:
+					var ci := floori((cpos.x - origin.x) / cell); var cj := floori((cpos.y - origin.y) / cell)
+					if ci >= 0 and cj >= 0 and ci < w and cj < h: _static[cj * w + ci] = 1
 	tree_data = data["trees"]
 	for t in data["trees"]:
 		trees.append(Vector3(t[0], t[2], t[1]))

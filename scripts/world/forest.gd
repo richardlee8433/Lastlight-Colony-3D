@@ -28,6 +28,7 @@ var _mask_img: Image
 var _mask_tex: ImageTexture
 var _rng := RandomNumberGenerator.new()
 var _ready_done := false
+var chops_done := 0                       # work sessions that gave wood (stats / tests)
 var _hl_mat: StandardMaterial3D           # tint on trees inside the area being painted
 
 func _ready() -> void:
@@ -250,6 +251,7 @@ func chop(tree_id: int, cutter_pos := Vector2.ZERO) -> bool:
 	var t := tree_by_id(tree_id)
 	if t.is_empty() or not is_grown(t): return false
 	t["chops"] -= 1
+	chops_done += 1
 	if t["chops"] <= 0:
 		_fell(t, (t["pos"] as Vector2) - cutter_pos)
 	return true

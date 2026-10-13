@@ -14,6 +14,7 @@ const ROTATE_STEP := PI / 12.0           # 15°
 @export var zones_path: NodePath = ^"../Zones"
 @export var fields_path: NodePath = ^"../Fields"
 @export var forest_path: NodePath = ^"../Forest"
+@export var deposits_path: NodePath = ^"../Deposits"
 
 var placing := ""
 var ghost_angle := 0.0
@@ -68,6 +69,12 @@ func place_problem(type: String, pos: Vector2, angle: float) -> String:
 	var quad := Defs.footprint_corners(type, pos, angle)
 	for c in quad:
 		if not Defs.BUILD_BOUNDS.has_point(c): return Loc.t("out of bounds")
+	var on_deposit: bool = Defs.BUILDINGS[type].get("on_deposit", false)
+	var dep := -1
+	if on_deposit:
+		dep = Deposits.index_at(pos)
+		if dep < 0: return Loc.t("must be built on a stone deposit")
+		if Deposits.quarry_on(dep) >= 0: return Loc.t("this deposit already has a quarry")
 	for r in Defs.NO_BUILD:
 		var rr: Rect2 = r
 		var rq := PackedVector2Array([rr.position, Vector2(rr.end.x, rr.position.y), rr.end, Vector2(rr.position.x, rr.end.y)])
@@ -76,7 +83,18 @@ func place_problem(type: String, pos: Vector2, angle: float) -> String:
 	for b in Game.buildings:
 		if Defs.quads_overlap(grown, Defs.footprint_corners(b["type"], b["pos"], b["angle"])):
 			return Loc.t("overlaps another building")
-	if _nav:
+	if _nav and dep >= 0:
+		# a quarry only needs room for its props (crane, bench, blocks, sledge) and the work spot around its rock
+		var spots: Array[Vector2] = [Defs.BUILDINGS[type].get("work_spot", Vector2.ZERO)]
+		for r in Defs.BUILDINGS[type].get("nav_block", []):
+			var rr: Rect2 = r
+			for i in 3:
+				for j in 3:
+					spots.append(rr.position + rr.size * Vector2(i / 2.0, j / 2.0))
+		for l in spots:
+			if l.length() <= Defs.DEPOSIT["radius"] + 0.5: continue          # its own rock
+			if _nav.scenery_at(pos + Defs.rot2(l, angle)): return Loc.t("trees or obstacles in the way")
+	elif _nav:
 		var h := Defs.half_extents(type)
 		var nx := maxi(2, ceili(h.x * 2 / 0.4)); var nz := maxi(2, ceili(h.y * 2 / 0.4))
 		for i in nx + 1:
@@ -142,6 +160,11 @@ func begin_place(type: String) -> void:
 		_begin_brush("zone")
 		return
 	placing = type
+	if Defs.BUILDINGS[type].get("on_deposit", false):
+		var dn := get_node_or_null(deposits_path)
+		if dn: dn.set_highlight(true)
+		if Deposits.free_count() == 0:
+			Game.toast.emit(Loc.t("Every stone deposit already has a quarry"))
 	_ghost = BuildingVisuals.create(type, 1)
 	BuildingVisuals.override_all(_ghost, _ghost_mat)
 	add_child(_ghost)
@@ -155,6 +178,8 @@ func cancel_place() -> void:
 	if placing == "": return
 	if is_brush():
 		_end_brush()
+	var dn := get_node_or_null(deposits_path)
+	if dn: dn.set_highlight(false)
 	placing = ""
 	if _ghost: _ghost.queue_free()
 	if _ghost_pad: _ghost_pad.queue_free()
@@ -278,6 +303,10 @@ func _update_ghost(mouse: Vector2) -> void:
 	var p = _ground_point(mouse)
 	if p != null:
 		_ghost_pos = Vector2(p.x, p.z)
+		if Defs.BUILDINGS[placing].get("on_deposit", false):
+			# quarries snap onto the nearest free stone deposit
+			var d := Deposits.free_near(_ghost_pos, Defs.DEPOSIT["snap"])
+			if d >= 0: _ghost_pos = Defs.DEPOSITS[d]["pos"]
 	_ghost_ok = can_place(placing, _ghost_pos, ghost_angle) and Game.can_afford(Defs.BUILDINGS[placing]["cost"])
 	var y := ground_height(placing, _ghost_pos, ghost_angle)
 	_ghost.position = Vector3(_ghost_pos.x, y, _ghost_pos.y)

@@ -28,6 +28,9 @@ func check(cond: bool, msg: String) -> void:
 
 ## first free spot on a spiral around `near`
 func find_spot(type: String, near := Vector2(0, 7), angle := 0.0) -> Vector2:
+	if Defs.BUILDINGS[type].get("on_deposit", false):     # quarries go on a free stone deposit
+		var dep: int = current_scene.get_node("Deposits").free_near(near, 99.0)
+		return Defs.DEPOSITS[dep]["pos"] if dep >= 0 else Vector2(999, 999)
 	for r in range(0, 40):
 		for k in 16:
 			var p: Vector2 = near + Vector2(cos(k * TAU / 16), sin(k * TAU / 16)) * r * 0.5

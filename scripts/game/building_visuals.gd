@@ -117,6 +117,12 @@ static func _woodcutter_simple(r: Node3D, rng: RandomNumberGenerator) -> void:
 	cyl(r, 0.11, 0.45, Vector3(1.05, 0.55, -1.0), wood(), Vector3(0, 0, 0.2))
 
 static func _quarry(r: Node3D, rng: RandomNumberGenerator) -> void:
+	# baked quarry works (tools/buildings.py); the rock itself is the deposit (Deposits)
+	if _baked(r, "res://models/quarry.glb"): return
+	_quarry_simple(r, rng)
+
+## primitive fallback when the baked model is missing
+static func _quarry_simple(r: Node3D, rng: RandomNumberGenerator) -> void:
 	# rock face
 	for i in 9:
 		var a := rng.randf() * TAU

@@ -45,11 +45,12 @@ const BUILDINGS := {
 		"job": {"anim": "hoe", "tool": "Hoe", "carry": "CarrySack", "hat": "HatStraw", "target": "field"},
 	},
 	"quarry": {
-		"name": "Quarry", "desc": "The mason breaks off stone and hauls it to storage",
-		"cost": {"wood": 25}, "size": 3,
+		"name": "Quarry", "desc": "Built on a stone deposit. The mason breaks off stone and hauls it to storage",
+		"cost": {"wood": 25}, "size": 4, "on_deposit": true,
 		"workers": 1, "yield": {"stone": 6},
-		"nav_block": [Rect2(-1.2, -1.4, 1.8, 1.5), Rect2(0.5, 0.6, 1.25, 0.45), Rect2(-1.05, 0.75, 0.3, 0.3)],
-		"work_spot": Vector2(0.1, 0.5), "work_look": Vector2(-0.2, -0.3),
+		# the rock itself is the deposit (blocked in NavGrid); these are the crane, bench, block stack, sledge
+		"nav_block": [Rect2(-1.85, -1.45, 0.8, 0.75), Rect2(1.4, -0.72, 0.5, 0.95), Rect2(0.85, 1.0, 1.05, 0.4), Rect2(-1.7, 0.85, 0.7, 0.75)],
+		"work_spot": Vector2(0.0, 1.5), "work_look": Vector2(0.0, 0.2),
 		"job": {"anim": "mine", "tool": "Pick", "carry": "CarryStone", "hat": "HatCap", "target": "spot"},
 	},
 	"house": {
@@ -149,6 +150,15 @@ const TOOLS := {
 		"label": "Paint area"},
 }
 
+## stone deposits: quarries can only be built on one of these (one quarry each)
+const DEPOSITS := [
+	{"pos": Vector2(10.5, 5.5), "model": 0, "angle": 2.4},
+	{"pos": Vector2(-2.5, -8.5), "model": 1, "angle": 0.6},
+	{"pos": Vector2(-12.0, 6.0), "model": 1, "angle": -1.2},
+	{"pos": Vector2(-12.0, -6.0), "model": 0, "angle": 1.0},
+]
+const DEPOSIT := {"radius": 1.15, "snap": 6.0}   # rock blocks walking within radius; the ghost snaps from this far
+
 ## farm fields: painted per farmhouse on the zone grid
 const FIELD := {
 	"range": 10.0,            # max distance from the farmhouse (m)
@@ -185,7 +195,7 @@ const QUESTS := [
 	{"text": "Build a woodcutter", "type": "build", "building": "woodcutter", "count": 1, "reward": {"food": 10}},
 	{"text": "Build a farmhouse and paint its field", "type": "build", "building": "farm", "count": 1, "reward": {"wood": 15}},
 	{"text": "Paint a housing zone and wait for a house", "type": "build", "building": "house", "count": 1, "reward": {"stone": 10}},
-	{"text": "Build a quarry", "type": "build", "building": "quarry", "count": 1, "reward": {"wood": 20}},
+	{"text": "Build a quarry on a stone deposit", "type": "build", "building": "quarry", "count": 1, "reward": {"wood": 20}},
 	{"text": "Build a storehouse near production", "type": "build", "building": "storehouse", "count": 1, "reward": {"food": 20}},
 	{"text": "Reach 10 villagers", "type": "population", "value": 10, "reward": {"food": 30}},
 	{"text": "Stockpile 100 wood", "type": "resource", "res": "wood", "value": 100, "reward": {"stone": 30}},

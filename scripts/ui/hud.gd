@@ -347,6 +347,8 @@ func _on_mode(type: String) -> void:
 			_hint.text = Loc.t("Left-drag to paint the forest area (within %d m of the lodge) · X toggles erase (or hold Shift) · right-click / Esc to finish") % int(Defs.FOREST["range"])
 		elif type == "field":
 			_hint.text = Loc.t("Left-drag to paint the field (within %d m of the farmhouse) · X toggles erase (or hold Shift) · right-click / Esc to finish") % int(Defs.FIELD["range"])
+		elif Defs.BUILDINGS.has(type) and Defs.BUILDINGS[type].get("on_deposit", false):
+			_hint.text = Loc.t("Point at a highlighted stone deposit and left-click to build · R / Shift+R or Shift+wheel to rotate · right-click / Esc to cancel")
 		else:
 			_hint.text = Loc.t("Left-click to place %s · R / Shift+R or Shift+wheel to rotate · right-click / Esc to cancel") % Defs.label(type)
 	_refresh_quest()

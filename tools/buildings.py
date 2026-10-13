@@ -2,7 +2,7 @@
 thatched roofs, timber frames, plaster, stone plinths.
 
 Run: python3 tools/buildings.py <models_dir> [preview]
-Writes <models_dir>/woodcutter.glb and <models_dir>/storehouse.glb. Front (door / open side) = -Y (Godot +Z).
+Writes <models_dir>/{woodcutter, storehouse, quarry, deposit_0, deposit_1}.glb (add names to build only those). Front (door / open side) = -Y (Godot +Z).
 """
 import os, sys, math, random
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -172,11 +172,93 @@ def storehouse(col):
     hv.cube(col, (0.6, 0.06, 0.36), (door / 2 + 0.45, -hy - 0.5, 1.2), M["plank"], bevel=0.02)
     return W + 1.6, D + 1.6
 
+def deposit(col, variant):
+    """Stone outcrop: big angular boulders with fresh pale cut faces and rubble, ~2.6 m across.
+    Built at game scale (1 unit = 1 m), centred on the origin."""
+    seed = 900 + variant * 37; rnd = random.Random(seed)
+    stone = hv.mat_stone()
+    pale = hv.mat_wood("palestone", (0.36, 0.35, 0.33), (0.58, 0.57, 0.53), (14, 14, 14))
+    # layered boulders: (x, y, radius, height)
+    if variant == 0:
+        big = [(0.0, 0.1, 0.85, 1.35), (-0.75, 0.45, 0.6, 0.95), (0.7, 0.5, 0.62, 0.9), (0.45, -0.45, 0.5, 0.7),
+               (-0.6, -0.35, 0.48, 0.6), (0.05, 0.85, 0.5, 0.7), (1.05, -0.05, 0.4, 0.5)]
+    else:
+        big = [(0.1, 0.05, 0.8, 1.2), (-0.65, -0.3, 0.55, 0.8), (0.65, 0.45, 0.58, 0.85), (-0.45, 0.6, 0.48, 0.65),
+               (0.75, -0.45, 0.4, 0.5)]
+    for k, (x, y, r, h) in enumerate(big):
+        o = hv.blob(col, (x, y, h * 0.4), r, stone, 2, h / r * 0.55, 0.5, seed + k)
+        o.scale = (rnd.uniform(1.0, 1.25), rnd.uniform(0.9, 1.15), 1.0)
+        o.rotation_euler = (rnd.uniform(-0.25, 0.25), rnd.uniform(-0.25, 0.25), rnd.uniform(0, 3))
+    # stepped quarry face on the front (-Y): pale, freshly cut ledges
+    for k in range(3):
+        w_ = 1.2 - k * 0.25
+        hv.cube(col, (w_, 0.42, 0.26), (0.0, -0.62 + k * 0.22, 0.13 + k * 0.26), pale,
+                rot=(0, 0, rnd.uniform(-0.06, 0.06)), bevel=0.03, wobble=0.02, seed=seed + 20 + k)
+    # rubble ring
+    for k in range(26):
+        a = rnd.uniform(0, math.tau); d = rnd.uniform(1.05, 1.55)
+        sz = rnd.uniform(0.07, 0.2)
+        hv.blob(col, (math.cos(a) * d, math.sin(a) * d, sz * 0.35), sz, stone if k % 3 else pale, 1, 0.7, 0.35, seed + 50 + k)
+    return 3.1, 3.1
+
+def quarry(col):
+    """Quarry works set around a stone deposit (the outcrop itself is a separate model):
+    a timber crane over the rock, stacked cut blocks, a mason's bench, a small sledge."""
+    seed = 61; rnd = random.Random(seed)
+    M = mats(seed, "weathered", 1, 1)
+    pale = hv.mat_wood("palestone", (0.36, 0.35, 0.33), (0.58, 0.57, 0.53), (14, 14, 14))
+    rope = hv.mat_flat("rope", (0.35, 0.27, 0.15), 0.9)
+    t = 0.12; kk = [0]
+    def B(p0, p1, tt=t, m=None):
+        kk[0] += 1; return hv.beam(col, p0, p1, tt, m or M["beam"], seed * 100 + kk[0])
+    # crane: A-frame at the back-left, boom reaching over the rock
+    base = Vector((-1.45, 1.05, 0))
+    for dx in (-0.35, 0.35):
+        B(base + Vector((dx, -0.3, 0)), base + Vector((0, 0, 2.5)))
+        B(base + Vector((dx, 0.35, 0)), base + Vector((0, 0, 2.5)))
+    B(base + Vector((-0.4, 0, 0.9)), base + Vector((0.4, 0, 0.9)), 0.08)
+    tip = Vector((-0.2, 0.15, 2.2))
+    B(base + Vector((0, 0, 0.6)), tip, 0.1)
+    B(base + Vector((0, 0, 2.5)), tip, 0.06, rope)
+    B(tip, tip + Vector((0, 0, -0.95)), 0.03, rope)
+    hv.cube(col, (0.42, 0.34, 0.3), tip + Vector((0, 0, -1.12)), pale, bevel=0.03)
+    # windlass drum on the A-frame
+    bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=0.14, depth=0.72, location=base + Vector((0, 0, 0.9)), rotation=(0, math.pi / 2, 0))
+    o = bpy.context.object; o.data.materials.append(M["log"]); bpy.context.scene.collection.objects.unlink(o); col.objects.link(o)
+    # stacked cut blocks, front-right
+    for k in range(5):
+        x = 1.05 + (k % 3) * 0.36 - (0.18 if k >= 3 else 0.0); z = 0.16 + (k // 3) * 0.32
+        hv.cube(col, (0.34, 0.34, 0.3), (x, -1.2, z), pale, rot=(0, 0, rnd.uniform(-0.12, 0.12)), bevel=0.02, wobble=0.01, seed=seed + k)
+    # mason's bench with mallet and chisel, right side
+    hv.cube(col, (0.5, 0.95, 0.07), (1.65, 0.25, 0.62), M["plank"], bevel=0.01)
+    for dy in (-0.38, 0.38):
+        for dx in (-0.18, 0.18):
+            B((1.65 + dx, 0.25 + dy, 0), (1.65 + dx, 0.25 + dy, 0.6), 0.06)
+    hv.cube(col, (0.3, 0.3, 0.24), (1.65, 0.45, 0.78), pale, bevel=0.02)
+    B((1.6, -0.05, 0.68), (1.75, -0.35, 0.68), 0.035)
+    hv.cube(col, (0.12, 0.09, 0.09), (1.6, -0.03, 0.68), M["plank"], bevel=0.01)
+    # sledge with a block, front-left
+    for dx in (-0.25, 0.25):
+        B((-1.35 + dx, -1.55, 0.05), (-1.35 + dx, -0.85, 0.05), 0.07)
+    hv.cube(col, (0.62, 0.72, 0.05), (-1.35, -1.2, 0.12), M["plank"], bevel=0.01)
+    hv.cube(col, (0.4, 0.4, 0.3), (-1.35, -1.2, 0.3), pale, rot=(0, 0, 0.2), bevel=0.02)
+    # chips on the ground
+    for k in range(18):
+        a = rnd.uniform(0, math.tau); d = rnd.uniform(1.3, 1.9)
+        hv.blob(col, (math.cos(a) * d, math.sin(a) * d, 0.03), rnd.uniform(0.04, 0.08), pale, 1, 0.6, 0.3, seed + 200 + k)
+    return 4.0, 4.0
+
 if __name__ == "__main__":
-    for name, fn, fit_w, fit_d in [("woodcutter", woodcutter, 2.9, 2.9), ("storehouse", storehouse, 3.6, 3.0)]:
+    only = [a for a in sys.argv[2:] if a != "preview"]
+    jobs = [("woodcutter", woodcutter, 2.9, 2.9), ("storehouse", storehouse, 3.6, 3.0),
+            ("quarry", quarry, None, None),
+            ("deposit_0", lambda c: deposit(c, 0), None, None), ("deposit_1", lambda c: deposit(c, 1), None, None)]
+    for name, fn, fit_w, fit_d in jobs:
+        if only and name not in only: continue
         bpy.ops.wm.read_factory_settings(use_empty=True)
         col = bpy.data.collections.new(name); bpy.context.scene.collection.children.link(col)
         sx, sy = fn(col)
-        hv.finish(col, name, sx, sy, fit_w=fit_w, fit_d=fit_d, out_dir=OUT_DIR)
+        # quarry and deposits are built at game scale (fit = own size -> scale 1)
+        hv.finish(col, name, sx, sy, fit_w=fit_w or sx, fit_d=fit_d or sy, out_dir=OUT_DIR)
         if PREVIEW:
             hv.render_preview(os.path.join(OUT_DIR, f"_{name}_preview.png"))

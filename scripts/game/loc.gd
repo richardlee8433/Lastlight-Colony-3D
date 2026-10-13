@@ -27,6 +27,10 @@ static func save_settings() -> void:
 
 ## Zh-TW text keyed by the English text used in the code (and in Defs).
 const ZH := {
+	"must be built on a stone deposit": "要蓋在石礦上",
+	"this deposit already has a quarry": "這座石礦已經有採石場了",
+	"Every stone deposit already has a quarry": "每座石礦都已經有採石場了",
+	"Point at a highlighted stone deposit and left-click to build · R / Shift+R or Shift+wheel to rotate · right-click / Esc to cancel": "指向發亮的石礦，左鍵建造 · R / Shift+R 或 Shift+滾輪 旋轉 · 右鍵 / Esc 取消",
 	"Edit forest area": "編輯林區",
 	"Forest area %.0f m²  %d trees": "林區 %.0f m²  %d 棵樹",
 	"Clear area": "清空林區",
@@ -127,7 +131,7 @@ const ZH := {
 	"Villagers haul goods to the nearest storage. Build one near production to shorten trips": "村民把資源搬到最近的倉庫，蓋在生產區旁邊可以縮短搬運",
 	"Paint a forest area after building it. The woodcutter fells the grown trees inside and carries the logs to storage; stumps regrow and saplings sprout": "蓋好後畫出林區。伐木工砍林區裡長大的樹，扛回倉庫；樹樁會再長，空地會冒出樹苗",
 	"Paint a housing zone and wait for a house": "畫一塊住宅區，等村民蓋房子",
-	"The mason breaks off stone and hauls it to storage": "石匠敲下石塊，搬回倉庫",
+	"Built on a stone deposit. The mason breaks off stone and hauls it to storage": "蓋在石礦上。石匠敲下石塊，搬回倉庫",
 	"Room for 4 villagers": "增加 4 人居住空間",
 	"Build a farmhouse and paint its field": "蓋一座農舍並畫出田地",
 	"Build a storehouse near production": "在生產區旁蓋一座倉庫",
@@ -136,7 +140,7 @@ const ZH := {
 	"Reach 20 villagers": "人口達到 20 人",
 	"Have 3 farmhouses": "擁有 3 座農舍",
 	"Build a woodcutter": "蓋一座伐木場",
-	"Build a quarry": "蓋一座採石場",
+	"Build a quarry on a stone deposit": "在石礦上蓋一座採石場",
 	"Paint area": "畫出範圍",
 	"Woodcutter": "伐木場",
 	"Quarry": "採石場",

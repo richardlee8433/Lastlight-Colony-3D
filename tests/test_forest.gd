@@ -25,6 +25,9 @@ func check(cond: bool, msg: String) -> void:
 		print("  FAIL ", msg); _fails += 1
 
 func find_spot(ctl, type: String, near: Vector2, ang := 0.0) -> Vector2:
+	if Defs.BUILDINGS[type].get("on_deposit", false):     # quarries go on a free stone deposit
+		var dep: int = current_scene.get_node("Deposits").free_near(near, 99.0)
+		return Defs.DEPOSITS[dep]["pos"] if dep >= 0 else Vector2(999, 999)
 	for r in range(0, 50):
 		for k in 16:
 			var p: Vector2 = near + Vector2(cos(k * TAU / 16.0), sin(k * TAU / 16.0)) * r * 0.5
@@ -147,16 +150,14 @@ func _run() -> void:
 		if v.job_id == id: cutter = v
 	check(cutter != null, "the lodge has a woodcutter")
 	var wood0: int = game.resources["wood"]
-	var chops0 := 0
-	for a in game.trees: chops0 += a["chops"]
+	var chops0: int = forest.chops_done
 	var tt := 0.0
 	while tt < 150.0:
 		game.step(0.1); vm.tick(0.1); forest.tick(0.1); wear.tick(0.1, 0.5)
 		tt += 0.1
-	var chops1 := 0
-	for a in game.trees: chops1 += a["chops"]
+	var chops1: int = forest.chops_done
 	check(game.resources["wood"] > wood0, "logs carried to storage (+%d wood)" % (game.resources["wood"] - wood0))
-	check(chops1 < chops0, "trees in the area were chopped")
+	check(chops1 > chops0, "trees in the area were chopped (%d chops)" % (chops1 - chops0))
 
 	# --- no trees: the woodcutter waits ---
 	forest.clear(id)
