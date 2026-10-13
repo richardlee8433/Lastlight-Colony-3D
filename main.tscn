@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://scripts/world/nav_grid.gd" id="10_nav"]
 [ext_resource type="Script" path="res://scripts/world/path_wear.gd" id="11_wear"]
 [ext_resource type="Script" path="res://scripts/world/villager_manager.gd" id="12_vil"]
+[ext_resource type="Script" path="res://scripts/world/zones.gd" id="13_zones"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.32, 0.5, 0.78, 1)
@@ -40,8 +41,8 @@ glow_intensity = 0.4
 glow_bloom = 0.05
 fog_enabled = true
 fog_light_color = Color(0.75, 0.8, 0.85, 1)
-fog_density = 0.004
-fog_sky_affect = 0.3
+fog_density = 0.0012
+fog_sky_affect = 0.08
 adjustment_enabled = true
 adjustment_saturation = 1.08
 
@@ -89,6 +90,9 @@ script = ExtResource("11_wear")
 
 [node name="Villagers" type="Node3D" parent="."]
 script = ExtResource("12_vil")
+
+[node name="Zones" type="Node" parent="."]
+script = ExtResource("13_zones")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("9_hud")

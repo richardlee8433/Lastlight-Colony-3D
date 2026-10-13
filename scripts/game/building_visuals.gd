@@ -74,11 +74,22 @@ static func create(type: String, seed_val: int) -> Node3D:
 		"storehouse": _storehouse(root, rng)
 	return root
 
+const HOUSE_VARIANTS := 6
+
 static func _house(r: Node3D, rng: RandomNumberGenerator) -> void:
-	var hut: Node3D = (load(HUT_SCENE) as PackedScene).instantiate()
-	var s := rng.randf_range(0.5, 0.56)
-	hut.scale = Vector3(s, s * rng.randf_range(0.95, 1.08), s)
-	r.add_child(hut)
+	# one of the baked variants (tools/house_variants.py), slightly resized
+	var k := rng.randi() % HOUSE_VARIANTS
+	var path := "res://models/houses/house_%d.glb" % k
+	var house: Node3D
+	if ResourceLoader.exists(path):
+		house = (load(path) as PackedScene).instantiate()
+		var s := rng.randf_range(0.95, 1.04)
+		house.scale = Vector3(s * rng.randf_range(0.97, 1.03), s * rng.randf_range(0.96, 1.05), s)
+	else:
+		house = (load(HUT_SCENE) as PackedScene).instantiate()
+		var s := rng.randf_range(0.5, 0.56)
+		house.scale = Vector3(s, s, s)
+	r.add_child(house)
 
 static func _woodcutter(r: Node3D, rng: RandomNumberGenerator) -> void:
 	# open-sided shed with a thatched roof

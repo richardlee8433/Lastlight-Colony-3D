@@ -24,6 +24,7 @@ var _upload_acc := 0.0
 var _cells_acc := 0.0
 var _scatter: Node
 var _nav: NavGrid
+var _ground_mats: Array[ShaderMaterial] = []
 
 func _ready() -> void:
 	wear.resize(SIZE * SIZE)
@@ -57,6 +58,11 @@ func _setup_ground() -> void:
 		var nt := NoiseTexture2D.new(); nt.noise = n; nt.seamless = true; nt.width = 256; nt.height = 256
 		sm.set_shader_parameter("noise_tex", nt)
 		mi.material_override = sm
+		_ground_mats.append(sm)
+
+## Lets other systems (e.g. residential zones) feed the ground shader.
+func set_ground_param(param: String, value: Variant) -> void:
+	for sm in _ground_mats: sm.set_shader_parameter(param, value)
 
 func _meshes(n: Node) -> Array[MeshInstance3D]:
 	var out: Array[MeshInstance3D] = []

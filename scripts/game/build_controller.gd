@@ -10,6 +10,7 @@ const ROTATE_STEP := PI / 12.0           # 15°
 @export var camera_path: NodePath = ^"../Camera"
 @export var scatter_path: NodePath = ^"../Scatter"
 @export var nav_path: NodePath = ^"../Nav"
+@export var zones_path: NodePath = ^"../Zones"
 
 var placing := ""
 var ghost_angle := 0.0
@@ -24,6 +25,9 @@ var _select_pad: MeshInstance3D
 var _ok_mat: StandardMaterial3D
 var _bad_mat: StandardMaterial3D
 var _ghost_mat: StandardMaterial3D
+var _brush: MeshInstance3D
+var _brush_mat: StandardMaterial3D
+var _painting := 0                     # 0 none, 1 painting, -1 erasing
 
 @onready var _cam: Camera3D = get_node(camera_path)
 @onready var _scatter: Node = get_node_or_null(scatter_path)
@@ -111,6 +115,9 @@ func _world_pos(b: Dictionary) -> Vector3:
 func begin_place(type: String) -> void:
 	cancel_place()
 	select(-1)
+	if type == "zone":
+		_begin_zone()
+		return
 	placing = type
 	_ghost = BuildingVisuals.create(type, 1)
 	BuildingVisuals.override_all(_ghost, _ghost_mat)
@@ -123,13 +130,56 @@ func begin_place(type: String) -> void:
 
 func cancel_place() -> void:
 	if placing == "": return
+	if placing == "zone":
+		_end_zone()
 	placing = ""
 	if _ghost: _ghost.queue_free()
 	if _ghost_pad: _ghost_pad.queue_free()
 	_ghost = null; _ghost_pad = null
 	mode_changed.emit("")
 
+# ---------------- residential zone brush ----------------
+
+func _zones() -> Node:
+	return get_node_or_null(zones_path)
+
+func _begin_zone() -> void:
+	placing = "zone"
+	_painting = 0
+	if _brush == null:
+		var tm := TorusMesh.new()
+		var r: float = Defs.ZONE["brush_radius"]
+		tm.inner_radius = r - 0.06; tm.outer_radius = r + 0.06
+		tm.rings = 48; tm.ring_segments = 6
+		_brush = MeshInstance3D.new()
+		_brush.mesh = tm
+		_brush_mat = _pad_mat(Color(1.0, 0.92, 0.6, 0.85))
+		_brush.material_override = _brush_mat
+		_brush.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_brush)
+	_brush.visible = true
+	if _zones(): _zones().set_painting(true)
+	_update_brush(get_viewport().get_mouse_position())
+	mode_changed.emit("zone")
+
+func _end_zone() -> void:
+	_painting = 0
+	if _brush: _brush.visible = false
+	if _zones(): _zones().set_painting(false)
+
+func _update_brush(mouse: Vector2) -> void:
+	if _brush == null: return
+	var p = _ground_point(mouse)
+	if p == null: return
+	_brush.position = p + Vector3(0, 0.08, 0)
+	_brush_mat.albedo_color = Color(1.0, 0.45, 0.35, 0.85) if Input.is_key_pressed(KEY_SHIFT) else Color(1.0, 0.92, 0.6, 0.85)
+	if _painting != 0 and _zones():
+		_zones().paint(Vector2(p.x, p.z), _painting > 0)
+
 func _update_ghost(mouse: Vector2) -> void:
+	if placing == "zone":
+		_update_brush(mouse)
+		return
 	if placing == "" or _ghost == null: return
 	var p = _ground_point(mouse)
 	if p != null:
@@ -171,6 +221,11 @@ func demolish_selected() -> void:
 # ---------------- input ----------------
 
 func _unhandled_input(event: InputEvent) -> void:
+	if placing == "zone" and event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_painting = (-1 if event.shift_pressed else 1) if event.pressed else 0
+		_update_brush(event.position)
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseMotion:
 		_update_ghost(event.position)
 	elif event is InputEventMouseButton and event.pressed:
@@ -192,6 +247,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_RIGHT and placing != "":
 			cancel_place()
 	elif event is InputEventKey and event.pressed:
+		if event.keycode == KEY_SHIFT and placing == "zone":
+			_update_brush(get_viewport().get_mouse_position())
 		if event.keycode == KEY_R:
 			_rotate_ghost(-1 if event.shift_pressed else 1)
 			return

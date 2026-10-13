@@ -138,12 +138,12 @@ func _build_menu() -> void:
 	panel.add_child(hb)
 	var i := 1
 	for type in Defs.BUILD_ORDER:
-		var d: Dictionary = Defs.BUILDINGS[type]
+		var d: Dictionary = Defs.TOOLS[type] if Defs.TOOLS.has(type) else Defs.BUILDINGS[type]
 		var b := Button.new()
 		b.toggle_mode = true
 		b.focus_mode = Control.FOCUS_NONE
 		b.custom_minimum_size = Vector2(150, 64)
-		b.text = "%d  %s\n%s" % [i, d["name"], Defs.cost_text(d["cost"])]
+		b.text = "%d  %s\n%s" % [i, d["name"], d["label"] if d.has("label") else Defs.cost_text(d["cost"])]
 		b.tooltip_text = d["desc"]
 		var t: String = type
 		b.pressed.connect(func():
@@ -214,7 +214,7 @@ func _refresh() -> void:
 	_pop_label.text = "人口  %d/%d   工作 %d/%d" % [Game.population, Game.housing(), Game.workers_used(), Game.workers_needed()]
 	_day_label.text = "第 %d 天" % Game.day
 	for type in _build_buttons:
-		var ok := Game.can_afford(Defs.BUILDINGS[type]["cost"])
+		var ok: bool = Defs.TOOLS.has(type) or Game.can_afford(Defs.BUILDINGS[type]["cost"])
 		_build_buttons[type].modulate = Color.WHITE if ok else Color(1, 1, 1, 0.45)
 	for sp in _speed_buttons:
 		_speed_buttons[sp].button_pressed = is_equal_approx(Game.speed, sp)
@@ -239,7 +239,10 @@ func _on_mode(type: String) -> void:
 	if type == "":
 		_hint.text = "左鍵 選取建築 · 1-5 建造 · 右鍵拖曳 旋轉鏡頭 · WASD / 中鍵 平移 · 滾輪 縮放"
 	else:
-		_hint.text = "左鍵 放置%s · R / Shift+R 或 Shift+滾輪 旋轉 · 右鍵 / Esc 取消" % Defs.BUILDINGS[type]["name"]
+		if type == "zone":
+			_hint.text = "左鍵拖曳 畫住宅區 · 按住 Shift 拖曳 擦除 · 右鍵 / Esc 結束"
+		else:
+			_hint.text = "左鍵 放置%s · R / Shift+R 或 Shift+滾輪 旋轉 · 右鍵 / Esc 取消" % Defs.BUILDINGS[type]["name"]
 	_refresh_quest()
 
 func _on_selection(id: int) -> void:

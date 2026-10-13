@@ -11,6 +11,7 @@ signal toast(text: String)
 signal quest_changed
 signal day_passed(day: int)
 signal reset                                     # new game started (paths, villagers clear)
+signal zones_changed
 
 const SAVE_PATH := "user://save.json"
 const SAVE_VERSION := 2
@@ -23,6 +24,8 @@ var speed := 1.0                 # 0 = paused
 var buildings: Array[Dictionary] = []
 var quest_index := 0
 var starving := false
+## residential zone mask (Defs.ZONE grid), 1 = zoned
+var zones := PackedByteArray()
 
 var _next_id := 1
 var _day_timer := 0.0
@@ -31,6 +34,7 @@ var _today := {}                 # goods delivered today
 var _yesterday := {}             # goods delivered during the previous full day
 
 func _ready() -> void:
+	_clear_zones()
 	if not load_game():
 		new_game()
 
@@ -42,6 +46,7 @@ func new_game() -> void:
 	starving = false
 	_day_timer = 0.0
 	_today = {}; _yesterday = {}
+	_clear_zones()
 	for b in buildings.duplicate():
 		buildings.erase(b)
 		building_removed.emit(b)
@@ -49,6 +54,22 @@ func new_game() -> void:
 	_assign_workers()
 	reset.emit()
 	changed.emit(); quest_changed.emit()
+
+# ---------------- zones ----------------
+
+func _clear_zones() -> void:
+	zones = PackedByteArray()
+	zones.resize(Defs.ZONE["w"] * Defs.ZONE["w"])
+	zones_changed.emit()
+
+func zone_count() -> int:
+	var n := 0
+	for v in zones: n += v
+	return n
+
+func set_zone(index: int, on: bool) -> void:
+	if index >= 0 and index < zones.size():
+		zones[index] = 1 if on else 0
 
 # ---------------- queries ----------------
 
@@ -245,10 +266,17 @@ func save_game() -> void:
 		"version": SAVE_VERSION, "resources": resources, "population": population, "day": day,
 		"quest_index": quest_index, "starving": starving, "day_timer": _day_timer, "buildings": list,
 		"today": _today, "yesterday": _yesterday,
+		"zones": _zone_list(),
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
+
+func _zone_list() -> Array:
+	var out := []
+	for i in zones.size():
+		if zones[i]: out.append(i)
+	return out
 
 func load_game() -> bool:
 	if not FileAccess.file_exists(SAVE_PATH): return false
@@ -267,6 +295,10 @@ func load_game() -> bool:
 	starving = bool(data.get("starving", false))
 	_day_timer = float(data.get("day_timer", 0.0))
 	_today = data.get("today", {}); _yesterday = data.get("yesterday", {})
+	_clear_zones()
+	for i in data.get("zones", []):
+		set_zone(int(i), true)
+	zones_changed.emit()
 	buildings.clear()
 	_next_id = 1
 	for e in data["buildings"]:

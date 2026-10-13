@@ -136,19 +136,37 @@ static func quads_overlap(a: PackedVector2Array, b: PackedVector2Array) -> bool:
 			if amax < bmin or bmax < amin: return false
 	return true
 
-const BUILD_ORDER := ["woodcutter", "farm", "quarry", "house", "storehouse"]
+## build menu: building types plus the residential-zone brush ("zone")
+const BUILD_ORDER := ["woodcutter", "farm", "quarry", "zone", "storehouse"]
+const TOOLS := {
+	"zone": {"name": "住宅區", "desc": "畫出住宅區。村子需要更多住處、資源也夠時，村民會自己在區域裡蓋房子（每間 木材 20 石材 15）",
+		"label": "畫出範圍"},
+}
+
+## residential zones: painted on the same 0.5 m grid as the walk grid
+const ZONE := {
+	"cell": 0.5, "origin": Vector2(-17, -17), "w": 68,
+	"brush_radius": 1.3,
+	"grow_check": 2.0,        # seconds between growth checks
+	"grow_cooldown": 8.0,     # minimum seconds between two new houses
+	"free_beds_trigger": 1,   # build when this many beds or fewer are free
+}
 
 const QUESTS := [
 	{"text": "蓋一座伐木場", "type": "build", "building": "woodcutter", "count": 1, "reward": {"food": 10}},
 	{"text": "蓋一塊農田", "type": "build", "building": "farm", "count": 1, "reward": {"wood": 15}},
 	{"text": "蓋一座採石場", "type": "build", "building": "quarry", "count": 1, "reward": {"wood": 20}},
-	{"text": "蓋一間民房", "type": "build", "building": "house", "count": 1, "reward": {"stone": 10}},
+	{"text": "畫一塊住宅區，等村民蓋房子", "type": "build", "building": "house", "count": 1, "reward": {"stone": 10}},
 	{"text": "在生產區旁蓋一座倉庫", "type": "build", "building": "storehouse", "count": 1, "reward": {"food": 20}},
 	{"text": "人口達到 10 人", "type": "population", "value": 10, "reward": {"food": 30}},
 	{"text": "存到 100 木材", "type": "resource", "res": "wood", "value": 100, "reward": {"stone": 30}},
 	{"text": "擁有 3 塊農田", "type": "build", "building": "farm", "count": 3, "reward": {"wood": 40}},
 	{"text": "人口達到 20 人", "type": "population", "value": 20, "reward": {}},
 ]
+
+## display name of a building type or tool
+static func label(type: String) -> String:
+	return TOOLS[type]["name"] if TOOLS.has(type) else BUILDINGS[type]["name"]
 
 static func cost_text(cost: Dictionary) -> String:
 	var parts: Array[String] = []
