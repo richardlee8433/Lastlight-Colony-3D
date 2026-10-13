@@ -84,6 +84,8 @@ func cell_problem(farm: Dictionary, i: int) -> String:
 	if p.distance_to(farm["pos"]) > Defs.FIELD["range"]: return Loc.t("too far from the farmhouse")
 	if owner_map[i] != 0 and owner_map[i] != farm["id"]: return Loc.t("another farm's field")
 	if Game.zones.size() > i and Game.zones[i] == 1: return Loc.t("housing zone")
+	var forest := get_node_or_null(^"../Forest")
+	if forest and forest.owner_map[i] != 0: return Loc.t("forest area")
 	var nav := get_node_or_null(nav_path)
 	if nav and nav.scenery_at(p): return Loc.t("obstacle")
 	for b in Game.buildings:

@@ -11,12 +11,14 @@ var origin := Vector2(-17, -17)
 var w := 68
 var h := 68
 var astar := AStarGrid2D.new()
-var trees: Array[Vector3] = []          # (x, trunk_radius, z)
+var trees: Array[Vector3] = []          # map trees at the start: (x, trunk_radius, z)
+var tree_data: Array = []               # world.json rows [x, z, radius, kind, height]
 
 var _static := PackedByteArray()
 var _dyn := PackedInt32Array()          # how many buildings block each cell
 var _height := PackedFloat32Array()
 var _building_cells := {}               # building id -> PackedInt32Array
+var _tree_cells := {}                   # cell index -> true: trunks of trees grown at runtime
 
 func _ready() -> void:
 	var f := FileAccess.open("res://data/world.json", FileAccess.READ)
@@ -28,6 +30,7 @@ func _ready() -> void:
 	_height = PackedFloat32Array(data["height"])
 	for i in data["blocked"]:
 		_static[int(i)] = 1
+	tree_data = data["trees"]
 	for t in data["trees"]:
 		trees.append(Vector3(t[0], t[2], t[1]))
 	astar.region = Rect2i(0, 0, w, h)
@@ -186,18 +189,43 @@ func block_building(b: Dictionary, notify := true) -> void:
 func scenery_at(p: Vector2) -> bool:
 	var c := cell_of(Vector3(p.x, 0, p.y))
 	if not in_bounds(c): return true
-	return _static[c.y * w + c.x] == 1
+	var i := c.y * w + c.x
+	return _static[i] == 1 or _tree_cells.has(i)
+
+## A tree grown at runtime blocks its trunk cell (map trees are already in the static data).
+func block_tree(p: Vector2) -> void:
+	var c := cell_of(Vector3(p.x, 0, p.y))
+	if not in_bounds(c): return
+	var i := c.y * w + c.x
+	if _static[i] or _tree_cells.has(i): return
+	_tree_cells[i] = true
+	astar.set_point_solid(c, true)
+	changed.emit()
+
+func unblock_tree(p: Vector2) -> void:
+	var c := cell_of(Vector3(p.x, 0, p.y))
+	if not in_bounds(c): return
+	var i := c.y * w + c.x
+	if not _tree_cells.has(i): return
+	_tree_cells.erase(i)
+	if _dyn[i] == 0 and not _static[i]:
+		astar.set_point_solid(c, false)
+	changed.emit()
 
 func unblock_building(b: Dictionary) -> void:
 	var cells: PackedInt32Array = _building_cells.get(b["id"], PackedInt32Array())
 	_building_cells.erase(b["id"])
 	for i in cells:
 		_dyn[i] = maxi(0, _dyn[i] - 1)
-		if _dyn[i] == 0 and not _static[i]:
+		if _dyn[i] == 0 and not _static[i] and not _tree_cells.has(i):
 			astar.set_point_solid(Vector2i(i % w, i / w), false)
 	changed.emit()
 
 func _on_reset() -> void:
 	for id in _building_cells.keys():
 		unblock_building({"id": id})
+	for i in _tree_cells.keys():
+		if _dyn[i] == 0 and not _static[i]:
+			astar.set_point_solid(Vector2i(i % w, i / w), false)
+	_tree_cells.clear()
 	changed.emit()

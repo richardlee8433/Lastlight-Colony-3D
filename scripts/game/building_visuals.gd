@@ -93,6 +93,12 @@ static func _house(r: Node3D, rng: RandomNumberGenerator) -> void:
 	r.add_child(house)
 
 static func _woodcutter(r: Node3D, rng: RandomNumberGenerator) -> void:
+	# baked model (tools/buildings.py), same style as the village houses
+	if _baked(r, "res://models/woodcutter.glb"): return
+	_woodcutter_simple(r, rng)
+
+## primitive fallback when the baked model is missing
+static func _woodcutter_simple(r: Node3D, rng: RandomNumberGenerator) -> void:
 	# open-sided shed with a thatched roof
 	for x in [-0.9, 0.9]:
 		for z in [-0.6, 0.6]:
@@ -128,6 +134,11 @@ static func _quarry(r: Node3D, rng: RandomNumberGenerator) -> void:
 	cyl(r, 0.01, 0.75, Vector3(-0.15, 1.85, 0.9), wood_dark())
 
 const FARMHOUSE_SCENE := "res://models/farmhouse.glb"
+
+static func _baked(r: Node3D, path: String) -> bool:
+	if not ResourceLoader.exists(path): return false
+	r.add_child((load(path) as PackedScene).instantiate())
+	return true
 
 static func _farm(r: Node3D, rng: RandomNumberGenerator) -> void:
 	# baked farmhouse (tools/farmhouse.py), same style as the village houses
@@ -172,6 +183,12 @@ static func _farm_simple(r: Node3D, rng: RandomNumberGenerator) -> void:
 static func soil_ridge() -> StandardMaterial3D: return mat("soil_ridge", Color(0.36, 0.25, 0.15), 0.95, 0.1)
 
 static func _storehouse(r: Node3D, rng: RandomNumberGenerator) -> void:
+	# baked model (tools/buildings.py), same style as the village houses
+	if _baked(r, "res://models/storehouse.glb"): return
+	_storehouse_simple(r, rng)
+
+## primitive fallback when the baked model is missing
+static func _storehouse_simple(r: Node3D, rng: RandomNumberGenerator) -> void:
 	# open-fronted barn on a stone plinth, goods stacked inside, front = +z
 	box(r, Vector3(2.7, 0.18, 2.3), Vector3(0, 0.09, -0.15), stone())
 	for x in [-1.25, 0.0, 1.25]:

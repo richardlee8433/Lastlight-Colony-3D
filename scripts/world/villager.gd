@@ -272,6 +272,11 @@ func _on_timer() -> void:
 			var job: Dictionary = manager.job_of(self)
 			_set_carry(job.get("carry", ""))
 			goods = manager.yield_of(self)
+			if goods.is_empty():
+				# nothing came of it (tree already gone, field erased...): look for other work
+				_set_carry("")
+				_start_work_trip()
+				return
 			var st: Dictionary = manager.nearest_storage(Vector2(position.x, position.z))
 			_drop_at = st["drop"]
 			_look = nav.on_ground(st["look"])

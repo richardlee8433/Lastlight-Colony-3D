@@ -61,6 +61,7 @@ func paint(p: Vector2, on: bool, radius := -1.0) -> int:
 	if radius < 0: radius = Defs.ZONE["brush_radius"]
 	var nav := get_node_or_null(nav_path)
 	var fields := get_node_or_null(fields_path)
+	var forest := get_node_or_null(^"../Forest")
 	var w: int = Defs.ZONE["w"]
 	var c0 := cell_of(p - Vector2(radius, radius)); var c1 := cell_of(p + Vector2(radius, radius))
 	var changed := 0
@@ -76,6 +77,7 @@ func paint(p: Vector2, on: bool, radius := -1.0) -> int:
 					if (r as Rect2).has_point(cc): blocked = true
 				if nav and nav.scenery_at(cc): blocked = true
 				if fields and fields.owner_map[z * w + x] != 0: blocked = true     # farm fields
+				if forest and forest.owner_map[z * w + x] != 0: blocked = true     # forest areas
 				if blocked: continue
 			var i := z * w + x
 			if Game.zones[i] != (1 if on else 0):

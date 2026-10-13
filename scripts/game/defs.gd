@@ -31,7 +31,7 @@ const GROWTH_FOOD_MIN := 10
 ##   door       where residents rest (houses)     drop   where goods are delivered (storehouses)
 const BUILDINGS := {
 	"woodcutter": {
-		"name": "Woodcutter", "desc": "The woodcutter fells trees nearby and carries the logs to storage",
+		"name": "Woodcutter", "desc": "Paint a forest area after building it. The woodcutter fells the grown trees inside and carries the logs to storage; stumps regrow and saplings sprout",
 		"cost": {"wood": 15}, "size": 3,
 		"workers": 1, "yield": {"wood": 8},
 		"nav_block": [Rect2(-1.05, -0.75, 2.1, 1.5), Rect2(-0.55, -1.3, 1.25, 0.45), Rect2(0.8, -1.25, 0.5, 0.5)],
@@ -156,6 +156,20 @@ const FIELD := {
 	"min_cells": 8,           # smaller fields don't produce
 	"cells_per_food": 12,     # food per trip = cells / 12 (3 m² per food)
 	"max_yield": 8,
+}
+
+## woodcutter forest areas and tree growth (times in in-game days)
+const FOREST := {
+	"range": 12.0,            # max distance of the area from the lodge (m)
+	"max_cells": 240,         # 60 m²
+	"min_cells": 8,
+	"chops_per_tree": 3,      # trips of wood one grown tree gives before it falls
+	"stump_days": 1.0,        # a stump sprouts again after this
+	"grow_days": 3.0,         # sapling -> grown tree
+	"sprout_check": 6.0,      # seconds between sapling checks per area
+	"cells_per_tree": 20,     # areas fill up to one tree per 5 m²
+	"spacing": 1.7,           # min distance between trunks (m)
+	"auto_radius": 3.0,       # starter area: a disc this big over the nearest trees
 }
 
 ## residential zones: painted on the same 0.5 m grid as the walk grid

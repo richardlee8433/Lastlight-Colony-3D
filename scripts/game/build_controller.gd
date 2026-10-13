@@ -13,6 +13,7 @@ const ROTATE_STEP := PI / 12.0           # 15°
 @export var nav_path: NodePath = ^"../Nav"
 @export var zones_path: NodePath = ^"../Zones"
 @export var fields_path: NodePath = ^"../Fields"
+@export var forest_path: NodePath = ^"../Forest"
 
 var placing := ""
 var ghost_angle := 0.0
@@ -30,9 +31,10 @@ var _ghost_mat: StandardMaterial3D
 var _brush: MeshInstance3D
 var _brush_mat: StandardMaterial3D
 var _painting := 0                     # 0 none, 1 painting, -1 erasing
-## brush modes: placing == "zone" (residential) or "field" (the field of farm `field_farm`)
+## brush modes: placing == "zone" (residential), "field" (farm `area_owner`'s field)
+## or "forest" (woodcutter `area_owner`'s forest area)
 var erase_mode := false                # erase toggle (Shift inverts it while held)
-var field_farm := -1
+var area_owner := -1
 
 @onready var _cam: Camera3D = get_node(camera_path)
 @onready var _scatter: Node = get_node_or_null(scatter_path)
@@ -89,6 +91,14 @@ func place_problem(type: String, pos: Vector2, angle: float) -> String:
 			for j in nz + 1:
 				var l := Vector2(-h.x + 2 * h.x * i / nx, -h.y + 2 * h.y * j / nz) * 0.9
 				if f.is_field(pos + Defs.rot2(l, angle)): return Loc.t("that's a farm field")
+	var fo := _forest()
+	if fo:
+		var h := Defs.half_extents(type)
+		var nx := maxi(2, ceili(h.x * 2 / 0.4)); var nz := maxi(2, ceili(h.y * 2 / 0.4))
+		for i in nx + 1:
+			for j in nz + 1:
+				var l := Vector2(-h.x + 2 * h.x * i / nx, -h.y + 2 * h.y * j / nz) * 0.9
+				if fo.is_area(pos + Defs.rot2(l, angle)): return Loc.t("that's a forest area")
 	return ""
 
 func can_place(type: String, pos: Vector2, angle := 0.0) -> bool:
@@ -159,8 +169,11 @@ func _zones() -> Node:
 func _fields() -> Node:
 	return get_node_or_null(fields_path)
 
+func _forest() -> Node:
+	return get_node_or_null(forest_path)
+
 func is_brush() -> bool:
-	return placing == "zone" or placing == "field"
+	return placing == "zone" or placing == "field" or placing == "forest"
 
 ## Paint / erase the field of a farmhouse.
 func begin_field(farm_id: int) -> void:
@@ -168,8 +181,17 @@ func begin_field(farm_id: int) -> void:
 	if b.is_empty() or b["type"] != "farm": return
 	cancel_place()
 	select(-1)
-	field_farm = farm_id
+	area_owner = farm_id
 	_begin_brush("field")
+
+## Paint / erase the forest area of a woodcutter's lodge.
+func begin_forest(lodge_id: int) -> void:
+	var b := Game.get_building(lodge_id)
+	if b.is_empty() or b["type"] != "woodcutter": return
+	cancel_place()
+	select(-1)
+	area_owner = lodge_id
+	_begin_brush("forest")
 
 func _begin_brush(kind: String) -> void:
 	placing = kind
@@ -188,7 +210,8 @@ func _begin_brush(kind: String) -> void:
 		add_child(_brush)
 	_brush.visible = true
 	if kind == "zone" and _zones(): _zones().set_painting(true)
-	if kind == "field" and _fields(): _fields().set_editing(field_farm)
+	if kind == "field" and _fields(): _fields().set_editing(area_owner)
+	if kind == "forest" and _forest(): _forest().set_editing(area_owner)
 	_update_brush(get_viewport().get_mouse_position())
 	mode_changed.emit(kind)
 	brush_changed.emit()
@@ -198,7 +221,8 @@ func _end_brush() -> void:
 	if _brush: _brush.visible = false
 	if _zones(): _zones().set_painting(false)
 	if _fields(): _fields().set_editing(-1)
-	field_farm = -1
+	if _forest(): _forest().set_editing(-1)
+	area_owner = -1
 
 ## true when the brush currently erases (toggle, inverted while Shift is held)
 func erasing() -> bool:
@@ -214,14 +238,19 @@ func brush_at(p: Vector2, on: bool) -> int:
 	if placing == "zone" and _zones():
 		return _zones().paint(p, on)
 	if placing == "field" and _fields():
-		return _fields().paint(field_farm, p, on)
+		return _fields().paint(area_owner, p, on)
+	if placing == "forest" and _forest():
+		return _forest().paint(area_owner, p, on)
 	return 0
 
 ## Clears the whole area of the active brush: this farm's field, or every residential zone.
 func clear_brush_area() -> void:
 	if placing == "field" and _fields():
-		_fields().clear(field_farm)
+		_fields().clear(area_owner)
 		Game.toast.emit(Loc.t("Field cleared"))
+	elif placing == "forest" and _forest():
+		_forest().clear(area_owner)
+		Game.toast.emit(Loc.t("Area cleared"))
 	elif placing == "zone":
 		Game._clear_zones()
 		Game.toast.emit(Loc.t("All housing zones cleared (built houses stay)"))
@@ -234,6 +263,8 @@ func _update_brush(mouse: Vector2) -> void:
 	var er := erasing()
 	if placing == "field":
 		_brush_mat.albedo_color = Color(1.0, 0.45, 0.35, 0.85) if er else Color(0.95, 0.75, 0.35, 0.9)
+	elif placing == "forest":
+		_brush_mat.albedo_color = Color(1.0, 0.45, 0.35, 0.85) if er else Color(0.55, 0.95, 0.45, 0.9)
 	else:
 		_brush_mat.albedo_color = Color(1.0, 0.45, 0.35, 0.85) if er else Color(1.0, 0.92, 0.6, 0.85)
 	if _painting != 0:
@@ -306,6 +337,13 @@ func _unhandled_input(event: InputEvent) -> void:
 						# Foundation-style: right after the farmhouse, shape its field
 						begin_field(id)
 						Game.toast.emit(Loc.t("A starter field is ready. Drag to grow it; X or Shift to erase"))
+					elif placing == "woodcutter":
+						begin_forest(id)
+						var fo := _forest()
+						if fo and fo.counts(id)["ready"] == 0:
+							Game.toast.emit(Loc.t("No trees here yet. Saplings will sprout in the area, or paint it over a forest"))
+						else:
+							Game.toast.emit(Loc.t("A forest area is ready. Drag to grow it; X or Shift to erase"))
 					else:
 						_update_ghost(event.position)
 						if not Game.can_afford(Defs.BUILDINGS[placing]["cost"]):

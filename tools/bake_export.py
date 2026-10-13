@@ -10,6 +10,7 @@ for d in (MODELS, TEX, DATA): os.makedirs(d, exist_ok=True)
 FAST = "fast" in sys.argv
 
 EMPTY_MAP = "empty" in sys.argv
+NATURE_ONLY_FLAG = "nature_only" in sys.argv     # only re-export nature.glb (skip hut/props/ground bakes)
 sys.argv = ["hut2.py", os.path.join(PROJ, "_tmp"), "build_only"] + (["empty"] if EMPTY_MAP else [])
 exec(compile(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "hut2.py")).read(), "hut2.py", "exec"))
 
@@ -73,7 +74,17 @@ NATURE_PREFIX = ("trunk", "crown", "pine", "bush", "Icosphere", "rock")
 hut_objs = [o for o in hut_col.objects if o.type == "MESH"]
 others = [o for o in scene.objects if o.type == "MESH" and o not in hut_objs and o != ground]
 nature = [o for o in others if o.name.startswith(NATURE_PREFIX)]
+# trees inside the playable map are separate models in the game (tools/trees.py) so they can be chopped
+def in_map_tree(o):
+    t = o.get("tree")
+    return t is not None and abs(t[0]) < 16.5 and abs(t[1]) < 16.5
+drop = [o for o in others if in_map_tree(o)]
+nature = [o for o in nature if o not in drop]
+others = [o for o in others if o not in drop]
+for o in drop:
+    bpy.data.objects.remove(o)
 props = [o for o in others if o not in nature]
+NATURE_ONLY = NATURE_ONLY_FLAG
 
 def join_group(objs, name, decimate=None):
     bpy.ops.object.select_all(action="DESELECT")
@@ -135,10 +146,10 @@ def export(obj, fname):
     print("exported", fname, len(obj.data.polygons), "faces")
 
 S = 1024 if FAST else 2048
-if hut_objs:
+if hut_objs and not NATURE_ONLY:
     hut = join_group(hut_objs, "hut")
     export(bake(hut, "hut", S if FAST else 4096), "hut.glb")
-if props:
+if props and not NATURE_ONLY:
     pr = join_group(props, "props")
     export(bake(pr, "props", S // 2 if FAST else 1024), "props.glb")
 na = join_group(nature, "nature", decimate=("crown", 0.35))
@@ -158,6 +169,8 @@ na.data.materials.clear(); na.data.materials.append(vm)
 for poly in na.data.polygons: poly.material_index = 0
 export(na, "nature.glb")
 
+if NATURE_ONLY:
+    print("ALL DONE (nature only)"); sys.exit(0)
 # ground: planar UVs, diffuse only
 for md in list(ground.modifiers): ground.modifiers.remove(md)
 me = ground.data

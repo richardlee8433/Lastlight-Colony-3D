@@ -17,7 +17,10 @@ uniform vec3 zone_color : source_color = vec3(0.98, 0.88, 0.55);
 uniform sampler2D field_tex : filter_linear, repeat_disable;   // farm fields (1 = field, 0.78 = other field while editing)
 uniform sampler2D field_ang_tex : filter_nearest, repeat_disable;  // furrow direction (angle mod PI) / PI
 uniform vec4 field_rect;
-uniform float field_edit = 0.0;                          // 1 while painting a field
+uniform float field_edit = 0.0;
+uniform sampler2D forest_tex : filter_linear, repeat_disable;  // woodcutter forest areas (same grid as fields)
+uniform float forest_strength = 0.35;
+uniform vec3 forest_color : source_color = vec3(0.55, 0.92, 0.45);                          // 1 while painting a field
 uniform vec3 soil_light : source_color = vec3(0.43, 0.31, 0.19);
 uniform vec3 soil_dark : source_color = vec3(0.24, 0.16, 0.09);
 uniform vec3 dirt_light : source_color = vec3(0.56, 0.45, 0.31);
@@ -72,6 +75,14 @@ void fragment() {
 		float z = texture(zone_tex, (wpos.xz - zone_rect.xy) / zone_rect.zw).r;
 		float edge = smoothstep(0.15, 0.45, z) * (1.0 - smoothstep(0.55, 0.85, z));
 		col = mix(col, zone_color, (z * 0.16 + edge * 0.55) * zone_strength);
+	}
+	// woodcutter forest areas: outline (stronger while painting)
+	float fa = texture(forest_tex, (wpos.xz - field_rect.xy) / field_rect.zw).r;
+	if (fa > 0.01) {
+		float fedge = smoothstep(0.08, 0.35, fa) * (1.0 - smoothstep(0.5, 0.82, fa));
+		float mine = smoothstep(0.88, 0.97, fa);
+		float e = forest_strength;            // 0.35 normally, 1 while painting
+		col = mix(col, forest_color, clamp(fedge * (0.2 + 0.7 * e) + mine * 0.25 * e * e, 0.0, 0.9));
 	}
 	ALBEDO = col;
 	ROUGHNESS = 0.95;

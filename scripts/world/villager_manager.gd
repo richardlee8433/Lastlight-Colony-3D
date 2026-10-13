@@ -6,6 +6,7 @@ extends Node3D
 @export var nav_path: NodePath = ^"../Nav"
 @export var wear_path: NodePath = ^"../PathWear"
 @export var fields_path: NodePath = ^"../Fields"
+@export var forest_path: NodePath = ^"../Forest"
 
 var villagers: Array[Villager] = []
 var leaving: Array[Villager] = []
@@ -16,6 +17,8 @@ var _rng := RandomNumberGenerator.new()
 @onready var nav: NavGrid = get_node(nav_path)
 @onready var wear: PathWear = get_node_or_null(wear_path)
 @onready var fields: Node = get_node_or_null(fields_path)
+@onready var forest: Node = get_node_or_null(forest_path)
+var _chop := {}                  # villager id -> tree id being felled
 
 func _ready() -> void:
 	_rng.seed = 4242
@@ -112,6 +115,7 @@ func _assign_jobs() -> void:
 				taken[v.job_id] = true
 			else:
 				v.clear_job()
+				_chop.erase(v.vid)
 	# fill open jobs with the nearest unemployed villager
 	for id in open:
 		if taken.has(id): continue
@@ -157,6 +161,11 @@ func yield_of(v: Villager) -> Dictionary:
 	if b["type"] == "farm" and fields:
 		var n: int = fields.yield_for(b["id"])
 		return {"food": n} if n > 0 else {}
+	if b["type"] == "woodcutter" and forest:
+		# wood only if the tree this villager worked on was still standing
+		var tid: int = _chop.get(v.vid, -1)
+		_chop.erase(v.vid)
+		if tid < 0 or not forest.chop(tid, Vector2(v.position.x, v.position.z)): return {}
 	return Defs.BUILDINGS[b["type"]].get("yield", {}).duplicate()
 
 ## every place goods can be delivered: the starting cottage + storehouses
@@ -190,14 +199,19 @@ func work_target(v: Villager) -> Dictionary:
 	var c := Defs.building_center(b)
 	match job.get("target", "spot"):
 		"tree":
-			# one of the three closest trees, approached from the lodge side
-			var trees := nav.trees.duplicate()
-			trees.sort_custom(func(a, bb): return Vector2(a.x, a.z).distance_squared_to(c) < Vector2(bb.x, bb.z).distance_squared_to(c))
-			if trees.is_empty(): return {}
-			var t: Vector3 = trees[_rng.randi() % mini(3, trees.size())]
-			var tp := Vector2(t.x, t.z)
+			# the closest grown tree in the lodge's forest area, approached from the lodge side
+			if forest == null: return {}
+			var taken := {}
+			for vid in _chop:
+				if vid != v.vid: taken[_chop[vid]] = true
+			var t: Dictionary = forest.pick_tree(b["id"], Vector2(v.position.x, v.position.z), taken)
+			if t.is_empty():
+				_chop.erase(v.vid)
+				return {}
+			_chop[v.vid] = t["id"]
+			var tp: Vector2 = t["pos"]
 			var dir := (c - tp).normalized()
-			var stand := nav.walkable_point(tp + dir * (t.y + 0.45))
+			var stand := nav.walkable_point(tp + dir * (float(t["r"]) * t["h"] / 5.5 + 0.45))
 			return {"pos": nav.on_ground(stand), "look": nav.on_ground(tp)}
 		"field":
 			# a random spot in the painted field (no field -> nothing to do)

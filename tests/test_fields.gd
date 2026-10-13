@@ -61,7 +61,7 @@ func _run() -> void:
 
 	# --- painting rules ---
 	ctl.begin_field(id)
-	check(ctl.placing == "field" and ctl.field_farm == id and fields.editing == id, "field brush mode")
+	check(ctl.placing == "field" and ctl.area_owner == id and fields.editing == id, "field brush mode")
 	var far: int = fields.paint(id, spot + Vector2(Defs.FIELD["range"] + 3.0, 0), true)
 	check(far == 0, "can't paint far from the farmhouse")
 	var tree: Vector3 = s.get_node("Nav").trees[0]
@@ -133,13 +133,19 @@ func _run() -> void:
 
 	# --- saving ---
 	var cells: Array = fields.field_of(id).duplicate()
+	fields.paint(id, fields.cell_center(cells[0]), false, 0.6)      # an erased bit must stay erased after loading
+	cells = fields.field_of(id).duplicate()
 	game.save_game()
 	game.load_game()
 	fields._init_existing()
 	var fb: Dictionary = {}
 	for b in game.buildings:
 		if b["type"] == "farm" and b["pos"].distance_to(spot) < 0.01: fb = b
-	check(not fb.is_empty() and fb["field"].size() == cells.size(), "fields are saved (%d cells)" % cells.size())
+	var same: bool = not fb.is_empty() and fb.has("field") and fb["field"].size() == cells.size()
+	if same:
+		for i in cells:
+			if not fb["field"].has(i): same = false
+	check(same, "the painted field itself is saved (%d cells)" % cells.size())
 
 	# --- demolish frees the field ---
 	if not fb.is_empty():

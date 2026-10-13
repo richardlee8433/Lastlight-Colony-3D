@@ -6,7 +6,7 @@ Output:
   cell, origin, w, h   walk grid (0.5 m cells, x/z)
   blocked              indices of cells blocked by scenery (walls, fences, trunks, rocks, bushes...)
   height               ground height per cell
-  trees                [[x, z, trunk_radius], ...]  (targets for woodcutters)
+  trees                [[x, z, trunk_radius, kind, height], ...]  in-map trees (separate, choppable models in game)
 """
 import sys, os, json, math
 from collections import defaultdict
@@ -74,7 +74,9 @@ for o in bpy.context.scene.objects:
     if o.name.startswith("trunk"):
         x, _, z = to_g(o.location)
         if abs(x) < HALF - 0.5 and abs(z) < HALF - 0.5:
-            trees.append([round(x, 2), round(z, 2), round(o.dimensions.x / 2, 2)])
+            t = list(o.get("tree", [0, 0, 5.5, 0, 0]))
+            # [x, z, trunk radius, kind (0 broadleaf, 1 pine), height]
+            trees.append([round(x, 2), round(z, 2), round(o.dimensions.x / 2, 2), int(t[3]), round(float(t[2]), 2)])
 
 data = {"cell": CELL, "origin": [-HALF, -HALF], "w": W, "h": H,
         "blocked": sorted(blocked), "height": height, "trees": trees}

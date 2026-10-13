@@ -27,6 +27,9 @@ var quest_index := 0
 var starving := false
 ## residential zone mask (Defs.ZONE grid), 1 = zoned
 var zones := PackedByteArray()
+## every tree inside the map (Forest owns the visuals): {"id", "pos": Vector2, "kind", "var", "h", "r",
+## "growth" 0..1, "chops" left, "stump" seconds left (0 = not a stump), "wild" (one of the map's own trees)}
+var trees: Array[Dictionary] = []
 
 var _next_id := 1
 var fresh_start := false         # true right after new_game (settlers walk in)
@@ -50,6 +53,7 @@ func new_game() -> void:
 	_day_timer = 0.0
 	_today = {}; _yesterday = {}
 	_clear_zones()
+	trees.clear()
 	for b in buildings.duplicate():
 		buildings.erase(b)
 		building_removed.emit(b)
@@ -286,16 +290,26 @@ func save_game() -> void:
 		var e := {"type": b["type"], "x": snappedf(b["pos"].x, 0.001), "z": snappedf(b["pos"].y, 0.001),
 			"angle": snappedf(b["angle"], 0.0001)}
 		if b.has("field"): e["field"] = (b["field"] as Array).duplicate()
+		if b.has("area"): e["area"] = (b["area"] as Array).duplicate()
 		list.append(e)
 	var data := {
 		"version": SAVE_VERSION, "resources": resources, "population": population, "day": day,
 		"quest_index": quest_index, "starving": starving, "day_timer": _day_timer, "buildings": list,
 		"today": _today, "yesterday": _yesterday,
 		"zones": _zone_list(),
+		"trees": _tree_list(),
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
+
+func _tree_list() -> Array:
+	var out := []
+	for t in trees:
+		out.append([t["id"], snappedf(t["pos"].x, 0.01), snappedf(t["pos"].y, 0.01), t["kind"], t["var"],
+			snappedf(t["h"], 0.01), snappedf(t["r"], 0.01), snappedf(t["growth"], 0.001), t["chops"],
+			snappedf(t["stump"], 0.01), 1 if t["wild"] else 0])
+	return out
 
 func _zone_list() -> Array:
 	var out := []
@@ -324,6 +338,11 @@ func load_game() -> bool:
 	for i in data.get("zones", []):
 		set_zone(int(i), true)
 	zones_changed.emit()
+	trees.clear()           # empty = the map's own trees (Forest seeds them)
+	for r in data.get("trees", []):
+		trees.append({"id": int(r[0]), "pos": Vector2(r[1], r[2]), "kind": int(r[3]), "var": int(r[4]),
+			"h": float(r[5]), "r": float(r[6]), "growth": float(r[7]), "chops": int(r[8]),
+			"stump": float(r[9]), "wild": int(r[10]) == 1})
 	buildings.clear()
 	_next_id = 1
 	for e in data["buildings"]:
@@ -337,7 +356,13 @@ func load_game() -> bool:
 		else:
 			pos = Vector2(float(e["x"]), float(e["z"]))
 			angle = float(e.get("angle", 0.0))
-		buildings.append({"id": _next_id, "type": e["type"], "pos": pos, "angle": angle, "staffed": false})
+		var nb := {"id": _next_id, "type": e["type"], "pos": pos, "angle": angle, "staffed": false}
+		for key in ["field", "area"]:           # painted farm field / forest area cells
+			if e.has(key):
+				var cells: Array = []
+				for i in e[key]: cells.append(int(i))
+				nb[key] = cells
+		buildings.append(nb)
 		_next_id += 1
 	if count_of("cart") == 0:
 		# saves from before the supply-cart opening: give them a cart at the village centre

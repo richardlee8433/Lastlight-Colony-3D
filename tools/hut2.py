@@ -574,15 +574,23 @@ def pine(loc, h, seed):
         o = mesh_obj("pine", bm, M["pine"]); o.location = (loc[0], loc[1], h * (0.28 + 0.15 * k))
         add_mods(o, sub=1, smooth=True)
 
+def tree(fn, loc, h, seed):
+    """Builds a tree and tags its objects with ["tree"] = [x, y, height, kind (0 broadleaf, 1 pine), seed]
+    so the exporters can tell trees apart (in-map trees become separate, choppable models in the game)."""
+    before = set(bpy.data.objects.keys())
+    fn(loc, h, seed)
+    for name in set(bpy.data.objects.keys()) - before:
+        bpy.data.objects[name]["tree"] = [loc[0], loc[1], h, 0 if fn is broadleaf else 1, seed]
+
 rr = random.Random(42)
 for i in range(46):
     a = rr.uniform(-0.5, math.pi + 0.5)
     d = rr.uniform(9.0, 22)
     x, y = math.cos(a) * d * 1.2, math.sin(a) * d * 0.9 + 1.5
     h = rr.uniform(4.5, 7.0)
-    (broadleaf if rr.random() < 0.6 else pine)((x, y), h, 600 + i)
+    tree(broadleaf if rr.random() < 0.6 else pine, (x, y), h, 600 + i)
 for i, (x, y, h) in enumerate([(-8.0, -1.5, 5.5), (8.5, -2.5, 5.0), (-6.8, 5.5, 6.5), (6.5, 6.0, 6.0)]):
-    broadleaf((x, y), h, 700 + i)
+    tree(broadleaf, (x, y), h, 700 + i)
 
 def bush(loc, s_, seed, flowers=None):
     rr = random.Random(seed)

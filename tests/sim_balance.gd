@@ -17,6 +17,7 @@ func _process(_d):
 	var vm = s.get_node("Villagers"); var wear = s.get_node("PathWear"); var ctl = s.get_node("BuildController")
 	game._autosave = false; game.delete_save(); game.new_game(); game.speed = 0.0; vm._first_sync()
 	var zones = s.get_node("Zones")
+	var forest = s.get_node("Forest")
 	for x in range(-9, -2):
 		for z in range(4, 10):
 			zones.paint(Vector2(x, z), true)
@@ -25,12 +26,18 @@ func _process(_d):
 	var i := 0
 	for day in 30:
 		for k in 300:
-			game.step(0.1); vm.tick(0.1); wear.tick(0.1, 0.5); zones.tick(0.1)
+			game.step(0.1); vm.tick(0.1); wear.tick(0.1, 0.5); zones.tick(0.1); forest.tick(0.1)
 			if i < plan.size() and game.can_afford(Defs.BUILDINGS[plan[i][0]]["cost"]):
 				var p = spot(ctl, plan[i][0], plan[i][1])
 				if p != null and ctl.try_place(plan[i][0], p) > 0:
 					print("  day %d built %s" % [game.day, plan[i][0]])
 				i += 1
+		var trees := ""
+		for b in game.buildings:
+			if b["type"] == "woodcutter":
+				var c: Dictionary = forest.counts(b["id"])
+				trees += " [trees %d/%d/%d]" % [c["ready"], c["growing"], c["stumps"]]
+		print(trees)
 		print("day %2d  wood %3d stone %3d food %3d  pop %d/%d  income w%d s%d f%d %s" % [game.day, game.resources["wood"], game.resources["stone"], game.resources["food"], game.population, game.housing(), game.income_per_day("wood"), game.income_per_day("stone"), game.income_per_day("food"), "STARVING" if game.starving else ""])
 	game.delete_save(); wear.clear(); quit()
 	return false
