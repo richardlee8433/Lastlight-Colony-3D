@@ -129,7 +129,7 @@ func place_at(p: Vector2) -> void:
 
 func arrive_from(spawn: Vector2) -> void:
 	place_at(spawn)
-	_go(nav.on_ground(Defs.STORAGE_POINT), S.ARRIVE)
+	_go(nav.on_ground(Game.center() + Vector2(_rng.randf_range(-1.5, 1.5), 2.0)), S.ARRIVE)
 
 func leave(exit: Vector2) -> void:
 	job_id = -1
@@ -302,7 +302,7 @@ func _start_work_trip() -> void:
 func _start_wander(delay: float) -> void:
 	if delay > 0.0:
 		state = S.IDLE; _timer = delay; _anim = "idle"; return
-	var center := home if _rng.randf() < 0.7 else Defs.STORAGE_POINT
+	var center := home if _rng.randf() < 0.7 else Game.center()
 	var p := center + Vector2(_rng.randf_range(-4.5, 4.5), _rng.randf_range(-4.5, 4.5))
 	p = Vector2(clampf(p.x, -15.5, 15.5), clampf(p.y, -15.5, 15.5))
 	_look = Vector3.ZERO

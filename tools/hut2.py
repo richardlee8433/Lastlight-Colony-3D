@@ -7,6 +7,7 @@ from mathutils import Vector, noise
 args = [a for a in sys.argv[1:]]
 OUT = args[0] if args else "."
 PREVIEW = "preview" in args
+EMPTY = "empty" in args          # no cottage, props or dirt yard: the game's open starting meadow
 os.makedirs(OUT, exist_ok=True)
 random.seed(7)
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -227,6 +228,7 @@ def blob(name, loc, r, m, subd=2, squash=1.0, rough=0.25, seed=0, col=None):
 
 # ============ ground ============
 def dirt_mask(x, y):
+    if EMPTY: return 0.0
     # yard ellipse in front of hut + meandering path toward camera-left and to the right
     e = math.hypot(x / 5.0, (y + 1.2) / 3.9)
     yard = max(0.0, 1.0 - e)
@@ -263,282 +265,283 @@ a_flow = me.attributes.new("flowers", "FLOAT", "POINT")
 for i, v in enumerate(me.vertices):
     dm = dirt_mask(v.co.x, v.co.y)
     a_dirt.data[i].value = dm
-    near_house = 1.0 if (abs(v.co.x) < 2.7 and abs(v.co.y) < 2.2) else 0.0
+    near_house = 1.0 if (not EMPTY and abs(v.co.x) < 2.7 and abs(v.co.y) < 2.2) else 0.0
     g = max(0.0, 1.0 - dm * 1.8) * (1 - near_house)
     a_grass.data[i].value = g
     a_flow.data[i].value = flower_mask(v.co.x, v.co.y) * g * (1.0 if math.hypot(v.co.x, v.co.y) > 3.5 else 0.0)
 
-# ============ hut ============
-W, D, H = 4.4, 3.2, 2.0
-BASE = 0.32
-wall_top = BASE + H
-H_ = hut_col
+if not EMPTY:
+    # ============ hut ============
+    W, D, H = 4.4, 3.2, 2.0
+    BASE = 0.32
+    wall_top = BASE + H
+    H_ = hut_col
 
-# stone foundation: a ring of individual stones + core
-cube("found_core", (W + 0.2, D + 0.2, BASE), (0, 0, BASE / 2), M["stone"], bevel=0.04, col=H_)
-rnd = random.Random(3)
-perim = []
-for side in range(4):
-    L = W + 0.3 if side % 2 == 0 else D + 0.3
-    n = int(L / 0.42)
-    for k in range(n):
-        f = (k + 0.5) / n - 0.5
-        if side == 0: p = (f * L, -(D + 0.3) / 2)
-        elif side == 1: p = ((W + 0.3) / 2, f * L)
-        elif side == 2: p = (-f * L, (D + 0.3) / 2)
-        else: p = (-(W + 0.3) / 2, -f * L)
-        perim.append(p)
-for i, (x, y) in enumerate(perim):
-    s = rnd.uniform(0.17, 0.24)
-    o = blob("fstone", (x, y, s * 0.75), s, M["stone"], subd=2, squash=0.75, rough=0.3, seed=i, col=H_)
-    o.scale = (1.3, 1.1, 1.0)
-    o.rotation_euler.z = rnd.uniform(0, 3.14)
+    # stone foundation: a ring of individual stones + core
+    cube("found_core", (W + 0.2, D + 0.2, BASE), (0, 0, BASE / 2), M["stone"], bevel=0.04, col=H_)
+    rnd = random.Random(3)
+    perim = []
+    for side in range(4):
+        L = W + 0.3 if side % 2 == 0 else D + 0.3
+        n = int(L / 0.42)
+        for k in range(n):
+            f = (k + 0.5) / n - 0.5
+            if side == 0: p = (f * L, -(D + 0.3) / 2)
+            elif side == 1: p = ((W + 0.3) / 2, f * L)
+            elif side == 2: p = (-f * L, (D + 0.3) / 2)
+            else: p = (-(W + 0.3) / 2, -f * L)
+            perim.append(p)
+    for i, (x, y) in enumerate(perim):
+        s = rnd.uniform(0.17, 0.24)
+        o = blob("fstone", (x, y, s * 0.75), s, M["stone"], subd=2, squash=0.75, rough=0.3, seed=i, col=H_)
+        o.scale = (1.3, 1.1, 1.0)
+        o.rotation_euler.z = rnd.uniform(0, 3.14)
 
-# walls with slight lean
-bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
-for v in bm.verts:
-    v.co.x *= W; v.co.y *= D; v.co.z = BASE + (v.co.z + 0.5) * H
-    if v.co.z > BASE + 0.1:
-        v.co.x += 0.03 * (1 if v.co.x > 0 else -1) * rnd.uniform(-1, 1)
-        v.co.y += 0.025 * rnd.uniform(-1, 1)
-walls = mesh_obj("walls", bm, M["plaster"], H_)
-add_mods(walls, bevel=0.03, segs=2)
+    # walls with slight lean
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        v.co.x *= W; v.co.y *= D; v.co.z = BASE + (v.co.z + 0.5) * H
+        if v.co.z > BASE + 0.1:
+            v.co.x += 0.03 * (1 if v.co.x > 0 else -1) * rnd.uniform(-1, 1)
+            v.co.y += 0.025 * rnd.uniform(-1, 1)
+    walls = mesh_obj("walls", bm, M["plaster"], H_)
+    add_mods(walls, bevel=0.03, segs=2)
 
-# timber frame
-t = 0.17; k = 0
-def B(p0, p1, tt=t):
-    global k; k += 1
-    return beam_between(p0, p1, tt, M["beam"], H_, seed=k)
-hx, hy = W / 2 + 0.03, D / 2 + 0.03
-for sx in (-1, 1):
+    # timber frame
+    t = 0.17; k = 0
+    def B(p0, p1, tt=t):
+        global k; k += 1
+        return beam_between(p0, p1, tt, M["beam"], H_, seed=k)
+    hx, hy = W / 2 + 0.03, D / 2 + 0.03
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            B((sx * hx, sy * hy, BASE), (sx * hx, sy * hy, wall_top + 0.05))
     for sy in (-1, 1):
-        B((sx * hx, sy * hy, BASE), (sx * hx, sy * hy, wall_top + 0.05))
-for sy in (-1, 1):
-    B((-hx - 0.1, sy * hy, BASE + 0.08), (hx + 0.1, sy * hy, BASE + 0.08))
-    B((-hx - 0.25, sy * hy, wall_top), (hx + 0.25, sy * hy, wall_top), t * 1.1)
-for sx in (-1, 1):
-    B((sx * hx, -hy - 0.1, BASE + 0.08), (sx * hx, hy + 0.1, BASE + 0.08))
-    B((sx * hx, -hy - 0.25, wall_top), (sx * hx, hy + 0.25, wall_top), t * 1.1)
-# front: door posts, braces, mid-rail
-door_w = 1.05
-fy = -hy - 0.01
-for x in (-door_w / 2 - 0.09, door_w / 2 + 0.09):
-    B((x, fy, BASE), (x, fy, wall_top), t * 0.9)
-B((-door_w / 2 - 0.15, fy, BASE + 1.72), (door_w / 2 + 0.15, fy, BASE + 1.72), t * 0.9)
-for sx in (-1, 1):
-    B((sx * (door_w / 2 + 0.09), fy, BASE + 0.1), (sx * hx, fy, BASE + 1.15), t * 0.75)
-    B((sx * hx * 0.98, fy, BASE + 1.15), (sx * (door_w / 2 + 0.09), fy, wall_top - 0.05), t * 0.75)
-# back + sides: vertical studs and cross rails
-for x in (-W / 6, W / 6):
-    B((x, hy + 0.01, BASE), (x, hy + 0.01, wall_top), t * 0.8)
-B((-hx, hy + 0.01, BASE + 1.1), (hx, hy + 0.01, BASE + 1.1), t * 0.7)
-for sx in (-1, 1):
-    B((sx * (hx + 0.01), -hy, BASE + 1.1), (sx * (hx + 0.01), hy, BASE + 1.1), t * 0.7)
-    B((sx * (hx + 0.01), 0, BASE), (sx * (hx + 0.01), 0, wall_top), t * 0.8)
+        B((-hx - 0.1, sy * hy, BASE + 0.08), (hx + 0.1, sy * hy, BASE + 0.08))
+        B((-hx - 0.25, sy * hy, wall_top), (hx + 0.25, sy * hy, wall_top), t * 1.1)
+    for sx in (-1, 1):
+        B((sx * hx, -hy - 0.1, BASE + 0.08), (sx * hx, hy + 0.1, BASE + 0.08))
+        B((sx * hx, -hy - 0.25, wall_top), (sx * hx, hy + 0.25, wall_top), t * 1.1)
+    # front: door posts, braces, mid-rail
+    door_w = 1.05
+    fy = -hy - 0.01
+    for x in (-door_w / 2 - 0.09, door_w / 2 + 0.09):
+        B((x, fy, BASE), (x, fy, wall_top), t * 0.9)
+    B((-door_w / 2 - 0.15, fy, BASE + 1.72), (door_w / 2 + 0.15, fy, BASE + 1.72), t * 0.9)
+    for sx in (-1, 1):
+        B((sx * (door_w / 2 + 0.09), fy, BASE + 0.1), (sx * hx, fy, BASE + 1.15), t * 0.75)
+        B((sx * hx * 0.98, fy, BASE + 1.15), (sx * (door_w / 2 + 0.09), fy, wall_top - 0.05), t * 0.75)
+    # back + sides: vertical studs and cross rails
+    for x in (-W / 6, W / 6):
+        B((x, hy + 0.01, BASE), (x, hy + 0.01, wall_top), t * 0.8)
+    B((-hx, hy + 0.01, BASE + 1.1), (hx, hy + 0.01, BASE + 1.1), t * 0.7)
+    for sx in (-1, 1):
+        B((sx * (hx + 0.01), -hy, BASE + 1.1), (sx * (hx + 0.01), hy, BASE + 1.1), t * 0.7)
+        B((sx * (hx + 0.01), 0, BASE), (sx * (hx + 0.01), 0, wall_top), t * 0.8)
 
-# door: recessed dark frame + planks + iron straps
-cube("door_hole", (door_w + 0.02, 0.08, 1.66), (0, -hy + 0.02, BASE + 0.83), M["dark"], bevel=0, col=H_)
-for i in range(5):
-    w_ = door_w / 5
-    cube("plank", (w_ * 0.97, 0.06, 1.62 + rnd.uniform(-0.03, 0.02)), (-door_w / 2 + w_ * (i + 0.5), -hy - 0.02, BASE + 0.81),
-         M["plank"], bevel=0.012, col=H_, wobble=0.006, seed=40 + i)
-for z in (0.35, 1.3):
-    cube("strap", (door_w * 0.8, 0.02, 0.06), (0.05, -hy - 0.06, BASE + z), M["iron"], bevel=0.005, col=H_)
-# step
-blob("step", (0, -hy - 0.45, 0.06), 0.55, M["stone"], 2, 0.22, 0.1, 77, H_).scale = (1.4, 0.8, 1)
+    # door: recessed dark frame + planks + iron straps
+    cube("door_hole", (door_w + 0.02, 0.08, 1.66), (0, -hy + 0.02, BASE + 0.83), M["dark"], bevel=0, col=H_)
+    for i in range(5):
+        w_ = door_w / 5
+        cube("plank", (w_ * 0.97, 0.06, 1.62 + rnd.uniform(-0.03, 0.02)), (-door_w / 2 + w_ * (i + 0.5), -hy - 0.02, BASE + 0.81),
+             M["plank"], bevel=0.012, col=H_, wobble=0.006, seed=40 + i)
+    for z in (0.35, 1.3):
+        cube("strap", (door_w * 0.8, 0.02, 0.06), (0.05, -hy - 0.06, BASE + z), M["iron"], bevel=0.005, col=H_)
+    # step
+    blob("step", (0, -hy - 0.45, 0.06), 0.55, M["stone"], 2, 0.22, 0.1, 77, H_).scale = (1.4, 0.8, 1)
 
-# windows with shutters & sills
-def window(cx, cy, cz, facing):  # facing: 'y' front/back, 'x' sides
-    w_, h_ = 0.6, 0.55
-    if facing == "y":
-        cube("win", (w_, 0.1, h_), (cx, cy, cz), M["dark"], bevel=0, col=H_)
-        cube("sill", (w_ + 0.25, 0.22, 0.08), (cx, cy - 0.08, cz - h_ / 2 - 0.04), M["beam"], col=H_)
-        cube("lintel", (w_ + 0.25, 0.16, 0.1), (cx, cy - 0.04, cz + h_ / 2 + 0.05), M["beam"], col=H_)
-        for s in (-1, 1):
-            o = cube("shutter", (w_ / 2, 0.05, h_ + 0.02), (cx + s * (w_ / 2 + w_ / 4 + 0.02), cy - 0.08, cz), M["plank"], col=H_)
-            o.rotation_euler.z = s * 0.35
-        cube("bar", (0.04, 0.04, h_), (cx, cy - 0.03, cz), M["beam"], bevel=0.005, col=H_)
-    else:
-        sgn = 1 if cx > 0 else -1
-        cube("win", (0.1, w_, h_), (cx, cy, cz), M["dark"], bevel=0, col=H_)
-        cube("sill", (0.22, w_ + 0.25, 0.08), (cx + sgn * 0.08, cy, cz - h_ / 2 - 0.04), M["beam"], col=H_)
-        cube("lintel", (0.16, w_ + 0.25, 0.1), (cx + sgn * 0.04, cy, cz + h_ / 2 + 0.05), M["beam"], col=H_)
-        cube("bar", (0.04, 0.04, h_), (cx + sgn * 0.03, cy, cz), M["beam"], bevel=0.005, col=H_)
-window(1.35, -hy + 0.02, BASE + 1.25, "y")
-window(-1.35, -hy + 0.02, BASE + 1.25, "y")
-window(hx - 0.02, -0.75, BASE + 1.25, "x")
+    # windows with shutters & sills
+    def window(cx, cy, cz, facing):  # facing: 'y' front/back, 'x' sides
+        w_, h_ = 0.6, 0.55
+        if facing == "y":
+            cube("win", (w_, 0.1, h_), (cx, cy, cz), M["dark"], bevel=0, col=H_)
+            cube("sill", (w_ + 0.25, 0.22, 0.08), (cx, cy - 0.08, cz - h_ / 2 - 0.04), M["beam"], col=H_)
+            cube("lintel", (w_ + 0.25, 0.16, 0.1), (cx, cy - 0.04, cz + h_ / 2 + 0.05), M["beam"], col=H_)
+            for s in (-1, 1):
+                o = cube("shutter", (w_ / 2, 0.05, h_ + 0.02), (cx + s * (w_ / 2 + w_ / 4 + 0.02), cy - 0.08, cz), M["plank"], col=H_)
+                o.rotation_euler.z = s * 0.35
+            cube("bar", (0.04, 0.04, h_), (cx, cy - 0.03, cz), M["beam"], bevel=0.005, col=H_)
+        else:
+            sgn = 1 if cx > 0 else -1
+            cube("win", (0.1, w_, h_), (cx, cy, cz), M["dark"], bevel=0, col=H_)
+            cube("sill", (0.22, w_ + 0.25, 0.08), (cx + sgn * 0.08, cy, cz - h_ / 2 - 0.04), M["beam"], col=H_)
+            cube("lintel", (0.16, w_ + 0.25, 0.1), (cx + sgn * 0.04, cy, cz + h_ / 2 + 0.05), M["beam"], col=H_)
+            cube("bar", (0.04, 0.04, h_), (cx + sgn * 0.03, cy, cz), M["beam"], bevel=0.005, col=H_)
+    window(1.35, -hy + 0.02, BASE + 1.25, "y")
+    window(-1.35, -hy + 0.02, BASE + 1.25, "y")
+    window(hx - 0.02, -0.75, BASE + 1.25, "x")
 
-# ============ thatched roof ============
-OX, OY = 0.75, 0.75                     # overhang
-hw, hd = W / 2 + OX, D / 2 + OY
-z_eave = wall_top - 0.42
-rise = 2.35
-z_ridge = z_eave + rise
-slope_n = Vector((0, 1, 0))
-def roof_point(side, x, f, lift=0.0):
-    y = side * hd * (1 - f)
-    z = z_eave + rise * f
-    n = Vector((0, side * rise, hd)).normalized()
-    # gable ends: thatch rolls down over the edge
-    ex = max(0.0, (abs(x) - (W / 2 + 0.1)) / OX)
-    z -= 0.35 * ex ** 2.2
-    # slight sag in the middle of the ridge line (old roof)
-    z -= 0.10 * (1 - (x / hw) ** 2) * f
-    return Vector((x, y, z)) + n * lift
+    # ============ thatched roof ============
+    OX, OY = 0.75, 0.75                     # overhang
+    hw, hd = W / 2 + OX, D / 2 + OY
+    z_eave = wall_top - 0.42
+    rise = 2.35
+    z_ridge = z_eave + rise
+    slope_n = Vector((0, 1, 0))
+    def roof_point(side, x, f, lift=0.0):
+        y = side * hd * (1 - f)
+        z = z_eave + rise * f
+        n = Vector((0, side * rise, hd)).normalized()
+        # gable ends: thatch rolls down over the edge
+        ex = max(0.0, (abs(x) - (W / 2 + 0.1)) / OX)
+        z -= 0.35 * ex ** 2.2
+        # slight sag in the middle of the ridge line (old roof)
+        z -= 0.10 * (1 - (x / hw) ** 2) * f
+        return Vector((x, y, z)) + n * lift
 
-# under-layer shell (dark, fills any gaps)
-bm = bmesh.new(); NX, NF = 40, 12; grid = {}
-for side in (-1, 1):
-    for j in range(NF + 1):
-        for i in range(NX + 1):
-            key = (side, i, j) if j < NF else ("r", i)
-            if key in grid: continue
-            x = -hw + 2 * hw * i / NX
-            grid[key] = bm.verts.new(roof_point(side, x, j / NF, 0.0))
-def gk(side, i, j): return grid[(side, i, j) if j < NF else ("r", i)]
-for side in (-1, 1):
-    for j in range(NF):
-        for i in range(NX):
-            q = [gk(side, i, j), gk(side, i + 1, j), gk(side, i + 1, j + 1), gk(side, i, j + 1)]
-            if side == 1: q.reverse()
-            bm.faces.new(q)
-shell = mesh_obj("roof_shell", bm, M["thatch_dark"], H_)
-s = shell.modifiers.new("solid", "SOLIDIFY"); s.thickness = 0.32; s.offset = -1
-add_mods(shell, smooth=True)
-
-# overlapping courses with ragged lower edges
-R = 8
-course_objs = []
-for side in (-1, 1):
-    for c in range(R):
-        f_lo = c / R * 0.97
-        f_hi = min(1.0, f_lo + 1.9 / R)
-        lip = (0.36 if c == 0 else 0.10) * (1 - 0.3 * c / R)
-        bm = bmesh.new(); nx = 64; rows = []
-        rr = random.Random(side * 100 + c)
-        xs = [-hw - 0.08 + (2 * hw + 0.16) * i / nx for i in range(nx + 1)]
-        rag = [rr.uniform(0.0, 1.0) for _ in xs]
-        # smooth the raggedness a bit, then add tufts
-        rag = [0.5 * rag[i] + 0.5 * (0.5 + 0.5 * noise.noise(Vector((xs[i] * 1.3, c * 3.7, side)))) for i in range(nx + 1)]
-        profile = [(0.0, lip, 1.0), (0.12, lip * 0.85, 0.5), (0.45, lip * 0.45, 0.15), (1.0, 0.04, 0.0)]
-        for (u, lift, ragw) in profile:
-            row = []
-            for i, x in enumerate(xs):
-                ff = f_lo + (f_hi - f_lo) * u - ragw * rag[i] * (0.55 / R)
-                ex = max(0.0, (abs(x) - hw + 0.25) / 0.33)   # round the ends of each course
-                p = roof_point(side, x, max(0.0, ff), lift * (1 - 0.6 * min(1, ex)) * (0.75 + 0.5 * rag[i]))
-                row.append(bm.verts.new(p))
-            rows.append(row)
-        for r_ in range(len(rows) - 1):
-            for i in range(nx):
-                q = [rows[r_][i], rows[r_][i + 1], rows[r_ + 1][i + 1], rows[r_ + 1][i]]
+    # under-layer shell (dark, fills any gaps)
+    bm = bmesh.new(); NX, NF = 40, 12; grid = {}
+    for side in (-1, 1):
+        for j in range(NF + 1):
+            for i in range(NX + 1):
+                key = (side, i, j) if j < NF else ("r", i)
+                if key in grid: continue
+                x = -hw + 2 * hw * i / NX
+                grid[key] = bm.verts.new(roof_point(side, x, j / NF, 0.0))
+    def gk(side, i, j): return grid[(side, i, j) if j < NF else ("r", i)]
+    for side in (-1, 1):
+        for j in range(NF):
+            for i in range(NX):
+                q = [gk(side, i, j), gk(side, i + 1, j), gk(side, i + 1, j + 1), gk(side, i, j + 1)]
                 if side == 1: q.reverse()
                 bm.faces.new(q)
-        o = mesh_obj("course", bm, M["thatch"], H_)
-        so = o.modifiers.new("solid", "SOLIDIFY"); so.thickness = 0.08; so.offset = 1
-        add_mods(o, sub=1, smooth=True)
-        course_objs.append(o)
+    shell = mesh_obj("roof_shell", bm, M["thatch_dark"], H_)
+    s = shell.modifiers.new("solid", "SOLIDIFY"); s.thickness = 0.32; s.offset = -1
+    add_mods(shell, smooth=True)
 
-# ridge: rounded bundle with rope ties
-bm = bmesh.new()
-nseg, nring = 40, 10
-rings = []
-for i in range(nseg + 1):
-    x = -hw - 0.05 + (2 * hw + 0.1) * i / nseg
-    base = roof_point(-1, x, 1.0, 0.0)
-    ring = []
-    for j in range(nring):
-        a = 2 * math.pi * j / nring
-        r_ = 0.24 * (1 + 0.12 * noise.noise(Vector((x * 2, a, 0))))
-        ring.append(bm.verts.new((x, math.cos(a) * r_ * 1.25, base.z + 0.02 + math.sin(a) * r_ * 0.75)))
-    rings.append(ring)
-for i in range(nseg):
-    for j in range(nring):
-        bm.faces.new([rings[i][j], rings[i][(j + 1) % nring], rings[i + 1][(j + 1) % nring], rings[i + 1][j]])
-bmesh.ops.contextual_create(bm, geom=rings[0]); bmesh.ops.contextual_create(bm, geom=rings[-1])
-ridge = mesh_obj("ridge", bm, M["thatch"], H_); add_mods(ridge, sub=1, smooth=True)
-for i in range(0):
-    x = -hw + 0.35 + (2 * hw - 0.7) * i / 8
-    base = roof_point(-1, x, 1.0, 0.0)
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.33, minor_radius=0.035, location=(x, 0, base.z + 0.02), rotation=(0, math.pi / 2, 0))
-    o = bpy.context.object; o.scale = (0.78, 1.25, 1); o.data.materials.append(M["rope"])
-    scene.collection.objects.unlink(o); H_.objects.link(o)
+    # overlapping courses with ragged lower edges
+    R = 8
+    course_objs = []
+    for side in (-1, 1):
+        for c in range(R):
+            f_lo = c / R * 0.97
+            f_hi = min(1.0, f_lo + 1.9 / R)
+            lip = (0.36 if c == 0 else 0.10) * (1 - 0.3 * c / R)
+            bm = bmesh.new(); nx = 64; rows = []
+            rr = random.Random(side * 100 + c)
+            xs = [-hw - 0.08 + (2 * hw + 0.16) * i / nx for i in range(nx + 1)]
+            rag = [rr.uniform(0.0, 1.0) for _ in xs]
+            # smooth the raggedness a bit, then add tufts
+            rag = [0.5 * rag[i] + 0.5 * (0.5 + 0.5 * noise.noise(Vector((xs[i] * 1.3, c * 3.7, side)))) for i in range(nx + 1)]
+            profile = [(0.0, lip, 1.0), (0.12, lip * 0.85, 0.5), (0.45, lip * 0.45, 0.15), (1.0, 0.04, 0.0)]
+            for (u, lift, ragw) in profile:
+                row = []
+                for i, x in enumerate(xs):
+                    ff = f_lo + (f_hi - f_lo) * u - ragw * rag[i] * (0.55 / R)
+                    ex = max(0.0, (abs(x) - hw + 0.25) / 0.33)   # round the ends of each course
+                    p = roof_point(side, x, max(0.0, ff), lift * (1 - 0.6 * min(1, ex)) * (0.75 + 0.5 * rag[i]))
+                    row.append(bm.verts.new(p))
+                rows.append(row)
+            for r_ in range(len(rows) - 1):
+                for i in range(nx):
+                    q = [rows[r_][i], rows[r_][i + 1], rows[r_ + 1][i + 1], rows[r_ + 1][i]]
+                    if side == 1: q.reverse()
+                    bm.faces.new(q)
+            o = mesh_obj("course", bm, M["thatch"], H_)
+            so = o.modifiers.new("solid", "SOLIDIFY"); so.thickness = 0.08; so.offset = 1
+            add_mods(o, sub=1, smooth=True)
+            course_objs.append(o)
 
-# gable triangles
-for sx in (-1, 1):
-    x = sx * (W / 2 - 0.02)
+    # ridge: rounded bundle with rope ties
     bm = bmesh.new()
-    zt = roof_point(-1, W / 2 - 0.02, 1.0).z
-    ytop = 0.0
-    a = bm.verts.new((x, -D / 2, wall_top)); b_ = bm.verts.new((x, D / 2, wall_top))
-    c = bm.verts.new((x, 0, zt))
-    bm.faces.new((a, b_, c))
-    g = mesh_obj("gable", bm, M["plaster"], H_)
-    sg = g.modifiers.new("s", "SOLIDIFY"); sg.thickness = 0.12; sg.offset = 0
-    B((sx * hx, 0, wall_top), (sx * hx, 0, zt - 0.1), t * 0.85)
-    B((sx * hx, -D / 2 + 0.1, wall_top + 0.1), (sx * hx, 0, zt - 0.15), t * 0.7)
+    nseg, nring = 40, 10
+    rings = []
+    for i in range(nseg + 1):
+        x = -hw - 0.05 + (2 * hw + 0.1) * i / nseg
+        base = roof_point(-1, x, 1.0, 0.0)
+        ring = []
+        for j in range(nring):
+            a = 2 * math.pi * j / nring
+            r_ = 0.24 * (1 + 0.12 * noise.noise(Vector((x * 2, a, 0))))
+            ring.append(bm.verts.new((x, math.cos(a) * r_ * 1.25, base.z + 0.02 + math.sin(a) * r_ * 0.75)))
+        rings.append(ring)
+    for i in range(nseg):
+        for j in range(nring):
+            bm.faces.new([rings[i][j], rings[i][(j + 1) % nring], rings[i + 1][(j + 1) % nring], rings[i + 1][j]])
+    bmesh.ops.contextual_create(bm, geom=rings[0]); bmesh.ops.contextual_create(bm, geom=rings[-1])
+    ridge = mesh_obj("ridge", bm, M["thatch"], H_); add_mods(ridge, sub=1, smooth=True)
+    for i in range(0):
+        x = -hw + 0.35 + (2 * hw - 0.7) * i / 8
+        base = roof_point(-1, x, 1.0, 0.0)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.33, minor_radius=0.035, location=(x, 0, base.z + 0.02), rotation=(0, math.pi / 2, 0))
+        o = bpy.context.object; o.scale = (0.78, 1.25, 1); o.data.materials.append(M["rope"])
+        scene.collection.objects.unlink(o); H_.objects.link(o)
 
-# chimney (stacked stones)
-cx, cy = 1.25, 0.55
-cube("chim_core", (0.62, 0.62, 2.6), (cx, cy, wall_top + 0.9), M["stone"], bevel=0.05, col=H_, wobble=0.02, seed=5)
-for lvl in range(11):
-    z = wall_top + 0.0 + lvl * 0.24
-    for j in range(4):
-        a = j * math.pi / 2 + (lvl % 2) * math.pi / 4
-        o = blob("cstone", (cx + 0.29 * math.cos(a) * 1.05, cy + 0.29 * math.sin(a) * 1.05, z), 0.17, M["stone"], 1, 0.7, 0.25, lvl * 9 + j, H_)
-cube("chim_cap", (0.78, 0.78, 0.12), (cx, cy, wall_top + 2.25), M["stone"], bevel=0.03, col=H_, wobble=0.02, seed=6)
+    # gable triangles
+    for sx in (-1, 1):
+        x = sx * (W / 2 - 0.02)
+        bm = bmesh.new()
+        zt = roof_point(-1, W / 2 - 0.02, 1.0).z
+        ytop = 0.0
+        a = bm.verts.new((x, -D / 2, wall_top)); b_ = bm.verts.new((x, D / 2, wall_top))
+        c = bm.verts.new((x, 0, zt))
+        bm.faces.new((a, b_, c))
+        g = mesh_obj("gable", bm, M["plaster"], H_)
+        sg = g.modifiers.new("s", "SOLIDIFY"); sg.thickness = 0.12; sg.offset = 0
+        B((sx * hx, 0, wall_top), (sx * hx, 0, zt - 0.1), t * 0.85)
+        B((sx * hx, -D / 2 + 0.1, wall_top + 0.1), (sx * hx, 0, zt - 0.15), t * 0.7)
 
-# ============ props ============
-def fence(points, seed, broken=()):
-    rr = random.Random(seed)
-    pts = [Vector((p[0], p[1], 0)) for p in points]
-    for i, p in enumerate(pts):
-        h_ = rr.uniform(0.85, 1.0)
-        o = cube("fpost", (0.11, 0.11, h_), (p.x, p.y, h_ / 2), M["fence"], bevel=0.02, wobble=0.012, seed=seed + i)
-        o.rotation_euler = (rr.uniform(-.07, .07), rr.uniform(-.07, .07), rr.uniform(0, .5))
-    for i in range(len(pts) - 1):
-        if i in broken: continue
-        a, b_ = pts[i], pts[i + 1]
-        for z in (0.38, 0.7):
-            beam_between(a + Vector((0, 0, z + rr.uniform(-.04, .04))), b_ + Vector((0, 0, z + rr.uniform(-.04, .04))), 0.065, M["fence"], seed=seed * 7 + i * 3 + int(z * 10))
+    # chimney (stacked stones)
+    cx, cy = 1.25, 0.55
+    cube("chim_core", (0.62, 0.62, 2.6), (cx, cy, wall_top + 0.9), M["stone"], bevel=0.05, col=H_, wobble=0.02, seed=5)
+    for lvl in range(11):
+        z = wall_top + 0.0 + lvl * 0.24
+        for j in range(4):
+            a = j * math.pi / 2 + (lvl % 2) * math.pi / 4
+            o = blob("cstone", (cx + 0.29 * math.cos(a) * 1.05, cy + 0.29 * math.sin(a) * 1.05, z), 0.17, M["stone"], 1, 0.7, 0.25, lvl * 9 + j, H_)
+    cube("chim_cap", (0.78, 0.78, 0.12), (cx, cy, wall_top + 2.25), M["stone"], bevel=0.03, col=H_, wobble=0.02, seed=6)
 
-fence([(-5.6, -4.6), (-4.4, -4.75), (-3.2, -4.7), (-2.0, -4.6), (-1.1, -4.5)], 1)
-fence([(1.0, -4.5), (2.2, -4.6), (3.4, -4.55)], 2)
-fence([(-5.6, -4.6), (-5.75, -3.3), (-5.8, -2.0), (-5.7, -0.7), (-5.75, 0.6)], 3, broken=(2,))
-fence([(4.9, 0.9), (5.0, 2.1), (5.05, 3.3)], 4)
+    # ============ props ============
+    def fence(points, seed, broken=()):
+        rr = random.Random(seed)
+        pts = [Vector((p[0], p[1], 0)) for p in points]
+        for i, p in enumerate(pts):
+            h_ = rr.uniform(0.85, 1.0)
+            o = cube("fpost", (0.11, 0.11, h_), (p.x, p.y, h_ / 2), M["fence"], bevel=0.02, wobble=0.012, seed=seed + i)
+            o.rotation_euler = (rr.uniform(-.07, .07), rr.uniform(-.07, .07), rr.uniform(0, .5))
+        for i in range(len(pts) - 1):
+            if i in broken: continue
+            a, b_ = pts[i], pts[i + 1]
+            for z in (0.38, 0.7):
+                beam_between(a + Vector((0, 0, z + rr.uniform(-.04, .04))), b_ + Vector((0, 0, z + rr.uniform(-.04, .04))), 0.065, M["fence"], seed=seed * 7 + i * 3 + int(z * 10))
 
-def barrel(loc, seed):
-    bm = bmesh.new()
-    bmesh.ops.create_cone(bm, cap_ends=True, segments=16, radius1=0.3, radius2=0.3, depth=0.8)
-    for v in bm.verts:
-        z = v.co.z / 0.4
-        r = 1 + 0.12 * (1 - z * z)
-        v.co.x *= r; v.co.y *= r
-    o = mesh_obj("barrel", bm, M["plank"]); o.location = (loc[0], loc[1], 0.4)
-    add_mods(o, bevel=0.03, segs=2, smooth=True)
-    for z in (0.12, 0.68):
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.325, minor_radius=0.022, location=(loc[0], loc[1], z))
-        bpy.context.object.data.materials.append(M["iron"])
-barrel((-2.9, -2.35), 1); barrel((-3.45, -2.0), 2)
-cube("crate", (0.6, 0.6, 0.5), (-3.25, -1.25, 0.25), M["plank"], bevel=0.03, wobble=0.01, seed=8, rot=(0, 0, 0.3))
+    fence([(-5.6, -4.6), (-4.4, -4.75), (-3.2, -4.7), (-2.0, -4.6), (-1.1, -4.5)], 1)
+    fence([(1.0, -4.5), (2.2, -4.6), (3.4, -4.55)], 2)
+    fence([(-5.6, -4.6), (-5.75, -3.3), (-5.8, -2.0), (-5.7, -0.7), (-5.75, 0.6)], 3, broken=(2,))
+    fence([(4.9, 0.9), (5.0, 2.1), (5.05, 3.3)], 4)
 
-# woodpile under a mini lean-to by the side wall
-for i in range(15):
-    r_ = i // 5; c = i % 5
-    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.12, depth=1.2,
-        location=(W / 2 + 0.35, -0.1 + c * 0.25 + (0.12 if r_ % 2 else 0) + 0.7, 0.13 + r_ * 0.22), rotation=(0, math.pi / 2, 0))
-    o = bpy.context.object; o.data.materials.append(M["plank"]); o.rotation_euler.z = random.uniform(-.06, .06)
+    def barrel(loc, seed):
+        bm = bmesh.new()
+        bmesh.ops.create_cone(bm, cap_ends=True, segments=16, radius1=0.3, radius2=0.3, depth=0.8)
+        for v in bm.verts:
+            z = v.co.z / 0.4
+            r = 1 + 0.12 * (1 - z * z)
+            v.co.x *= r; v.co.y *= r
+        o = mesh_obj("barrel", bm, M["plank"]); o.location = (loc[0], loc[1], 0.4)
+        add_mods(o, bevel=0.03, segs=2, smooth=True)
+        for z in (0.12, 0.68):
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.325, minor_radius=0.022, location=(loc[0], loc[1], z))
+            bpy.context.object.data.materials.append(M["iron"])
+    barrel((-2.9, -2.35), 1); barrel((-3.45, -2.0), 2)
+    cube("crate", (0.6, 0.6, 0.5), (-3.25, -1.25, 0.25), M["plank"], bevel=0.03, wobble=0.01, seed=8, rot=(0, 0, 0.3))
 
-# chopping block & axe-less stump, well in the yard
-o = blob("stump", (-1.9, -3.3, 0.18), 0.28, M["bark"], 2, 1.0, 0.08, 9); o.scale = (1, 1, 1.3)
-# well
-for j in range(12):
-    a = j * math.tau / 12
-    blob("wstone", (-4.0 + 0.6 * math.cos(a), 2.6 + 0.6 * math.sin(a), 0.25), 0.24, M["stone"], 2, 1.6, 0.25, 200 + j)
-for sx in (-1, 1):
-    beam_between((-4.0 + sx * 0.6, 2.6, 0.3), (-4.0 + sx * 0.6, 2.6, 1.6), 0.1, M["beam"], seed=300 + sx)
-cube("wroof", (1.6, 1.0, 0.06), (-4.0, 2.6 - 0.25, 1.75), M["plank"], rot=(0.5, 0, 0), bevel=0.01)
-cube("wroof", (1.6, 1.0, 0.06), (-4.0, 2.6 + 0.25, 1.75), M["plank"], rot=(-0.5, 0, 0), bevel=0.01)
+    # woodpile under a mini lean-to by the side wall
+    for i in range(15):
+        r_ = i // 5; c = i % 5
+        bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.12, depth=1.2,
+            location=(W / 2 + 0.35, -0.1 + c * 0.25 + (0.12 if r_ % 2 else 0) + 0.7, 0.13 + r_ * 0.22), rotation=(0, math.pi / 2, 0))
+        o = bpy.context.object; o.data.materials.append(M["plank"]); o.rotation_euler.z = random.uniform(-.06, .06)
+
+    # chopping block & axe-less stump, well in the yard
+    o = blob("stump", (-1.9, -3.3, 0.18), 0.28, M["bark"], 2, 1.0, 0.08, 9); o.scale = (1, 1, 1.3)
+    # well
+    for j in range(12):
+        a = j * math.tau / 12
+        blob("wstone", (-4.0 + 0.6 * math.cos(a), 2.6 + 0.6 * math.sin(a), 0.25), 0.24, M["stone"], 2, 1.6, 0.25, 200 + j)
+    for sx in (-1, 1):
+        beam_between((-4.0 + sx * 0.6, 2.6, 0.3), (-4.0 + sx * 0.6, 2.6, 1.6), 0.1, M["beam"], seed=300 + sx)
+    cube("wroof", (1.6, 1.0, 0.06), (-4.0, 2.6 - 0.25, 1.75), M["plank"], rot=(0.5, 0, 0), bevel=0.01)
+    cube("wroof", (1.6, 1.0, 0.06), (-4.0, 2.6 + 0.25, 1.75), M["plank"], rot=(-0.5, 0, 0), bevel=0.01)
 
 # rocks
 for i, (x, y, s_) in enumerate([(-6.8, 1.8, 0.7), (-6.2, 2.5, 0.4), (6.0, -3.0, 0.35), (4.2, -5.3, 0.25), (-7.2, -2.7, 0.5), (7.5, 2.0, 0.9)]):

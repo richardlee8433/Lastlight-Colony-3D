@@ -72,6 +72,7 @@ static func create(type: String, seed_val: int) -> Node3D:
 		"quarry": _quarry(root, rng)
 		"farm": _farm(root, rng)
 		"storehouse": _storehouse(root, rng)
+		"cart": _cart(root, rng)
 	return root
 
 const HOUSE_VARIANTS := 6
@@ -177,6 +178,54 @@ static func _storehouse(r: Node3D, rng: RandomNumberGenerator) -> void:
 	# a sign
 	cyl(r, 0.04, 1.1, Vector3(1.55, 0.55, 1.1), wood_dark())
 	box(r, Vector3(0.5, 0.3, 0.05), Vector3(1.55, 1.0, 1.12), wood())
+
+static func _cart(r: Node3D, rng: RandomNumberGenerator) -> void:
+	# two-wheeled supply cart loaded with sacks, crates and barrels; a campfire with bedrolls beside it
+	var cx := -0.5
+	box(r, Vector3(1.7, 0.08, 1.0), Vector3(cx, 0.62, 0), wood())                     # bed
+	for z in [-0.5, 0.5]:
+		box(r, Vector3(1.7, 0.22, 0.06), Vector3(cx, 0.75, z), wood_dark())           # side boards
+	box(r, Vector3(0.06, 0.22, 1.0), Vector3(cx - 0.85, 0.75, 0), wood_dark())
+	for z in [-0.58, 0.58]:
+		var wheel := cyl(r, 0.42, 0.08, Vector3(cx + 0.15, 0.42, z), wood_dark(), Vector3(PI / 2, 0, 0), 14)
+		cyl(r, 0.1, 0.12, Vector3(cx + 0.15, 0.42, z), wood(), Vector3(PI / 2, 0, 0), 8)
+		for k in 4:
+			box(r, Vector3(0.05, 0.78, 0.03), Vector3(cx + 0.15, 0.42, z), wood(), Vector3(0, 0, k * PI / 4))
+	cyl(r, 0.05, 1.2, Vector3(cx + 0.15, 0.42, 0), wood_dark(), Vector3(PI / 2, 0, 0))   # axle
+	for z in [-0.3, 0.3]:                                                                # shafts resting on the ground
+		cyl(r, 0.045, 1.1, Vector3(cx + 1.3, 0.34, z), wood(), Vector3(0, 0, 1.0))
+	box(r, Vector3(0.5, 0.4, 0.45), Vector3(cx - 0.45, 0.9, -0.2), wood(), Vector3(0, 0.2, 0))
+	box(r, Vector3(0.42, 0.35, 0.4), Vector3(cx - 0.4, 1.27, -0.15), wood(), Vector3(0, -0.15, 0))
+	cyl(r, 0.2, 0.5, Vector3(cx + 0.35, 0.92, -0.22), wood_dark(), Vector3.ZERO, 12)
+	for i in 3:
+		var sack := SphereMesh.new(); sack.radius = 0.2; sack.height = 0.34
+		_add(r, sack, mat("cart_sack", Color(0.72, 0.62, 0.42), 0.95), Vector3(cx - 0.3 + i * 0.32, 0.86, 0.25), Vector3(0, rng.randf() * 3, 0), Vector3(1, 0.85, 0.8))
+	# a canvas tarp tied over part of the load
+	var tarp := SphereMesh.new(); tarp.radius = 0.5; tarp.height = 1.0; tarp.radial_segments = 16; tarp.rings = 8
+	_add(r, tarp, mat("canvas", Color(0.84, 0.80, 0.68), 0.9), Vector3(cx + 0.15, 0.7, -0.05), Vector3(0, 0.1, 0), Vector3(0.62, 0.42, 0.9))
+	for k in 2:
+		box(r, Vector3(0.03, 0.03, 1.02), Vector3(cx + 0.0 + k * 0.32, 0.98 - absf(k - 0.5) * 0.1, -0.05), mat("rope_c", Color(0.45, 0.35, 0.2), 0.9))
+	# campfire: ring of stones, logs, glowing embers, a pot on a tripod
+	var fx := 1.3; var fz := 1.0
+	for k in 8:
+		var a := k * TAU / 8
+		rock(r, 0.09, Vector3(fx + cos(a) * 0.3, 0.05, fz + sin(a) * 0.3), rng)
+	for k in 3:
+		cyl(r, 0.05, 0.5, Vector3(fx, 0.08, fz), wood_dark(), Vector3(PI / 2, k * PI / 3, 0.15))
+	var ember := SphereMesh.new(); ember.radius = 0.13; ember.height = 0.12
+	var em := StandardMaterial3D.new(); em.albedo_color = Color(1.0, 0.45, 0.12); em.emission_enabled = true
+	em.emission = Color(1.0, 0.4, 0.1); em.emission_energy_multiplier = 2.5
+	_add(r, ember, em, Vector3(fx, 0.08, fz))
+	var light := OmniLight3D.new(); light.light_color = Color(1.0, 0.6, 0.3); light.light_energy = 0.8; light.omni_range = 3.0
+	light.position = Vector3(fx, 0.5, fz); r.add_child(light)
+	for k in 3:
+		var a := k * TAU / 3
+		cyl(r, 0.02, 0.9, Vector3(fx + cos(a) * 0.18, 0.4, fz + sin(a) * 0.18), wood_dark(), Vector3(sin(a) * 0.35, 0, -cos(a) * 0.35))
+	cyl(r, 0.12, 0.16, Vector3(fx, 0.55, fz), mat("pot", Color(0.12, 0.12, 0.12), 0.5), Vector3.ZERO, 10)
+	# bedrolls around the fire
+	for e in [[2.0, 1.6, 0.4], [0.55, 1.85, -0.3], [2.05, 0.35, 1.2]]:
+		box(r, Vector3(0.55, 0.08, 0.95), Vector3(e[0], 0.04, e[1]), mat("bedroll", Color(0.48, 0.30, 0.22), 0.95), Vector3(0, e[2], 0))
+		cyl(r, 0.09, 0.55, Vector3(e[0] + sin(e[2]) * 0.42, 0.09, e[1] + cos(e[2]) * 0.42), mat("bedroll2", Color(0.62, 0.52, 0.36), 0.95), Vector3(0, e[2], PI / 2))
 
 ## Recursively applies a material override (used for the placement ghost).
 static func override_all(n: Node, m: Material) -> void:

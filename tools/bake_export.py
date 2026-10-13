@@ -9,7 +9,8 @@ MODELS = os.path.join(PROJ, "models"); TEX = os.path.join(PROJ, "textures"); DAT
 for d in (MODELS, TEX, DATA): os.makedirs(d, exist_ok=True)
 FAST = "fast" in sys.argv
 
-sys.argv = ["hut2.py", os.path.join(PROJ, "_tmp"), "build_only"]
+EMPTY_MAP = "empty" in sys.argv
+sys.argv = ["hut2.py", os.path.join(PROJ, "_tmp"), "build_only"] + (["empty"] if EMPTY_MAP else [])
 exec(compile(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "hut2.py")).read(), "hut2.py", "exec"))
 
 scene = bpy.context.scene
@@ -134,10 +135,12 @@ def export(obj, fname):
     print("exported", fname, len(obj.data.polygons), "faces")
 
 S = 1024 if FAST else 2048
-hut = join_group(hut_objs, "hut")
-export(bake(hut, "hut", S if FAST else 4096), "hut.glb")
-pr = join_group(props, "props")
-export(bake(pr, "props", S // 2 if FAST else 1024), "props.glb")
+if hut_objs:
+    hut = join_group(hut_objs, "hut")
+    export(bake(hut, "hut", S if FAST else 4096), "hut.glb")
+if props:
+    pr = join_group(props, "props")
+    export(bake(pr, "props", S // 2 if FAST else 1024), "props.glb")
 na = join_group(nature, "nature", decimate=("crown", 0.35))
 for poly in na.data.polygons: poly.use_smooth = True
 # foliage: bake to vertex colours (dense meshes, avoids UV bleeding)

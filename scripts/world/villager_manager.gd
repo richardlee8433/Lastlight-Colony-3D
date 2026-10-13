@@ -24,7 +24,7 @@ func _ready() -> void:
 	call_deferred("_first_sync")
 
 func _first_sync() -> void:
-	_started = false
+	_started = Game.fresh_start          # a new game: the settlers walk in with the cart
 	_sync()
 	_started = true
 
@@ -56,11 +56,14 @@ func _spawn(arriving: bool) -> void:
 	v.setup(_next_id, self, nav, wear)
 	_next_id += 1
 	villagers.append(v)
-	if arriving:
+	if arriving or Game.fresh_start:
 		var sp: Vector2 = Defs.SPAWN_POINTS[_rng.randi() % Defs.SPAWN_POINTS.size()]
+		if Game.fresh_start:
+			# the first settlers walk in together, a step apart
+			sp = Defs.SPAWN_POINTS[0] + Vector2(_rng.randf_range(-0.8, 0.8), villagers.size() * 0.9)
 		v.arrive_from(sp)
 	else:
-		var p := Defs.STORAGE_POINT + Vector2(_rng.randf_range(-3, 3), _rng.randf_range(-0.5, 3.0))
+		var p := Game.center() + Vector2(_rng.randf_range(-3, 3), _rng.randf_range(1.0, 3.5))
 		v.place_at(p)
 		v.clear_job()
 
@@ -82,7 +85,6 @@ func villager_left(v: Villager) -> void:
 func homes() -> Array[Vector2]:
 	## one entry per bed: the starter cottage, then every house
 	var out: Array[Vector2] = []
-	for i in Defs.STARTER_HOUSING: out.append(Defs.STORAGE_POINT)
 	for b in Game.buildings:
 		var d: Dictionary = Defs.BUILDINGS[b["type"]]
 		if d.has("housing"):
@@ -93,7 +95,7 @@ func homes() -> Array[Vector2]:
 func _assign_homes() -> void:
 	var beds := homes()
 	for i in villagers.size():
-		villagers[i].home = beds[i] if i < beds.size() else Defs.STORAGE_POINT
+		villagers[i].home = beds[i] if i < beds.size() else Game.center()
 
 func _assign_jobs() -> void:
 	# open positions = staffed producer buildings (Game decides how many are staffed)
@@ -155,7 +157,7 @@ func yield_of(v: Villager) -> Dictionary:
 
 ## every place goods can be delivered: the starting cottage + storehouses
 func storages() -> Array[Dictionary]:
-	var out: Array[Dictionary] = [{"drop": Defs.STORAGE_POINT, "look": Defs.STORAGE_LOOK}]
+	var out: Array[Dictionary] = []
 	for b in Game.buildings:
 		var d: Dictionary = Defs.BUILDINGS[b["type"]]
 		if d.get("storage", false):

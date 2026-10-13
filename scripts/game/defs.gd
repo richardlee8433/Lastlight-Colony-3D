@@ -7,11 +7,14 @@ const RESOURCES := {
 	"food": {"name": "食物", "color": Color(0.92, 0.42, 0.36)},
 }
 
+## the settlers arrive with a supply cart (storage + camp beds) and these goods
 const START := {
-	"resources": {"wood": 40, "stone": 15, "food": 30},
+	"resources": {"wood": 60, "stone": 20, "food": 40},
 	"population": 3,
-	"housing": 4,   # the starter cottage
+	"housing": 0,
 }
+const CART_SPOT := Vector2(0.0, 1.0)
+const CART_ANGLE := 0.25
 
 ## seconds of game time per in-game day (at 1x speed)
 const DAY_LENGTH := 30.0
@@ -56,6 +59,13 @@ const BUILDINGS := {
 		"nav_block": [Rect2(-1.35, -1.0, 2.7, 2.0)],
 		"door": Vector2(0.0, 1.45),
 	},
+	"cart": {
+		"name": "補給車", "desc": "移民帶來的補給車：臨時倉庫，旁邊的營火有 4 個睡鋪",
+		"cost": {}, "size": 3, "permanent": true,
+		"workers": 0, "storage": true, "housing": 4,
+		"nav_block": [Rect2(-1.45, -0.62, 2.4, 1.24), Rect2(1.02, 0.72, 0.56, 0.56)],
+		"drop": Vector2(-0.5, 1.05), "door": Vector2(1.3, 1.75),
+	},
 	"storehouse": {
 		"name": "倉庫", "desc": "村民把資源搬到最近的倉庫，蓋在生產區旁邊可以縮短搬運",
 		"cost": {"wood": 30, "stone": 10}, "size": 3,
@@ -66,7 +76,7 @@ const BUILDINGS := {
 }
 
 ## areas where nothing can be built (world x, z): the starting cottage and its doorstep
-const NO_BUILD := [Rect2(-3.3, -2.8, 6.6, 6.5)]
+const NO_BUILD := []
 ## buildable area (world x, z)
 const BUILD_BOUNDS := Rect2(-15.5, -15.5, 31.0, 31.0)
 ## gap kept between buildings (metres)
@@ -80,10 +90,6 @@ const VILLAGER := {
 	"rest_time": 4.0,
 	"drop_time": 0.7,
 }
-## the starting cottage: first storage + first home
-const STORAGE_POINT := Vector2(0.0, 2.75)
-const STORAGE_LOOK := Vector2(0.0, 1.6)
-const STARTER_HOUSING := 4
 ## villagers arrive along the existing dirt roads
 const SPAWN_POINTS := [Vector2(0.2, 16.3), Vector2(16.3, 0.9)]
 
@@ -155,8 +161,8 @@ const ZONE := {
 const QUESTS := [
 	{"text": "蓋一座伐木場", "type": "build", "building": "woodcutter", "count": 1, "reward": {"food": 10}},
 	{"text": "蓋一塊農田", "type": "build", "building": "farm", "count": 1, "reward": {"wood": 15}},
-	{"text": "蓋一座採石場", "type": "build", "building": "quarry", "count": 1, "reward": {"wood": 20}},
 	{"text": "畫一塊住宅區，等村民蓋房子", "type": "build", "building": "house", "count": 1, "reward": {"stone": 10}},
+	{"text": "蓋一座採石場", "type": "build", "building": "quarry", "count": 1, "reward": {"wood": 20}},
 	{"text": "在生產區旁蓋一座倉庫", "type": "build", "building": "storehouse", "count": 1, "reward": {"food": 20}},
 	{"text": "人口達到 10 人", "type": "population", "value": 10, "reward": {"food": 30}},
 	{"text": "存到 100 木材", "type": "resource", "res": "wood", "value": 100, "reward": {"stone": 30}},

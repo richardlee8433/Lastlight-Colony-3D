@@ -28,6 +28,7 @@ var starving := false
 var zones := PackedByteArray()
 
 var _next_id := 1
+var fresh_start := false         # true right after new_game (settlers walk in)
 var _day_timer := 0.0
 var _autosave := true
 var _today := {}                 # goods delivered today
@@ -51,8 +52,10 @@ func new_game() -> void:
 		buildings.erase(b)
 		building_removed.emit(b)
 	_next_id = 1
+	fresh_start = true
+	reset.emit()                     # listeners clear paths / villagers / nav blocks first
+	add_building("cart", Defs.CART_SPOT, Defs.CART_ANGLE, false)
 	_assign_workers()
-	reset.emit()
 	changed.emit(); quest_changed.emit()
 
 # ---------------- zones ----------------
@@ -103,6 +106,12 @@ func can_afford(cost: Dictionary) -> bool:
 		if int(resources.get(r, 0)) < int(cost[r]): return false
 	return true
 
+## the village centre: where the supply cart stands
+func center() -> Vector2:
+	for b in buildings:
+		if b["type"] == "cart": return b["pos"]
+	return Defs.CART_SPOT
+
 func get_building(id: int) -> Dictionary:
 	for b in buildings:
 		if b["id"] == id: return b
@@ -142,6 +151,9 @@ func demolish(id: int) -> void:
 	var b := get_building(id)
 	if b.is_empty(): return
 	var d: Dictionary = Defs.BUILDINGS[b["type"]]
+	if d.get("permanent", false):
+		toast.emit("%s不能拆除" % d["name"])
+		return
 	for r in d["cost"]:
 		resources[r] += int(d["cost"][r] / 2.0)
 	buildings.erase(b)
@@ -182,6 +194,7 @@ func day_progress() -> float:
 
 func _end_of_day() -> void:
 	day += 1
+	fresh_start = false
 	_yesterday = _today
 	_today = {}
 	var eat := population * Defs.FOOD_PER_VILLAGER
@@ -314,6 +327,11 @@ func load_game() -> bool:
 			angle = float(e.get("angle", 0.0))
 		buildings.append({"id": _next_id, "type": e["type"], "pos": pos, "angle": angle, "staffed": false})
 		_next_id += 1
+	if count_of("cart") == 0:
+		# saves from before the supply-cart opening: give them a cart at the village centre
+		buildings.append({"id": _next_id, "type": "cart", "pos": Defs.CART_SPOT, "angle": Defs.CART_ANGLE, "staffed": false})
+		_next_id += 1
+	fresh_start = false
 	_assign_workers()
 	return true
 

@@ -173,12 +173,12 @@ func _face_dir(pos: Vector2) -> Vector2:
 					if r < best_d: best_d = r; best = p - pos
 					break
 	if best == Vector2.ZERO:
-		best = Defs.STORAGE_POINT - pos
+		best = Game.center() - pos
 	return best.normalized() if best.length() > 0.01 else Vector2(0, 1)
 
 ## Prefer spots near the village centre and snug against other buildings (tight neighbourhoods).
 func _score(pos: Vector2) -> float:
-	var s := -pos.distance_to(Defs.STORAGE_POINT) * 0.25
+	var s := -pos.distance_to(Game.center()) * 0.25
 	var nearest := INF
 	for b in Game.buildings:
 		nearest = minf(nearest, b["pos"].distance_to(pos))

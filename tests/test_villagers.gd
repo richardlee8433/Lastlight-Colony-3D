@@ -53,11 +53,17 @@ func _run() -> void:
 	vm._first_sync()
 
 	# --- navigation ---
-	check(not nav.is_walkable(nav.cell_of(Vector3(0, 0, 0))), "cottage centre is blocked")
-	var p: PackedVector3Array = nav.find_path(nav.on_ground(Defs.SPAWN_POINTS[0]), nav.on_ground(Defs.STORAGE_POINT))
-	check(p.size() >= 2, "road from the south spawn reaches the cottage door (%d pts)" % p.size())
-	var p2: PackedVector3Array = nav.find_path(nav.on_ground(Defs.SPAWN_POINTS[1]), nav.on_ground(Defs.STORAGE_POINT))
-	check(p2.size() >= 2, "east spawn reaches the cottage door")
+	var c: Vector2 = game.center()
+	check(not nav.is_walkable(nav.cell_of(Vector3(c.x - 0.5, 0, c.y))), "the supply cart blocks walking")
+	var camp: Vector3 = nav.on_ground(c + Vector2(0, 2))
+	var p: PackedVector3Array = nav.find_path(nav.on_ground(Defs.SPAWN_POINTS[0]), camp)
+	check(p.size() >= 2, "the south edge reaches the camp (%d pts)" % p.size())
+	var p2: PackedVector3Array = nav.find_path(nav.on_ground(Defs.SPAWN_POINTS[1]), camp)
+	check(p2.size() >= 2, "the east edge reaches the camp")
+	var arriving := 0
+	for v in vm.villagers:
+		if v.state == v.S.ARRIVE: arriving += 1
+	check(arriving == 3, "the first settlers walk in (%d)" % arriving)
 	check(nav.trees.size() > 10, "trees loaded (%d)" % nav.trees.size())
 
 	# --- population ---

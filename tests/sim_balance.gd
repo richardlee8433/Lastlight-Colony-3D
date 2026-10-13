@@ -16,12 +16,16 @@ func _process(_d):
 	var game = root.get_node("Game"); var s = current_scene
 	var vm = s.get_node("Villagers"); var wear = s.get_node("PathWear"); var ctl = s.get_node("BuildController")
 	game._autosave = false; game.delete_save(); game.new_game(); game.speed = 0.0; vm._first_sync()
-	var plan = [["woodcutter", Vector2(-6, 7)], ["farm", Vector2(2, 8)], ["quarry", Vector2(8, 8)], ["house", Vector2(6, 3)],
-		["farm", Vector2(-2, 11)], ["house", Vector2(-7, 2)], ["storehouse", Vector2(-4, 10)], ["woodcutter", Vector2(-9, -6)], ["house", Vector2(6, -4)], ["farm", Vector2(3, 13)]]
+	var zones = s.get_node("Zones")
+	for x in range(-9, -2):
+		for z in range(4, 10):
+			zones.paint(Vector2(x, z), true)
+	var plan = [["woodcutter", Vector2(-6, -4)], ["farm", Vector2(3, 6)], ["quarry", Vector2(8, 3)],
+		["farm", Vector2(4, 11)], ["storehouse", Vector2(5, -2)], ["woodcutter", Vector2(-9, -8)], ["farm", Vector2(-1, 12)]]
 	var i := 0
 	for day in 30:
 		for k in 300:
-			game.step(0.1); vm.tick(0.1); wear.tick(0.1, 0.5)
+			game.step(0.1); vm.tick(0.1); wear.tick(0.1, 0.5); zones.tick(0.1)
 			if i < plan.size() and game.can_afford(Defs.BUILDINGS[plan[i][0]]["cost"]):
 				var p = spot(ctl, plan[i][0], plan[i][1])
 				if p != null and ctl.try_place(plan[i][0], p) > 0:

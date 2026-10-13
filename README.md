@@ -15,6 +15,7 @@ Open Godot, choose **Import**, and select `project.godot`. Wait for the first as
 | Speed | Pause / 1x / 2x / 4x buttons in the top-right corner |
 
 ## Gameplay (MVP)
+- **Opening**: the map starts as open meadow. Three settlers walk in from the south road to the **supply cart**. The cart is the temporary storage (holding the starting wood 60, stone 20, food 40), and the campfire beside it has 4 sleeping spots. The cart can't be demolished. Saves from before this change get a supply cart automatically.
 - **Resources**: wood, stone, food. **Resources only count once a villager carries them into a storage.** After each work session the worker carries one load (woodcutter 8 wood, farm 5 food, quarry 6 stone) to the **nearest storage**, so the farther the trip, the less gets produced. The resource bar shows how much was brought into storage yesterday.
 - **Buildings**: woodcutter, farm (wheat field), quarry, storehouse (a delivery point: build one near your production to cut down hauling)
 - **Residential zones**: houses are not placed by hand. The player paints residential zones, and when free beds run out (at most 1 left), food is sufficient, and wood and stone can cover the cost, villagers build a house (+4 population cap) on their own in the best open spot within the zone. Houses line up with their neighbors to form rows, with the front door facing the nearest path (or the village center). The zone shows on the ground as a light yellow outline.
@@ -56,13 +57,14 @@ godot --headless --path . --script res://tests/test_villagers.gd   # pathfinding
 godot --headless --path . --script res://tests/test_zones.gd      # residential zones: painting, erasing, auto-built houses, saving
 godot --headless --path . --script res://tests/sim_balance.gd     # follow a fixed build order for 30 days and print each day's economy (for checking balance)
 godot --path . --script res://tests/shot_village.gd -- 6          # render a screenshot after 6 minutes of time-lapse (needs a display)
+godot --path . --script res://tests/shot_opening.gd               # render the opening screenshots (needs a display)
 ```
 
 ## Regenerating the art (requires `pip install bpy`)
 ```
-python3 tools/bake_export.py <output folder>     # build scene → bake textures → export GLB + scatter.json
+python3 tools/bake_export.py <output folder> empty   # build scene (empty meadow) → bake textures → export GLB + scatter.json
 python3 tools/repack_glb.py <output folder>/models/*.glb   # convert embedded textures to JPEG to shrink files
-python3 tools/export_world_data.py data/world.json         # walkable grid, ground heights, tree positions
+python3 tools/export_world_data.py data/world.json empty   # walkable grid, ground heights, tree positions
 python3 tools/villager.py models                           # villager model (add "preview" to also render a preview image)
 python3 tools/house_variants.py models 6 preview           # 6 house variants → models/houses/
 ```

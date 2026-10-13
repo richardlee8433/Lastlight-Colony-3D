@@ -37,7 +37,8 @@ func _run() -> void:
 	check(wear._ground_mats.size() > 0 and wear._ground_mats[0].get_shader_parameter("zone_tex") != null, "zone overlay hooked into the ground shader")
 
 	# --- painting ---
-	check(zones.paint(Vector2(0, 0), true, 2.0) == 0, "cannot zone the village centre")
+	var tree: Vector3 = s.get_node("Nav").trees[0]
+	check(zones.paint(Vector2(tree.x, tree.z), true, 0.2) == 0, "cannot zone a tree trunk")
 	var n: int = 0
 	for x in range(-6, 1):
 		for z in range(8, 13):
@@ -71,7 +72,7 @@ func _run() -> void:
 			if not zones.is_zoned(c): inside = false
 		check(inside, "the house sits inside the zone at %s" % hb["pos"])
 		var door: Vector2 = Defs.to_world(hb, Vector2(0, 1.5)) - hb["pos"]
-		var to_centre: Vector2 = Defs.STORAGE_POINT - hb["pos"]
+		var to_centre: Vector2 = game.center() - hb["pos"]
 		check(door.normalized().dot(to_centre.normalized()) > 0.5, "door faces the village (no paths yet)")
 		check(game.resources["wood"] == 180 and game.resources["stone"] == 185, "house cost paid")
 	check(game.quest_index >= 0, "quests still fine")

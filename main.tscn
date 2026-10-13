@@ -3,8 +3,6 @@
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/orbit_camera.gd" id="2_cam"]
 [ext_resource type="Script" path="res://scripts/scatter.gd" id="3_scatter"]
-[ext_resource type="PackedScene" path="res://models/hut.glb" id="4_hut"]
-[ext_resource type="PackedScene" path="res://models/props.glb" id="5_props"]
 [ext_resource type="PackedScene" path="res://models/nature.glb" id="6_nature"]
 [ext_resource type="PackedScene" path="res://models/ground.glb" id="7_ground"]
 [ext_resource type="Script" path="res://scripts/game/build_controller.gd" id="8_build"]
@@ -69,10 +67,6 @@ far = 300.0
 script = ExtResource("2_cam")
 
 [node name="Ground" parent="." instance=ExtResource("7_ground")]
-
-[node name="Hut" parent="." instance=ExtResource("4_hut")]
-
-[node name="Props" parent="." instance=ExtResource("5_props")]
 
 [node name="Nature" parent="." instance=ExtResource("6_nature")]
 

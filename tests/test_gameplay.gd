@@ -41,17 +41,22 @@ func _run() -> void:
 	game.delete_save()
 	game.new_game()
 	game.speed = 0.0
-	check(game.resources["wood"] == 40 and game.population == 3, "new game start state")
+	check(game.resources["wood"] == 60 and game.population == 3, "new game start state")
+	check(game.count_of("cart") == 1 and game.buildings.size() == 1, "the only building at the start is the supply cart")
+	check(game.housing() == 4, "the camp has 4 beds")
 
 	# --- placement rules ---
-	check(not ctl.can_place("house", Vector2(0, 0)), "cannot build on the cottage")
+	check(not ctl.can_place("house", Defs.CART_SPOT), "cannot build on the supply cart")
+	var cart_id: int = game.buildings[0]["id"]
+	game.demolish(cart_id)
+	check(game.count_of("cart") == 1, "the supply cart can't be demolished")
 	check(ctl.place_problem("house", Vector2(20, 0), 0.0) != "", "cannot build outside the map")
 	var p := find_spot("woodcutter", Vector2(-6, 8), 0.3)
 	var id: int = ctl.try_place("woodcutter", p, 0.3)
 	check(id > 0, "place woodcutter at %s, rotated 0.3 rad" % p)
 	check(is_equal_approx(game.get_building(id)["angle"], 0.3), "any rotation is kept")
-	check(game.resources["wood"] == 25, "woodcutter cost paid")
-	check(game.quest_index == 1 and game.resources["food"] == 40, "quest 1 done + reward")
+	check(game.resources["wood"] == 45, "woodcutter cost paid")
+	check(game.quest_index == 1 and game.resources["food"] == 50, "quest 1 done + reward")
 	check(ctl.try_place("woodcutter", p + Vector2(1.0, 0.5), 0.0) == -1, "cannot overlap another building")
 	var near := p + Defs.rot2(Vector2(3.4, 0), 0.3)
 	game.resources["wood"] += 15
@@ -107,6 +112,7 @@ func _run() -> void:
 	check(game.load_game(), "load a v1 (grid) save")
 	var b0: Dictionary = game.buildings[0]
 	check(b0["pos"] == Vector2(5.5, 5.5) and is_equal_approx(b0["angle"], PI / 2), "grid cell + quarter turn converted to position + angle")
+	check(game.count_of("cart") == 1, "old saves get a supply cart")
 
 	# --- UI ---
 	var hud := current_scene.get_node("HUD")

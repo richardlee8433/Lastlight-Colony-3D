@@ -24,6 +24,7 @@ var _quest_reward: Label
 var _info: PanelContainer
 var _info_title: Label
 var _info_body: Label
+var _del_button: Button
 var _toasts: VBoxContainer
 var _hint: Label
 
@@ -170,6 +171,7 @@ func _build_info() -> void:
 	_info_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(_info_body)
 	var del := Button.new()
+	_del_button = del
 	del.text = "拆除（退回一半資源）"
 	del.focus_mode = Control.FOCUS_NONE
 	del.pressed.connect(func(): _ctl.demolish_selected())
@@ -256,6 +258,7 @@ func _fill_info(id: int) -> void:
 		return
 	var d: Dictionary = Defs.BUILDINGS[b["type"]]
 	_info_title.text = d["name"]
+	_del_button.visible = not d.get("permanent", false)
 	var lines: Array[String] = [d["desc"]]
 	if d.has("yield"):
 		for r in d["yield"]:
@@ -266,6 +269,8 @@ func _fill_info(id: int) -> void:
 		lines.append("狀態：" + state)
 	if d.get("storage", false):
 		lines.append("附近的工人會把資源搬來這裡")
+	if b["type"] == "cart":
+		lines.append("營火旁有 %d 個睡鋪，畫住宅區讓村民蓋房子" % d["housing"])
 	if d.has("housing"):
 		lines.append("提供 %d 人居住" % d["housing"])
 	var vm := get_node_or_null(^"../Villagers")

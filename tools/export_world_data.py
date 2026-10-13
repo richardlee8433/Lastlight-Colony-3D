@@ -16,7 +16,7 @@ from mathutils import Vector
 OUT_PATH = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "world.json")
 HERE = os.path.dirname(os.path.abspath(__file__))
 import tempfile
-sys.argv = ["hut2.py", tempfile.mkdtemp(), "build_only"]
+sys.argv = ["hut2.py", tempfile.mkdtemp(), "build_only"] + (["empty"] if "empty" in sys.argv else [])
 exec(compile(open(os.path.join(HERE, "hut2.py")).read(), "hut2.py", "exec"))
 
 CELL = 0.5
