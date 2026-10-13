@@ -1,0 +1,8 @@
+# Godot
+.godot/
+*.tmp
+/android/
+/export_presets.cfg
+# local test output
+_*.png
+_glog.txt

@@ -1,0 +1,82 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/orbit_camera.gd" id="2_cam"]
+[ext_resource type="Script" path="res://scripts/scatter.gd" id="3_scatter"]
+[ext_resource type="PackedScene" path="res://models/hut.glb" id="4_hut"]
+[ext_resource type="PackedScene" path="res://models/props.glb" id="5_props"]
+[ext_resource type="PackedScene" path="res://models/nature.glb" id="6_nature"]
+[ext_resource type="PackedScene" path="res://models/ground.glb" id="7_ground"]
+[ext_resource type="Script" path="res://scripts/game/build_controller.gd" id="8_build"]
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="9_hud"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.32, 0.5, 0.78, 1)
+sky_horizon_color = Color(0.72, 0.78, 0.82, 1)
+ground_bottom_color = Color(0.2, 0.22, 0.15, 1)
+ground_horizon_color = Color(0.72, 0.78, 0.82, 1)
+sun_angle_max = 10.0
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 3
+ambient_light_energy = 0.8
+reflected_light_source = 2
+tonemap_mode = 4
+tonemap_exposure = 1.05
+ssao_enabled = true
+ssao_radius = 1.2
+ssao_intensity = 2.5
+ssil_enabled = true
+glow_enabled = true
+glow_intensity = 0.4
+glow_bloom = 0.05
+fog_enabled = true
+fog_light_color = Color(0.75, 0.8, 0.85, 1)
+fog_density = 0.004
+fog_sky_affect = 0.3
+adjustment_enabled = true
+adjustment_saturation = 1.08
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+light_color = Color(1, 0.9, 0.75, 1)
+light_energy = 1.7
+light_angular_distance = 1.5
+shadow_enabled = true
+shadow_blur = 1.2
+shadow_bias = 0.08
+shadow_normal_bias = 4.0
+directional_shadow_mode = 2
+directional_shadow_max_distance = 70.0
+
+[node name="Camera" type="Camera3D" parent="."]
+fov = 34.0
+far = 300.0
+script = ExtResource("2_cam")
+
+[node name="Ground" parent="." instance=ExtResource("7_ground")]
+
+[node name="Hut" parent="." instance=ExtResource("4_hut")]
+
+[node name="Props" parent="." instance=ExtResource("5_props")]
+
+[node name="Nature" parent="." instance=ExtResource("6_nature")]
+
+[node name="Scatter" type="Node3D" parent="."]
+script = ExtResource("3_scatter")
+
+[node name="BuildController" type="Node3D" parent="."]
+script = ExtResource("8_build")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("9_hud")
