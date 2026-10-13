@@ -120,7 +120,7 @@ func grow() -> int:
 	var b := Game.add_building("house", spot["pos"], spot["angle"])
 	if b.is_empty(): return -1
 	_since_last = 0.0
-	Game.toast.emit("村民在住宅區蓋了一間新房子")
+	Game.toast.emit(Loc.t("Villagers built a new house"))
 	house_grown.emit(b["id"])
 	return b["id"]
 

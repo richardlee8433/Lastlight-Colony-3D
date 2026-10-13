@@ -11,13 +11,16 @@ const TUNIC := [Color(0.62, 0.30, 0.24), Color(0.33, 0.43, 0.58), Color(0.44, 0.
 const PANTS := [Color(0.32, 0.25, 0.19), Color(0.27, 0.27, 0.30), Color(0.40, 0.34, 0.24), Color(0.22, 0.18, 0.15)]
 const HAIR := [Color(0.20, 0.12, 0.06), Color(0.36, 0.22, 0.10), Color(0.09, 0.07, 0.06), Color(0.66, 0.50, 0.25), Color(0.55, 0.24, 0.10)]
 const HOODS := [Color(0.30, 0.36, 0.22), Color(0.42, 0.32, 0.22), Color(0.36, 0.30, 0.26)]
-const NAMES := ["阿福", "小梅", "大山", "阿蘭", "石頭", "小雨", "阿明", "春花", "老李", "小虎", "阿秀", "木生",
+const NAMES_EN := ["Alfie", "Mae", "Hugo", "Rose", "Tom", "Lily", "Ned", "Ivy", "Walt", "Tess", "Finn", "Nell",
+	"Otto", "Ada", "Bram", "Elsie", "Cole", "Wren", "Abe", "June"]
+const NAMES_ZH := ["阿福", "小梅", "大山", "阿蘭", "石頭", "小雨", "阿明", "春花", "老李", "小虎", "阿秀", "木生",
 	"小玉", "阿強", "秋月", "阿土", "小芳", "阿德", "冬梅", "阿旺"]
 
 enum S { IDLE, WANDER, ARRIVE, TO_WORK, WORK, TO_DROP, DROP, TO_HOME, REST, LEAVE }
 
 var vid := 0
-var vname := ""
+var vname: String:                 # display name in the current language
+	get: return (NAMES_ZH if Loc.lang == "zh" else NAMES_EN)[(vid - 1) % NAMES_EN.size()]
 var state := S.IDLE
 var home := Vector2.ZERO
 var job_id := -1                  # building id, -1 = no job
@@ -56,7 +59,6 @@ var _toggles := {}                # name -> Node3D (tools, hats, hair, carry ite
 func setup(id: int, mgr: Node, nav_grid: NavGrid, path_wear: PathWear) -> void:
 	vid = id; manager = mgr; nav = nav_grid; wear = path_wear
 	_rng.seed = id * 92821 + 17
-	vname = NAMES[(id - 1) % NAMES.size()]
 	_lane = _rng.randf_range(-0.16, 0.16)
 	_build_model()
 
@@ -385,15 +387,15 @@ func _animate(dt: float) -> void:
 
 func status_text() -> String:
 	match state:
-		S.TO_WORK: return "前往工作"
+		S.TO_WORK: return Loc.t("Going to work")
 		S.WORK:
 			match _anim:
-				"chop": return "砍樹中"
-				"mine": return "採石中"
-				"hoe": return "耕田中"
-			return "工作中"
-		S.TO_DROP, S.DROP: return "搬運中"
-		S.TO_HOME, S.REST: return "回家休息"
-		S.ARRIVE: return "剛搬來"
-		S.LEAVE: return "離開村子"
-	return "閒逛中"
+				"chop": return Loc.t("Chopping")
+				"mine": return Loc.t("Quarrying")
+				"hoe": return Loc.t("Tending the field")
+			return Loc.t("Working")
+		S.TO_DROP, S.DROP: return Loc.t("Hauling")
+		S.TO_HOME, S.REST: return Loc.t("Resting at home")
+		S.ARRIVE: return Loc.t("Just arrived")
+		S.LEAVE: return Loc.t("Leaving")
+	return Loc.t("Strolling")

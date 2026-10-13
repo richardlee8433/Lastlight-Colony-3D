@@ -35,6 +35,17 @@ var _hint: Label
 
 func _ready() -> void:
 	_ctl = get_node(controller_path)
+	_build_ui()
+	_ctl.brush_changed.connect(_refresh_brush)
+	Game.changed.connect(_refresh)
+	Game.quest_changed.connect(_refresh_quest)
+	Game.toast.connect(show_toast)
+	Game.language_changed.connect(_rebuild)
+	_ctl.mode_changed.connect(_on_mode)
+	_ctl.selection_changed.connect(_on_selection)
+	_refresh(); _refresh_quest(); _on_mode("")
+
+func _build_ui() -> void:
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -48,13 +59,14 @@ func _ready() -> void:
 	_build_toasts()
 	_build_hint()
 	_build_brush_bar()
-	_ctl.brush_changed.connect(_refresh_brush)
-	Game.changed.connect(_refresh)
-	Game.quest_changed.connect(_refresh_quest)
-	Game.toast.connect(show_toast)
-	_ctl.mode_changed.connect(_on_mode)
-	_ctl.selection_changed.connect(_on_selection)
-	_refresh(); _refresh_quest(); _on_mode("")
+
+## Language switched: rebuild every panel with the new texts.
+func _rebuild() -> void:
+	remove_child(_root)
+	_root.queue_free()
+	_res_labels.clear(); _build_buttons.clear(); _speed_buttons.clear()
+	_build_ui()
+	_refresh(); _refresh_quest(); _on_mode(_ctl.placing); _on_selection(_ctl.selected)
 
 func _process(_d: float) -> void:
 	_day_bar.value = Game.day_progress()
@@ -100,7 +112,7 @@ func _build_speed() -> void:
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 4)
 	panel.add_child(hb)
-	for s in [[0.0, "暫停"], [1.0, "1x"], [2.0, "2x"], [4.0, "4x"]]:
+	for s in [[0.0, Loc.t("Pause")], [1.0, "1x"], [2.0, "2x"], [4.0, "4x"]]:
 		var b := Button.new()
 		b.text = s[1]
 		b.toggle_mode = true
@@ -111,10 +123,17 @@ func _build_speed() -> void:
 		hb.add_child(b)
 		_speed_buttons[sp] = b
 	var restart := Button.new()
-	restart.text = "重新開始"
+	restart.text = Loc.t("Restart")
 	restart.focus_mode = Control.FOCUS_NONE
 	restart.pressed.connect(_confirm_restart)
 	hb.add_child(restart)
+	var lang := Button.new()
+	lang.name = "Language"
+	lang.text = "中文" if Loc.lang == "en" else "English"      # always shown in the other language
+	lang.tooltip_text = "切換成中文" if Loc.lang == "en" else "Switch to English"
+	lang.focus_mode = Control.FOCUS_NONE
+	lang.pressed.connect(func(): Game.set_language("zh" if Loc.lang == "en" else "en"))
+	hb.add_child(lang)
 
 func _build_quest() -> void:
 	var panel := _panel()
@@ -125,7 +144,7 @@ func _build_quest() -> void:
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 4)
 	panel.add_child(vb)
-	vb.add_child(_label("任務", 15, MUTED))
+	vb.add_child(_label(Loc.t("Quest"), 15, MUTED))
 	_quest_title = _label("", 20, TEXT)
 	_quest_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(_quest_title)
@@ -151,8 +170,8 @@ func _build_menu() -> void:
 		b.toggle_mode = true
 		b.focus_mode = Control.FOCUS_NONE
 		b.custom_minimum_size = Vector2(150, 64)
-		b.text = "%d  %s\n%s" % [i, d["name"], d["label"] if d.has("label") else Defs.cost_text(d["cost"])]
-		b.tooltip_text = d["desc"]
+		b.text = "%d  %s\n%s" % [i, Defs.label(type), Loc.t(d["label"]) if d.has("label") else Defs.cost_text(d["cost"])]
+		b.tooltip_text = Defs.desc(type)
 		var t: String = type
 		b.pressed.connect(func():
 			if _ctl.placing == t: _ctl.cancel_place()
@@ -178,13 +197,13 @@ func _build_info() -> void:
 	_info_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(_info_body)
 	_field_button = Button.new()
-	_field_button.text = "編輯田地"
+	_field_button.text = Loc.t("Edit field")
 	_field_button.focus_mode = Control.FOCUS_NONE
 	_field_button.pressed.connect(func(): _ctl.begin_field(_ctl.selected))
 	vb.add_child(_field_button)
 	var del := Button.new()
 	_del_button = del
-	del.text = "拆除（退回一半資源）"
+	del.text = Loc.t("Demolish (refund half)")
 	del.focus_mode = Control.FOCUS_NONE
 	del.pressed.connect(func(): _ctl.demolish_selected())
 	vb.add_child(del)
@@ -206,14 +225,14 @@ func _build_brush_bar() -> void:
 	_brush_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hb.add_child(_brush_title)
 	var paint := Button.new()
-	paint.text = "畫"
+	paint.text = Loc.t("Paint")
 	paint.toggle_mode = true
 	paint.focus_mode = Control.FOCUS_NONE
 	paint.custom_minimum_size = Vector2(70, 40)
 	paint.pressed.connect(func(): _ctl.set_erase(false))
 	hb.add_child(paint)
 	_erase_button = Button.new()
-	_erase_button.text = "擦除 (X)"
+	_erase_button.text = Loc.t("Erase (X)")
 	_erase_button.toggle_mode = true
 	_erase_button.focus_mode = Control.FOCUS_NONE
 	_erase_button.custom_minimum_size = Vector2(90, 40)
@@ -226,7 +245,7 @@ func _build_brush_bar() -> void:
 	_clear_button.pressed.connect(func(): _ctl.clear_brush_area())
 	hb.add_child(_clear_button)
 	var done := Button.new()
-	done.text = "完成"
+	done.text = Loc.t("Done")
 	done.focus_mode = Control.FOCUS_NONE
 	done.custom_minimum_size = Vector2(70, 40)
 	done.pressed.connect(func(): _ctl.cancel_place())
@@ -243,11 +262,11 @@ func _refresh_brush() -> void:
 		var f := get_node_or_null(^"../Fields")
 		var n: int = f.field_of(_ctl.field_farm).size() if f else 0
 		var y: int = f.yield_for(_ctl.field_farm) if f else 0
-		_brush_title.text = "田地 %.0f m²  每趟 %d 食物" % [n * 0.25, y]
-		_clear_button.text = "清空田地"
+		_brush_title.text = Loc.t("Field %.0f m²  %d food/trip") % [n * 0.25, y]
+		_clear_button.text = Loc.t("Clear field")
 	else:
-		_brush_title.text = "住宅區 %.0f m²" % (Game.zone_count() * 0.25)
-		_clear_button.text = "全部清除"
+		_brush_title.text = Loc.t("Housing zone %.0f m²") % (Game.zone_count() * 0.25)
+		_clear_button.text = Loc.t("Clear all")
 
 func _build_toasts() -> void:
 	_toasts = VBoxContainer.new()
@@ -274,18 +293,18 @@ func _build_hint() -> void:
 func _refresh() -> void:
 	var fpd := Game.food_per_day()
 	for r in _res_labels:
-		var txt := "%s  %d" % [Defs.RESOURCES[r]["name"], Game.resources.get(r, 0)]
+		var txt := "%s  %d" % [Defs.res_name(r), Game.resources.get(r, 0)]
 		if r == "food":
-			txt += "  (%s%.0f/天)" % ["+" if fpd >= 0 else "", fpd]
+			txt += Loc.t("  (%s%.0f/day)") % ["+" if fpd >= 0 else "", fpd]
 			_res_labels[r].add_theme_color_override("font_color",
 				Color(1.0, 0.45, 0.4) if (fpd < 0 or Game.starving) else Defs.RESOURCES[r]["color"].lightened(0.15))
 		elif Game.income_per_day(r) > 0:
-			txt += "  (+%d/天)" % Game.income_per_day(r)
+			txt += Loc.t("  (+%d/day)") % Game.income_per_day(r)
 		_res_labels[r].text = txt
-		_res_labels[r].tooltip_text = "昨天搬進倉庫的量（扣掉食物消耗）" if r == "food" else "昨天搬進倉庫的量"
+		_res_labels[r].tooltip_text = Loc.t("Delivered to storage yesterday (minus food eaten)") if r == "food" else Loc.t("Delivered to storage yesterday")
 		_res_labels[r].mouse_filter = Control.MOUSE_FILTER_PASS
-	_pop_label.text = "人口  %d/%d   工作 %d/%d" % [Game.population, Game.housing(), Game.workers_used(), Game.workers_needed()]
-	_day_label.text = "第 %d 天" % Game.day
+	_pop_label.text = Loc.t("Pop  %d/%d   Jobs %d/%d") % [Game.population, Game.housing(), Game.workers_used(), Game.workers_needed()]
+	_day_label.text = Loc.t("Day %d") % Game.day
 	for type in _build_buttons:
 		var ok: bool = Defs.TOOLS.has(type) or Game.can_afford(Defs.BUILDINGS[type]["cost"])
 		_build_buttons[type].modulate = Color.WHITE if ok else Color(1, 1, 1, 0.45)
@@ -297,28 +316,28 @@ func _refresh() -> void:
 func _refresh_quest() -> void:
 	var q := Game.current_quest()
 	if q.is_empty():
-		_quest_title.text = "所有任務完成"
-		_quest_progress.text = "自由建造你的村莊"
+		_quest_title.text = Loc.t("All quests done")
+		_quest_progress.text = Loc.t("Keep building your village")
 		_quest_reward.text = ""
 		return
-	_quest_title.text = q["text"]
+	_quest_title.text = Loc.t(q["text"])
 	var p := Game.quest_progress(q)
 	_quest_progress.text = "%d / %d" % [min(p.x, p.y), p.y]
 	var rw: String = Defs.cost_text(q["reward"])
-	_quest_reward.text = ("獎勵：" + rw) if rw != "" else ""
+	_quest_reward.text = (Loc.t("Reward: ") + rw) if rw != "" else ""
 
 func _on_mode(type: String) -> void:
 	for t in _build_buttons:
 		_build_buttons[t].button_pressed = (t == type)
 	if type == "":
-		_hint.text = "左鍵 選取建築 · 1-5 建造 · 右鍵拖曳 旋轉鏡頭 · WASD / 中鍵 平移 · 滾輪 縮放"
+		_hint.text = Loc.t("Left-click select · 1-5 build · right-drag rotate camera · WASD / middle-drag pan · wheel zoom")
 	else:
 		if type == "zone":
-			_hint.text = "左鍵拖曳 畫住宅區 · X 切換擦除（或按住 Shift 拖曳）· 右鍵 / Esc 完成"
+			_hint.text = Loc.t("Left-drag to paint a housing zone · X toggles erase (or hold Shift) · right-click / Esc to finish")
 		elif type == "field":
-			_hint.text = "左鍵拖曳 畫田地（離農舍 %d 公尺內）· X 切換擦除（或按住 Shift 拖曳）· 右鍵 / Esc 完成" % int(Defs.FIELD["range"])
+			_hint.text = Loc.t("Left-drag to paint the field (within %d m of the farmhouse) · X toggles erase (or hold Shift) · right-click / Esc to finish") % int(Defs.FIELD["range"])
 		else:
-			_hint.text = "左鍵 放置%s · R / Shift+R 或 Shift+滾輪 旋轉 · 右鍵 / Esc 取消" % Defs.BUILDINGS[type]["name"]
+			_hint.text = Loc.t("Left-click to place %s · R / Shift+R or Shift+wheel to rotate · right-click / Esc to cancel") % Defs.label(type)
 	_refresh_quest()
 	_refresh_brush()
 
@@ -332,39 +351,39 @@ func _fill_info(id: int) -> void:
 		_info.visible = false
 		return
 	var d: Dictionary = Defs.BUILDINGS[b["type"]]
-	_info_title.text = d["name"]
+	_info_title.text = Defs.label(b["type"])
 	_del_button.visible = not d.get("permanent", false)
-	var lines: Array[String] = [d["desc"]]
+	var lines: Array[String] = [Defs.desc(b["type"])]
 	_field_button.visible = b["type"] == "farm"
 	var f := get_node_or_null(^"../Fields")
 	if b["type"] == "farm" and f:
 		var n: int = f.field_of(id).size()
 		var y: int = f.yield_for(id)
-		lines.append("田地：%.0f m²（上限 %.0f m²）" % [n * 0.25, Defs.FIELD["max_cells"] * 0.25])
+		lines.append(Loc.t("Field: %.0f m² (max %.0f m²)") % [n * 0.25, Defs.FIELD["max_cells"] * 0.25])
 		if y > 0:
-			lines.append("每趟搬回：%d 食物（田越大越多，倉庫越近趟數越多）" % y)
+			lines.append(Loc.t("Per trip: %d food (bigger field = more; closer storage = more trips)") % y)
 		else:
-			lines.append("田地太小，至少要 %.0f m² 才有收成" % (Defs.FIELD["min_cells"] * 0.25))
+			lines.append(Loc.t("Field too small: needs at least %.0f m² to produce") % (Defs.FIELD["min_cells"] * 0.25))
 	elif d.has("yield"):
 		for r in d["yield"]:
-			lines.append("每趟搬回：%d %s（倉庫越近，趟數越多）" % [d["yield"][r], Defs.RESOURCES[r]["name"]])
+			lines.append(Loc.t("Per trip: %d %s (closer storage = more trips)") % [d["yield"][r], Defs.res_name(r)])
 	if d.has("yield"):
-		var state := "工作中"
-		if not b["staffed"]: state = "缺工人（需要更多人口）"
-		elif not Game.is_active(b): state = "餓肚子，停工中"
-		lines.append("狀態：" + state)
+		var state := Loc.t("Working")
+		if not b["staffed"]: state = Loc.t("No worker (needs more villagers)")
+		elif not Game.is_active(b): state = Loc.t("Hungry, stopped")
+		lines.append(Loc.t("Status: ") + state)
 	if d.get("storage", false):
-		lines.append("附近的工人會把資源搬來這裡")
+		lines.append(Loc.t("Nearby workers bring their goods here"))
 	if b["type"] == "cart":
-		lines.append("營火旁有 %d 個睡鋪，畫住宅區讓村民蓋房子" % d["housing"])
+		lines.append(Loc.t("%d bedrolls by the campfire. Paint a housing zone so villagers build homes") % d["housing"])
 	if d.has("housing"):
-		lines.append("提供 %d 人居住" % d["housing"])
+		lines.append(Loc.t("Houses %d people") % d["housing"])
 	var vm := get_node_or_null(^"../Villagers")
 	if vm and d.get("workers", 0) > 0:
-		var who := "無"
+		var who := Loc.t("none")
 		for v in vm.villagers:
-			if v.job_id == id: who = "%s（%s）" % [v.vname, v.status_text()]
-		lines.append("工人：" + who)
+			if v.job_id == id: who = (Loc.t("%s (%s)") % [v.vname, v.status_text()])
+		lines.append(Loc.t("Worker: ") + who)
 	_info_body.text = "\n".join(lines)
 
 # ---------------- toasts ----------------
@@ -386,13 +405,13 @@ func show_toast(text: String) -> void:
 
 func _confirm_restart() -> void:
 	var dlg := ConfirmationDialog.new()
-	dlg.dialog_text = "確定要清除存檔、重新開始嗎？"
-	dlg.ok_button_text = "重新開始"
-	dlg.cancel_button_text = "取消"
+	dlg.dialog_text = Loc.t("Delete the save and start over?")
+	dlg.ok_button_text = Loc.t("Restart")
+	dlg.cancel_button_text = Loc.t("Cancel")
 	dlg.confirmed.connect(func():
 		_ctl.cancel_place(); _ctl.select(-1)
 		Game.delete_save(); Game.new_game()
-		show_toast("新的村莊開始了"))
+		show_toast(Loc.t("A new village begins")))
 	dlg.canceled.connect(dlg.queue_free)
 	_root.add_child(dlg)
 	dlg.popup_centered()

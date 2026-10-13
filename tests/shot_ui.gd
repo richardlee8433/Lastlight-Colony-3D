@@ -1,27 +1,43 @@
 extends SceneTree
+## Renders the UI in English and Chinese (farmhouse selected) — needs a display / xvfb:
+##   godot --path . --script res://tests/shot_ui.gd
+## Saves _ui_en.png and _ui_zh.png.
+
 var f := 0
-func _initialize(): change_scene_to_file("res://main.tscn")
-func _process(_d):
+var game; var vm; var wear; var cam; var ctl
+var start_lang := "en"
+
+func _initialize() -> void:
+	change_scene_to_file("res://main.tscn")
+
+func _process(_d: float) -> bool:
 	if current_scene == null: return false
 	f += 1
-	var game = root.get_node("Game")
-	var ctl = current_scene.get_node("BuildController")
 	if f == 3:
-		game._autosave = false
-		game.delete_save(); game.new_game()
-		game.resources["wood"] = 300; game.resources["stone"] = 200
-		ctl.try_place("woodcutter", Vector2i(-6, 5))
-		ctl.try_place("farm", Vector2i(-1, 6))
-		ctl.try_place("house", Vector2i(4, 4))
-		ctl.try_place("house", Vector2i(4, 8))
-		ctl.try_place("quarry", Vector2i(8, 5))
-		game.step(3.9)
-		ctl.select(game.buildings[1]["id"])
-		ctl.begin_place("house")
-		ctl.cancel_place()
-		ctl.select(game.buildings[1]["id"])
-	if f == 40:
-		root.get_viewport().get_texture().get_image().save_png("res://_ui.png")
-		game.delete_save()
+		game = root.get_node("Game"); vm = current_scene.get_node("Villagers"); wear = current_scene.get_node("PathWear")
+		cam = current_scene.get_node("Camera"); ctl = current_scene.get_node("BuildController")
+		start_lang = Loc.lang
+		game._autosave = false; game.delete_save(); game.new_game(); game.speed = 0.0
+		vm._first_sync()
+		var id: int = -1
+		var spot := Vector2(-5.5, -4.5)
+		for k in 60:
+			if ctl.can_place("farm", spot, 0.35):
+				id = ctl.try_place("farm", spot, 0.35)
+				break
+			spot += Vector2(0.5, 0.3)
+		print("farm ", id, " at ", spot)
+		for k in 60:
+			game.step(0.1); vm.tick(0.1)
+		ctl.select(id)
+		game.set_language("en")
+		cam.target = Vector3(spot.x + 1.5, 0.3, spot.y + 2.0); cam._dist = 14.0; cam._pitch = 0.8; cam._yaw = -0.3; cam._apply()
+	if f == 12:
+		root.get_viewport().get_texture().get_image().save_png("res://_ui_en.png")
+		game.set_language("zh")
+	if f == 20:
+		root.get_viewport().get_texture().get_image().save_png("res://_ui_zh.png")
+		game.set_language(start_lang)
+		game.delete_save(); wear.clear()
 		quit()
 	return false

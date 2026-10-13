@@ -2,9 +2,9 @@ class_name Defs
 ## Static game data: resources, buildings, quests, tuning. Tweak balance here.
 
 const RESOURCES := {
-	"wood": {"name": "木材", "color": Color(0.80, 0.58, 0.32)},
-	"stone": {"name": "石材", "color": Color(0.72, 0.74, 0.78)},
-	"food": {"name": "食物", "color": Color(0.92, 0.42, 0.36)},
+	"wood": {"name": "Wood", "color": Color(0.80, 0.58, 0.32)},
+	"stone": {"name": "Stone", "color": Color(0.72, 0.74, 0.78)},
+	"food": {"name": "Food", "color": Color(0.92, 0.42, 0.36)},
 }
 
 ## the settlers arrive with a supply cart (storage + camp beds) and these goods
@@ -31,21 +31,21 @@ const GROWTH_FOOD_MIN := 10
 ##   door       where residents rest (houses)     drop   where goods are delivered (storehouses)
 const BUILDINGS := {
 	"woodcutter": {
-		"name": "伐木場", "desc": "伐木工到附近的樹林砍樹，扛回倉庫",
+		"name": "Woodcutter", "desc": "The woodcutter fells trees nearby and carries the logs to storage",
 		"cost": {"wood": 15}, "size": 3,
 		"workers": 1, "yield": {"wood": 8},
 		"nav_block": [Rect2(-1.05, -0.75, 2.1, 1.5), Rect2(-0.55, -1.3, 1.25, 0.45), Rect2(0.8, -1.25, 0.5, 0.5)],
 		"job": {"anim": "chop", "tool": "Axe", "carry": "CarryLog", "hat": "Hood", "target": "tree"},
 	},
 	"farm": {
-		"name": "農舍", "desc": "蓋好後畫出田地。農夫照顧麥田，把收成背回倉庫；田越大每趟收成越多",
+		"name": "Farmhouse", "desc": "After building it, paint its field. The farmer tends the wheat and carries the harvest to storage; bigger fields give more per trip",
 		"cost": {"wood": 20, "stone": 5}, "size": 3,
 		"workers": 1, "yield": {"food": 5},        # real per-trip yield comes from the field size (Fields)
 		"nav_block": [Rect2(-1.2, -0.95, 2.4, 1.7)],
 		"job": {"anim": "hoe", "tool": "Hoe", "carry": "CarrySack", "hat": "HatStraw", "target": "field"},
 	},
 	"quarry": {
-		"name": "採石場", "desc": "石匠敲下石塊，搬回倉庫",
+		"name": "Quarry", "desc": "The mason breaks off stone and hauls it to storage",
 		"cost": {"wood": 25}, "size": 3,
 		"workers": 1, "yield": {"stone": 6},
 		"nav_block": [Rect2(-1.2, -1.4, 1.8, 1.5), Rect2(0.5, 0.6, 1.25, 0.45), Rect2(-1.05, 0.75, 0.3, 0.3)],
@@ -53,21 +53,21 @@ const BUILDINGS := {
 		"job": {"anim": "mine", "tool": "Pick", "carry": "CarryStone", "hat": "HatCap", "target": "spot"},
 	},
 	"house": {
-		"name": "民房", "desc": "增加 4 人居住空間",
+		"name": "House", "desc": "Room for 4 villagers",
 		"cost": {"wood": 20, "stone": 15}, "size": 3,
 		"workers": 0, "housing": 4,
 		"nav_block": [Rect2(-1.35, -1.0, 2.7, 2.0)],
 		"door": Vector2(0.0, 1.45),
 	},
 	"cart": {
-		"name": "補給車", "desc": "移民帶來的補給車：臨時倉庫，旁邊的營火有 4 個睡鋪",
+		"name": "Supply cart", "desc": "The settlers' supply cart: temporary storage, with 4 bedrolls by the campfire",
 		"cost": {}, "size": 3, "permanent": true,
 		"workers": 0, "storage": true, "housing": 4,
 		"nav_block": [Rect2(-1.45, -0.62, 2.4, 1.24), Rect2(1.02, 0.72, 0.56, 0.56)],
 		"drop": Vector2(-0.5, 1.05), "door": Vector2(1.3, 1.75),
 	},
 	"storehouse": {
-		"name": "倉庫", "desc": "村民把資源搬到最近的倉庫，蓋在生產區旁邊可以縮短搬運",
+		"name": "Storehouse", "desc": "Villagers haul goods to the nearest storage. Build one near production to shorten trips",
 		"cost": {"wood": 30, "stone": 10}, "size": 3,
 		"workers": 0, "storage": true,
 		"nav_block": [Rect2(-1.35, -1.35, 2.7, 2.35)],
@@ -145,8 +145,8 @@ static func quads_overlap(a: PackedVector2Array, b: PackedVector2Array) -> bool:
 ## build menu: building types plus the residential-zone brush ("zone")
 const BUILD_ORDER := ["woodcutter", "farm", "quarry", "zone", "storehouse"]
 const TOOLS := {
-	"zone": {"name": "住宅區", "desc": "畫出住宅區。村子需要更多住處、資源也夠時，村民會自己在區域裡蓋房子（每間 木材 20 石材 15）",
-		"label": "畫出範圍"},
+	"zone": {"name": "Housing zone", "desc": "Paint where people may live. When the village needs beds and can pay, villagers build houses there themselves (each: Wood 20, Stone 15)",
+		"label": "Paint area"},
 }
 
 ## farm fields: painted per farmhouse on the zone grid
@@ -168,23 +168,31 @@ const ZONE := {
 }
 
 const QUESTS := [
-	{"text": "蓋一座伐木場", "type": "build", "building": "woodcutter", "count": 1, "reward": {"food": 10}},
-	{"text": "蓋一座農舍並畫出田地", "type": "build", "building": "farm", "count": 1, "reward": {"wood": 15}},
-	{"text": "畫一塊住宅區，等村民蓋房子", "type": "build", "building": "house", "count": 1, "reward": {"stone": 10}},
-	{"text": "蓋一座採石場", "type": "build", "building": "quarry", "count": 1, "reward": {"wood": 20}},
-	{"text": "在生產區旁蓋一座倉庫", "type": "build", "building": "storehouse", "count": 1, "reward": {"food": 20}},
-	{"text": "人口達到 10 人", "type": "population", "value": 10, "reward": {"food": 30}},
-	{"text": "存到 100 木材", "type": "resource", "res": "wood", "value": 100, "reward": {"stone": 30}},
-	{"text": "擁有 3 座農舍", "type": "build", "building": "farm", "count": 3, "reward": {"wood": 40}},
-	{"text": "人口達到 20 人", "type": "population", "value": 20, "reward": {}},
+	{"text": "Build a woodcutter", "type": "build", "building": "woodcutter", "count": 1, "reward": {"food": 10}},
+	{"text": "Build a farmhouse and paint its field", "type": "build", "building": "farm", "count": 1, "reward": {"wood": 15}},
+	{"text": "Paint a housing zone and wait for a house", "type": "build", "building": "house", "count": 1, "reward": {"stone": 10}},
+	{"text": "Build a quarry", "type": "build", "building": "quarry", "count": 1, "reward": {"wood": 20}},
+	{"text": "Build a storehouse near production", "type": "build", "building": "storehouse", "count": 1, "reward": {"food": 20}},
+	{"text": "Reach 10 villagers", "type": "population", "value": 10, "reward": {"food": 30}},
+	{"text": "Stockpile 100 wood", "type": "resource", "res": "wood", "value": 100, "reward": {"stone": 30}},
+	{"text": "Have 3 farmhouses", "type": "build", "building": "farm", "count": 3, "reward": {"wood": 40}},
+	{"text": "Reach 20 villagers", "type": "population", "value": 20, "reward": {}},
 ]
 
 ## display name of a building type or tool
 static func label(type: String) -> String:
-	return TOOLS[type]["name"] if TOOLS.has(type) else BUILDINGS[type]["name"]
+	return Loc.t(TOOLS[type]["name"] if TOOLS.has(type) else BUILDINGS[type]["name"])
+
+## translated description of a building type or tool
+static func desc(type: String) -> String:
+	return Loc.t(TOOLS[type]["desc"] if TOOLS.has(type) else BUILDINGS[type]["desc"])
+
+## translated resource name
+static func res_name(r: String) -> String:
+	return Loc.t(RESOURCES[r]["name"])
 
 static func cost_text(cost: Dictionary) -> String:
 	var parts: Array[String] = []
 	for r in cost:
-		parts.append("%s %d" % [RESOURCES[r]["name"], cost[r]])
+		parts.append("%s %d" % [res_name(r), cost[r]])
 	return "  ".join(parts)

@@ -15,6 +15,7 @@ Open Godot, choose **Import**, and select `project.godot`. Wait for the first as
 | Select / demolish | Left-click a building, then use the side panel or press `Delete` |
 | Camera | Right-drag to rotate, `Q`/`E` to rotate, `WASD` or middle-drag to pan, mouse wheel or pinch to zoom |
 | Speed | Pause / 1x / 2x / 4x buttons in the top-right corner |
+| Language | English by default; the "中文" / "English" button in the top-right switches (remembered in `user://settings.cfg`) |
 
 ## Gameplay (MVP)
 - **Opening**: the map starts as open meadow. Three settlers walk in from the south road to the **supply cart**. The cart is the temporary storage (holding the starting wood 60, stone 20, food 40), and the campfire beside it has 4 sleeping spots. The cart can't be demolished. Saves from before this change get a supply cart automatically.
@@ -30,6 +31,9 @@ Open Godot, choose **Import**, and select `project.godot`. Wait for the first as
 - **Villagers**: every villager is a little figure on the map. Workers walk to their workplace, work (chopping trees, quarrying, hoeing the fields), carry what they produce to the storage at the starting cottage, and go home every few trips to rest. Unemployed villagers wander around the village. New villagers walk in along the roads, and villagers who lose their housing walk away.
 - **Organic roads**: there are no roads to build. Wherever villagers walk often, the grass is gradually worn away and a dirt path appears. Villagers prefer to walk on paths, so frequently used routes become main roads, and paths that are no longer used slowly grow back into grass. Paths are saved along with the game.
 
+## Languages
+The code is written in English; `Loc.t("...")` looks up the Traditional Chinese text in `scripts/game/loc.gd` (building, resource and quest names in `defs.gd` are translated where they are shown). The UI font is Noto Sans TC (SIL OFL, `fonts/OFL.txt`) cut down to the characters the game uses, so text renders the same on every platform, including web builds. After adding Chinese text, rebuild the font: `python3 tools/subset_font.py <NotoSansTC[wght].ttf>`. `tests/test_i18n.gd` fails if a string has no translation or a glyph is missing.
+
 All balance values (costs, output, day length, quests, villager speed, how fast paths wear and fade) are in `scripts/game/defs.gd`.
 
 ## Project layout
@@ -38,7 +42,8 @@ scripts/game/defs.gd             game data and balance values
 scripts/game/game_state.gd       simulation core (autoload: Game) — resources (added via deliveries), population, quests, saving (v2; old grid saves are converted automatically)
 scripts/game/build_controller.gd free placement (overlap / obstacle / no-build-zone checks), placement preview, rotation, selection, delivery popups
 scripts/game/building_visuals.gd building models (temporary placeholders; the house uses the baked cottage)
-scripts/ui/hud.gd                all UI
+scripts/ui/hud.gd                all UI (rebuilt when the language changes)
+scripts/game/loc.gd              English -> Traditional Chinese table, language setting
 scripts/world/nav_grid.gd        walkable grid (0.5 m) + A* pathfinding; buildings block cells, worn paths lower the cost
 scripts/world/fields.gd          farm fields: painted cells per farmhouse, soil/wheat visuals, yield per trip
 scripts/world/path_wear.gd       wear map, path decay, trampled grass, path saving
@@ -59,10 +64,12 @@ tests/test_gameplay.gd           automated tests
 godot --headless --path . --script res://tests/test_gameplay.gd    # economy, quests, saving
 godot --headless --path . --script res://tests/test_villagers.gd   # pathfinding, jobs, paths, moving in and out
 godot --headless --path . --script res://tests/test_zones.gd      # residential zones: painting, erasing, auto-built houses, saving
+godot --headless --path . --script res://tests/test_i18n.gd       # every UI string translated, font covers all glyphs, runtime switching
 godot --headless --path . --script res://tests/test_fields.gd     # farm fields: starter field, painting rules, erase / clear, yield, saving
 godot --headless --path . --script res://tests/sim_balance.gd     # follow a fixed build order for 30 days and print each day's economy (for checking balance)
 godot --path . --script res://tests/shot_village.gd -- 6          # render a screenshot after 6 minutes of time-lapse (needs a display)
 godot --path . --script res://tests/shot_opening.gd               # render the opening screenshots (needs a display)
+godot --path . --script res://tests/shot_ui.gd                    # render the UI in English and Chinese (needs a display)
 godot --path . --script res://tests/shot_fields.gd                # render a farmhouse + painted field (needs a display)
 ```
 

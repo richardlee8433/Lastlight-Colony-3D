@@ -12,6 +12,7 @@ signal quest_changed
 signal day_passed(day: int)
 signal reset                                     # new game started (paths, villagers clear)
 signal zones_changed
+signal language_changed
 
 const SAVE_PATH := "user://save.json"
 const SAVE_VERSION := 2
@@ -35,6 +36,7 @@ var _today := {}                 # goods delivered today
 var _yesterday := {}             # goods delivered during the previous full day
 
 func _ready() -> void:
+	Loc.load_settings()
 	_clear_zones()
 	if not load_game():
 		new_game()
@@ -133,7 +135,7 @@ func add_building(type: String, pos: Vector2, angle := 0.0, pay := true) -> Dict
 	var d: Dictionary = Defs.BUILDINGS[type]
 	if pay:
 		if not can_afford(d["cost"]):
-			toast.emit("資源不足：需要 " + Defs.cost_text(d["cost"]))
+			toast.emit(Loc.t("Not enough resources: need ") + Defs.cost_text(d["cost"]))
 			return {}
 		for r in d["cost"]:
 			resources[r] -= int(d["cost"][r])
@@ -152,7 +154,7 @@ func demolish(id: int) -> void:
 	if b.is_empty(): return
 	var d: Dictionary = Defs.BUILDINGS[b["type"]]
 	if d.get("permanent", false):
-		toast.emit("%s不能拆除" % d["name"])
+		toast.emit(Loc.t("%s can't be demolished") % Loc.t(d["name"]))
 		return
 	for r in d["cost"]:
 		resources[r] += int(d["cost"][r] / 2.0)
@@ -160,7 +162,7 @@ func demolish(id: int) -> void:
 	population = min(population, housing())
 	_assign_workers()
 	building_removed.emit(b)
-	toast.emit("已拆除%s，退回一半資源" % d["name"])
+	toast.emit(Loc.t("%s demolished, half the cost refunded") % Loc.t(d["name"]))
 	changed.emit()
 
 ## A villager carried goods into a storage at world point `at`.
@@ -171,6 +173,14 @@ func deliver(res: String, amount: int, at := Vector2.ZERO) -> void:
 	delivered.emit(res, amount, at)
 	changed.emit()
 	_check_quest()
+
+## Switch the UI language ("en" / "zh"); remembered in user://settings.cfg.
+func set_language(l: String) -> void:
+	if not Loc.LANGS.has(l) or l == Loc.lang: return
+	Loc.lang = l
+	Loc.save_settings()
+	language_changed.emit()
+	changed.emit(); quest_changed.emit()
 
 func set_speed(s: float) -> void:
 	speed = s
@@ -201,15 +211,15 @@ func _end_of_day() -> void:
 	if resources["food"] >= eat:
 		resources["food"] -= eat
 		if starving:
-			toast.emit("村民吃飽了，恢復工作")
+			toast.emit(Loc.t("Everyone has eaten. Back to work"))
 		starving = false
 		if population < housing() and resources["food"] >= Defs.GROWTH_FOOD_MIN:
 			population += 1
-			toast.emit("一位新村民搬進村子！")
+			toast.emit(Loc.t("A new villager moved in!"))
 	else:
 		resources["food"] = 0
 		if not starving:
-			toast.emit("食物不足！只剩農夫還在工作")
+			toast.emit(Loc.t("Out of food! Only farmers keep working"))
 		starving = true
 	_assign_workers()
 	day_passed.emit(day)
@@ -261,12 +271,12 @@ func _check_quest() -> void:
 		for r in q["reward"]:
 			resources[r] += int(q["reward"][r])
 		var reward_txt: String = Defs.cost_text(q["reward"])
-		toast.emit("任務完成：%s%s" % [q["text"], ("  獎勵 " + reward_txt) if reward_txt != "" else ""])
+		toast.emit(Loc.t("Quest complete: %s%s") % [Loc.t(q["text"]), (Loc.t("  Reward: ") + reward_txt) if reward_txt != "" else ""])
 		quest_index += 1
 		quest_changed.emit()
 		changed.emit()
 		if current_quest().is_empty():
-			toast.emit("所有任務完成！繼續自由建造吧")
+			toast.emit(Loc.t("All quests complete! Keep building freely"))
 
 # ---------------- save / load ----------------
 

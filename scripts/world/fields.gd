@@ -78,18 +78,18 @@ func is_field(p: Vector2) -> bool:
 
 ## Why a cell can't be part of this farm's field ("" = it can).
 func cell_problem(farm: Dictionary, i: int) -> String:
-	if i < 0: return "超出範圍"
+	if i < 0: return Loc.t("out of range")
 	var p := cell_center(i)
-	if not Defs.BUILD_BOUNDS.has_point(p): return "超出範圍"
-	if p.distance_to(farm["pos"]) > Defs.FIELD["range"]: return "離農舍太遠"
-	if owner_map[i] != 0 and owner_map[i] != farm["id"]: return "別的農田"
-	if Game.zones.size() > i and Game.zones[i] == 1: return "住宅區"
+	if not Defs.BUILD_BOUNDS.has_point(p): return Loc.t("out of range")
+	if p.distance_to(farm["pos"]) > Defs.FIELD["range"]: return Loc.t("too far from the farmhouse")
+	if owner_map[i] != 0 and owner_map[i] != farm["id"]: return Loc.t("another farm's field")
+	if Game.zones.size() > i and Game.zones[i] == 1: return Loc.t("housing zone")
 	var nav := get_node_or_null(nav_path)
-	if nav and nav.scenery_at(p): return "障礙物"
+	if nav and nav.scenery_at(p): return Loc.t("obstacle")
 	for b in Game.buildings:
 		var l := Defs.to_local(b, p)
 		var h := Defs.half_extents(b["type"]) + Vector2(0.1, 0.1)
-		if absf(l.x) <= h.x and absf(l.y) <= h.y: return "建築"
+		if absf(l.x) <= h.x and absf(l.y) <= h.y: return Loc.t("building")
 	return ""
 
 ## Paint (on) or erase a disc of the farm's field. Returns cells changed.

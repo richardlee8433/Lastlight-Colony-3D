@@ -65,22 +65,22 @@ func _spawn_existing() -> void:
 func place_problem(type: String, pos: Vector2, angle: float) -> String:
 	var quad := Defs.footprint_corners(type, pos, angle)
 	for c in quad:
-		if not Defs.BUILD_BOUNDS.has_point(c): return "超出建造範圍"
+		if not Defs.BUILD_BOUNDS.has_point(c): return Loc.t("out of bounds")
 	for r in Defs.NO_BUILD:
 		var rr: Rect2 = r
 		var rq := PackedVector2Array([rr.position, Vector2(rr.end.x, rr.position.y), rr.end, Vector2(rr.position.x, rr.end.y)])
-		if Defs.quads_overlap(quad, rq): return "太靠近村莊中心"
+		if Defs.quads_overlap(quad, rq): return Loc.t("too close to the village centre")
 	var grown := Defs.footprint_corners(type, pos, angle, Defs.BUILD_GAP)
 	for b in Game.buildings:
 		if Defs.quads_overlap(grown, Defs.footprint_corners(b["type"], b["pos"], b["angle"])):
-			return "和其他建築重疊"
+			return Loc.t("overlaps another building")
 	if _nav:
 		var h := Defs.half_extents(type)
 		var nx := maxi(2, ceili(h.x * 2 / 0.4)); var nz := maxi(2, ceili(h.y * 2 / 0.4))
 		for i in nx + 1:
 			for j in nz + 1:
 				var l := Vector2(-h.x + 2 * h.x * i / nx, -h.y + 2 * h.y * j / nz)
-				if _nav.scenery_at(pos + Defs.rot2(l, angle)): return "有樹木或障礙物"
+				if _nav.scenery_at(pos + Defs.rot2(l, angle)): return Loc.t("trees or obstacles in the way")
 	var f := _fields()
 	if f:
 		var h := Defs.half_extents(type)
@@ -88,7 +88,7 @@ func place_problem(type: String, pos: Vector2, angle: float) -> String:
 		for i in nx + 1:
 			for j in nz + 1:
 				var l := Vector2(-h.x + 2 * h.x * i / nx, -h.y + 2 * h.y * j / nz) * 0.9
-				if f.is_field(pos + Defs.rot2(l, angle)): return "這裡是農田"
+				if f.is_field(pos + Defs.rot2(l, angle)): return Loc.t("that's a farm field")
 	return ""
 
 func can_place(type: String, pos: Vector2, angle := 0.0) -> bool:
@@ -106,7 +106,7 @@ func building_at_point(p: Vector3) -> int:
 func try_place(type: String, pos: Vector2, angle := 0.0) -> int:
 	var why := place_problem(type, pos, angle)
 	if why != "":
-		Game.toast.emit("這裡不能蓋：" + why)
+		Game.toast.emit(Loc.t("Can't build here: ") + why)
 		return -1
 	var b := Game.add_building(type, pos, angle)
 	return -1 if b.is_empty() else int(b["id"])
@@ -221,10 +221,10 @@ func brush_at(p: Vector2, on: bool) -> int:
 func clear_brush_area() -> void:
 	if placing == "field" and _fields():
 		_fields().clear(field_farm)
-		Game.toast.emit("已清空這塊田地")
+		Game.toast.emit(Loc.t("Field cleared"))
 	elif placing == "zone":
 		Game._clear_zones()
-		Game.toast.emit("已清除所有住宅區（已蓋好的房子會保留）")
+		Game.toast.emit(Loc.t("All housing zones cleared (built houses stay)"))
 
 func _update_brush(mouse: Vector2) -> void:
 	if _brush == null: return
@@ -305,7 +305,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					if placing == "farm":
 						# Foundation-style: right after the farmhouse, shape its field
 						begin_field(id)
-						Game.toast.emit("已畫好一塊起始田地，拖曳擴大，按 X 或 Shift 擦除")
+						Game.toast.emit(Loc.t("A starter field is ready. Drag to grow it; X or Shift to erase"))
 					else:
 						_update_ghost(event.position)
 						if not Game.can_afford(Defs.BUILDINGS[placing]["cost"]):
@@ -398,9 +398,9 @@ func _refresh_status() -> void:
 		var lbl: Label3D = _nodes[b["id"]].get_node("Status")
 		var d: Dictionary = Defs.BUILDINGS[b["type"]]
 		if d.get("workers", 0) > 0 and not b["staffed"]:
-			lbl.text = "缺工人"; lbl.visible = true
+			lbl.text = Loc.t("No worker"); lbl.visible = true
 		elif d.get("workers", 0) > 0 and not Game.is_active(b):
-			lbl.text = "餓肚子"; lbl.visible = true
+			lbl.text = Loc.t("Hungry"); lbl.visible = true
 		else:
 			lbl.visible = false
 	if placing != "":
@@ -410,7 +410,7 @@ func _on_delivered(res: String, amount: int, at: Vector2) -> void:
 	if not is_inside_tree(): return
 	var lbl := Label3D.new()
 	lbl.font = Fonts.cjk()
-	lbl.text = "+%d %s" % [amount, Defs.RESOURCES[res]["name"]]
+	lbl.text = "+%d %s" % [amount, Defs.res_name(res)]
 	lbl.font_size = 56
 	lbl.pixel_size = 0.004
 	lbl.outline_size = 12
