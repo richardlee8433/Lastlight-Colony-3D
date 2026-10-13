@@ -127,7 +127,17 @@ static func _quarry(r: Node3D, rng: RandomNumberGenerator) -> void:
 	box(r, Vector3(0.3, 0.3, 0.3), Vector3(-0.15, 1.45, 0.9), stone())
 	cyl(r, 0.01, 0.75, Vector3(-0.15, 1.85, 0.9), wood_dark())
 
+const FARMHOUSE_SCENE := "res://models/farmhouse.glb"
+
 static func _farm(r: Node3D, rng: RandomNumberGenerator) -> void:
+	# baked farmhouse (tools/farmhouse.py), same style as the village houses
+	if ResourceLoader.exists(FARMHOUSE_SCENE):
+		r.add_child((load(FARMHOUSE_SCENE) as PackedScene).instantiate())
+		return
+	_farm_simple(r, rng)
+
+## primitive fallback when the baked model is missing
+static func _farm_simple(r: Node3D, rng: RandomNumberGenerator) -> void:
 	# farmhouse: a small timber-framed cottage with a thatched roof, a hay lean-to and
 	# harvest sacks by the door. The field itself is painted on the ground (Fields).
 	box(r, Vector3(2.35, 0.16, 1.55), Vector3(0, 0.08, -0.15), stone())

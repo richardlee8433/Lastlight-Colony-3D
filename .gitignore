@@ -12,3 +12,4 @@ _opening_*.png
 _fields*.png
 _ui_*.png
 _*.png.import
+__pycache__/

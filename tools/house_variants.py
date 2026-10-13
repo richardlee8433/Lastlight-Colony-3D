@@ -362,8 +362,16 @@ def build_house(v, col):
         for k in range(7):
             yy = -D / 2 + 0.05 + k * (D + 0.15) / 6
             cube(col, (math.hypot(run, z_hi - z_lo) + 0.12, 0.05, 0.04), mid + Vector((0, yy, 0.05)), M["beam"], rot=(0, ang, 0), bevel=0.005)
+        if v.get("hay"):
+            # hay bales stacked under it (farmhouse)
+            for k in range(3):
+                cube(col, (0.62, 0.42, 0.36), ((x_in + x_out) / 2 + s * 0.05, -D / 2 + 0.45 + k * 0.62, 0.2), M["thatch"],
+                     rot=(0, 0, rnd.uniform(-0.12, 0.12)), bevel=0.06, wobble=0.02, seed=v["seed"] + 300 + k)
+            for k in range(2):
+                cube(col, (0.62, 0.42, 0.34), ((x_in + x_out) / 2 + s * 0.05, -D / 2 + 0.75 + k * 0.62, 0.56), M["thatch"],
+                     rot=(0, 0, rnd.uniform(-0.15, 0.15)), bevel=0.06, wobble=0.02, seed=v["seed"] + 310 + k)
         # firewood stacked under it
-        for row in range(3):
+        for row in range(0 if v.get("hay") else 3):
             for k in range(5 - row):
                 bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.1, depth=D * 0.7,
                     location=((x_in + x_out) / 2 + (k - (4 - row) / 2) * 0.19 * (1 if s > 0 else -1) * 0.9, 0.1, 0.12 + row * 0.17),
@@ -434,27 +442,37 @@ def render_preview(path):
     scene.render.filepath = path
     bpy.ops.render.render(write_still=True)
 
-for idx in range(COUNT):
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    p = dict(PRESETS[idx % len(PRESETS)]); p["seed"] = 100 + idx * 17
-    p["plaster"] = PLASTERS[p["plaster"]]; p["beam"] = BEAMS[p["beam"]]; p["flowers"] = FLOWERS[p["flowers"]]
-    col = bpy.data.collections.new("House"); bpy.context.scene.collection.children.link(col)
-    size_x, size_y = build_house(p, col)
-    # join, fit to the in-game footprint (walls ~2.7 x 1.9 m), bake, export
+def finish(col, name, size_x, size_y, fit_w=2.75, fit_d=1.95, out_dir=None):
+    """Join the collection, scale it to fit fit_w x fit_d metres, bake, export <out_dir>/<name>.glb."""
     bpy.ops.object.select_all(action="DESELECT")
     objs = [o for o in col.objects if o.type == "MESH"]
     for o in objs: o.select_set(True)
     bpy.context.view_layer.objects.active = objs[0]
     bpy.ops.object.convert(target="MESH")
     bpy.ops.object.join()
-    house = bpy.context.object; house.name = f"house_{idx}"
-    s = min(2.75 / size_x, 1.95 / size_y)
-    house.scale = (s, s, s)
+    obj = bpy.context.object; obj.name = name
+    s = min(fit_w / size_x, fit_d / size_y)
+    obj.scale = (s, s, s)
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-    bake(house, f"house_{idx}")
-    bpy.ops.object.select_all(action="DESELECT"); house.select_set(True)
-    bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, f"house_{idx}.glb"), export_format="GLB", use_selection=True,
+    bake(obj, name)
+    bpy.ops.object.select_all(action="DESELECT"); obj.select_set(True)
+    path = os.path.join(out_dir or OUT, f"{name}.glb")
+    bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True,
                               export_apply=True, export_image_format="JPEG", export_jpeg_quality=82)
-    print(f"exported house_{idx}  scale {s:.3f}  faces {len(house.data.polygons)}")
-    if PREVIEW:
-        render_preview(os.path.join(OUT, f"house_{idx}.png"))
+    print(f"exported {name}  scale {s:.3f}  faces {len(obj.data.polygons)}")
+    return path
+
+def variant(p, seed):
+    p = dict(p); p["seed"] = seed
+    p["plaster"] = PLASTERS[p["plaster"]]; p["beam"] = BEAMS[p["beam"]]; p["flowers"] = FLOWERS[p["flowers"]]
+    return p
+
+if __name__ == "__main__":
+    for idx in range(COUNT):
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        p = variant(PRESETS[idx % len(PRESETS)], 100 + idx * 17)
+        col = bpy.data.collections.new("House"); bpy.context.scene.collection.children.link(col)
+        size_x, size_y = build_house(p, col)
+        finish(col, f"house_{idx}", size_x, size_y)
+        if PREVIEW:
+            render_preview(os.path.join(OUT, f"house_{idx}.png"))

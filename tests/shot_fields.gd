@@ -25,12 +25,12 @@ func _process(_d: float) -> bool:
 		game._autosave = false; game.delete_save(); game.new_game(); game.speed = 0.0
 		game.resources["wood"] = 300; game.resources["stone"] = 300
 		vm._first_sync()
-		var id: int = ctl.try_place("farm", spot, 0.35)
-		if id < 0:
-			for k in 30:
-				spot += Vector2(0.5, 0.3)
+		var id: int = -1
+		for k in 60:
+			if ctl.can_place("farm", spot, 0.35):
 				id = ctl.try_place("farm", spot, 0.35)
-				if id >= 0: break
+				break
+			spot += Vector2(0.5, 0.3)
 		ctl.begin_field(id)
 		for k in 7:
 			ctl.brush_at(spot + Vector2(-1.5 + k * 0.6, 4.6).rotated(-0.35), true)
@@ -39,7 +39,7 @@ func _process(_d: float) -> bool:
 	if f == 12:
 		root.get_viewport().get_texture().get_image().save_png("res://_fields_edit.png")
 		ctl.cancel_place()
-		cam._dist = 9.0; cam._pitch = 0.55; cam._yaw = 0.3; cam._apply()
+		cam.target = Vector3(spot.x, 0.6, spot.y + 1.0); cam._dist = 7.5; cam._pitch = 0.5; cam._yaw = -0.9; cam._apply()
 	if f == 22:
 		root.get_viewport().get_texture().get_image().save_png("res://_fields.png")
 		game.delete_save(); wear.clear()
