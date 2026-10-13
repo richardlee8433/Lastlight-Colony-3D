@@ -4,6 +4,7 @@ extends Node3D
 
 signal mode_changed(type: String)        # "" when not placing
 signal selection_changed(id: int)        # -1 when nothing selected
+signal brush_changed                     # erase toggle / field farm changed
 
 const ROTATE_STEP := PI / 12.0           # 15°
 
@@ -11,6 +12,7 @@ const ROTATE_STEP := PI / 12.0           # 15°
 @export var scatter_path: NodePath = ^"../Scatter"
 @export var nav_path: NodePath = ^"../Nav"
 @export var zones_path: NodePath = ^"../Zones"
+@export var fields_path: NodePath = ^"../Fields"
 
 var placing := ""
 var ghost_angle := 0.0
@@ -28,6 +30,9 @@ var _ghost_mat: StandardMaterial3D
 var _brush: MeshInstance3D
 var _brush_mat: StandardMaterial3D
 var _painting := 0                     # 0 none, 1 painting, -1 erasing
+## brush modes: placing == "zone" (residential) or "field" (the field of farm `field_farm`)
+var erase_mode := false                # erase toggle (Shift inverts it while held)
+var field_farm := -1
 
 @onready var _cam: Camera3D = get_node(camera_path)
 @onready var _scatter: Node = get_node_or_null(scatter_path)
@@ -76,6 +81,14 @@ func place_problem(type: String, pos: Vector2, angle: float) -> String:
 			for j in nz + 1:
 				var l := Vector2(-h.x + 2 * h.x * i / nx, -h.y + 2 * h.y * j / nz)
 				if _nav.scenery_at(pos + Defs.rot2(l, angle)): return "有樹木或障礙物"
+	var f := _fields()
+	if f:
+		var h := Defs.half_extents(type)
+		var nx := maxi(2, ceili(h.x * 2 / 0.4)); var nz := maxi(2, ceili(h.y * 2 / 0.4))
+		for i in nx + 1:
+			for j in nz + 1:
+				var l := Vector2(-h.x + 2 * h.x * i / nx, -h.y + 2 * h.y * j / nz) * 0.9
+				if f.is_field(pos + Defs.rot2(l, angle)): return "這裡是農田"
 	return ""
 
 func can_place(type: String, pos: Vector2, angle := 0.0) -> bool:
@@ -116,7 +129,7 @@ func begin_place(type: String) -> void:
 	cancel_place()
 	select(-1)
 	if type == "zone":
-		_begin_zone()
+		_begin_brush("zone")
 		return
 	placing = type
 	_ghost = BuildingVisuals.create(type, 1)
@@ -130,22 +143,38 @@ func begin_place(type: String) -> void:
 
 func cancel_place() -> void:
 	if placing == "": return
-	if placing == "zone":
-		_end_zone()
+	if is_brush():
+		_end_brush()
 	placing = ""
 	if _ghost: _ghost.queue_free()
 	if _ghost_pad: _ghost_pad.queue_free()
 	_ghost = null; _ghost_pad = null
 	mode_changed.emit("")
 
-# ---------------- residential zone brush ----------------
+# ---------------- area brushes (residential zone / farm field) ----------------
 
 func _zones() -> Node:
 	return get_node_or_null(zones_path)
 
-func _begin_zone() -> void:
-	placing = "zone"
+func _fields() -> Node:
+	return get_node_or_null(fields_path)
+
+func is_brush() -> bool:
+	return placing == "zone" or placing == "field"
+
+## Paint / erase the field of a farmhouse.
+func begin_field(farm_id: int) -> void:
+	var b := Game.get_building(farm_id)
+	if b.is_empty() or b["type"] != "farm": return
+	cancel_place()
+	select(-1)
+	field_farm = farm_id
+	_begin_brush("field")
+
+func _begin_brush(kind: String) -> void:
+	placing = kind
 	_painting = 0
+	erase_mode = false
 	if _brush == null:
 		var tm := TorusMesh.new()
 		var r: float = Defs.ZONE["brush_radius"]
@@ -158,26 +187,60 @@ func _begin_zone() -> void:
 		_brush.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_brush)
 	_brush.visible = true
-	if _zones(): _zones().set_painting(true)
+	if kind == "zone" and _zones(): _zones().set_painting(true)
+	if kind == "field" and _fields(): _fields().set_editing(field_farm)
 	_update_brush(get_viewport().get_mouse_position())
-	mode_changed.emit("zone")
+	mode_changed.emit(kind)
+	brush_changed.emit()
 
-func _end_zone() -> void:
+func _end_brush() -> void:
 	_painting = 0
 	if _brush: _brush.visible = false
 	if _zones(): _zones().set_painting(false)
+	if _fields(): _fields().set_editing(-1)
+	field_farm = -1
+
+## true when the brush currently erases (toggle, inverted while Shift is held)
+func erasing() -> bool:
+	return erase_mode != Input.is_key_pressed(KEY_SHIFT)
+
+func set_erase(on: bool) -> void:
+	erase_mode = on
+	_update_brush(get_viewport().get_mouse_position())
+	brush_changed.emit()
+
+## Paint or erase at a world point with the active brush (tests call this too).
+func brush_at(p: Vector2, on: bool) -> int:
+	if placing == "zone" and _zones():
+		return _zones().paint(p, on)
+	if placing == "field" and _fields():
+		return _fields().paint(field_farm, p, on)
+	return 0
+
+## Clears the whole area of the active brush: this farm's field, or every residential zone.
+func clear_brush_area() -> void:
+	if placing == "field" and _fields():
+		_fields().clear(field_farm)
+		Game.toast.emit("已清空這塊田地")
+	elif placing == "zone":
+		Game._clear_zones()
+		Game.toast.emit("已清除所有住宅區（已蓋好的房子會保留）")
 
 func _update_brush(mouse: Vector2) -> void:
 	if _brush == null: return
 	var p = _ground_point(mouse)
 	if p == null: return
 	_brush.position = p + Vector3(0, 0.08, 0)
-	_brush_mat.albedo_color = Color(1.0, 0.45, 0.35, 0.85) if Input.is_key_pressed(KEY_SHIFT) else Color(1.0, 0.92, 0.6, 0.85)
-	if _painting != 0 and _zones():
-		_zones().paint(Vector2(p.x, p.z), _painting > 0)
+	var er := erasing()
+	if placing == "field":
+		_brush_mat.albedo_color = Color(1.0, 0.45, 0.35, 0.85) if er else Color(0.95, 0.75, 0.35, 0.9)
+	else:
+		_brush_mat.albedo_color = Color(1.0, 0.45, 0.35, 0.85) if er else Color(1.0, 0.92, 0.6, 0.85)
+	if _painting != 0:
+		brush_at(Vector2(p.x, p.z), not er)
 
 func _update_ghost(mouse: Vector2) -> void:
-	if placing == "zone":
+	if is_brush():
 		_update_brush(mouse)
 		return
 	if placing == "" or _ghost == null: return
@@ -221,8 +284,10 @@ func demolish_selected() -> void:
 # ---------------- input ----------------
 
 func _unhandled_input(event: InputEvent) -> void:
-	if placing == "zone" and event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		_painting = (-1 if event.shift_pressed else 1) if event.pressed else 0
+	if event is InputEventKey and event.keycode == KEY_SHIFT and is_brush():
+		_update_brush(get_viewport().get_mouse_position())     # press and release recolour the brush
+	if is_brush() and event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_painting = 1 if event.pressed else 0
 		_update_brush(event.position)
 		get_viewport().set_input_as_handled()
 		return
@@ -237,9 +302,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				_update_ghost(event.position)
 				var id := try_place(placing, _ghost_pos, ghost_angle)
 				if id >= 0:
-					_update_ghost(event.position)
-					if not Game.can_afford(Defs.BUILDINGS[placing]["cost"]):
-						cancel_place()
+					if placing == "farm":
+						# Foundation-style: right after the farmhouse, shape its field
+						begin_field(id)
+						Game.toast.emit("已畫好一塊起始田地，拖曳擴大，按 X 或 Shift 擦除")
+					else:
+						_update_ghost(event.position)
+						if not Game.can_afford(Defs.BUILDINGS[placing]["cost"]):
+							cancel_place()
 				get_viewport().set_input_as_handled()
 			else:
 				var p = _ground_point(event.position)
@@ -247,14 +317,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_RIGHT and placing != "":
 			cancel_place()
 	elif event is InputEventKey and event.pressed:
-		if event.keycode == KEY_SHIFT and placing == "zone":
-			_update_brush(get_viewport().get_mouse_position())
+		if event.keycode == KEY_X and is_brush() and not event.echo:
+			set_erase(not erase_mode)
+			return
 		if event.keycode == KEY_R:
 			_rotate_ghost(-1 if event.shift_pressed else 1)
 			return
 		if event.echo: return
 		match event.keycode:
-			KEY_ESCAPE:
+			KEY_ESCAPE, KEY_ENTER:
 				if placing != "": cancel_place()
 				else: select(-1)
 			KEY_DELETE, KEY_BACKSPACE:

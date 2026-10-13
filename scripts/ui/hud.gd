@@ -25,6 +25,11 @@ var _info: PanelContainer
 var _info_title: Label
 var _info_body: Label
 var _del_button: Button
+var _field_button: Button
+var _brush_bar: PanelContainer
+var _brush_title: Label
+var _erase_button: Button
+var _clear_button: Button
 var _toasts: VBoxContainer
 var _hint: Label
 
@@ -42,6 +47,8 @@ func _ready() -> void:
 	_build_info()
 	_build_toasts()
 	_build_hint()
+	_build_brush_bar()
+	_ctl.brush_changed.connect(_refresh_brush)
 	Game.changed.connect(_refresh)
 	Game.quest_changed.connect(_refresh_quest)
 	Game.toast.connect(show_toast)
@@ -170,6 +177,11 @@ func _build_info() -> void:
 	_info_body = _label("", 16, TEXT)
 	_info_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(_info_body)
+	_field_button = Button.new()
+	_field_button.text = "編輯田地"
+	_field_button.focus_mode = Control.FOCUS_NONE
+	_field_button.pressed.connect(func(): _ctl.begin_field(_ctl.selected))
+	vb.add_child(_field_button)
 	var del := Button.new()
 	_del_button = del
 	del.text = "拆除（退回一半資源）"
@@ -177,6 +189,65 @@ func _build_info() -> void:
 	del.pressed.connect(func(): _ctl.demolish_selected())
 	vb.add_child(del)
 	_info.visible = false
+
+## Toolbar shown while painting a zone or a field: paint / erase toggle, clear, done.
+func _build_brush_bar() -> void:
+	_brush_bar = _panel()
+	_brush_bar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_brush_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_brush_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_brush_bar.position.y = -128
+	_root.add_child(_brush_bar)
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 8)
+	_brush_bar.add_child(hb)
+	_brush_title = _label("", 18, GOLD)
+	_brush_title.custom_minimum_size = Vector2(170, 0)
+	_brush_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hb.add_child(_brush_title)
+	var paint := Button.new()
+	paint.text = "畫"
+	paint.toggle_mode = true
+	paint.focus_mode = Control.FOCUS_NONE
+	paint.custom_minimum_size = Vector2(70, 40)
+	paint.pressed.connect(func(): _ctl.set_erase(false))
+	hb.add_child(paint)
+	_erase_button = Button.new()
+	_erase_button.text = "擦除 (X)"
+	_erase_button.toggle_mode = true
+	_erase_button.focus_mode = Control.FOCUS_NONE
+	_erase_button.custom_minimum_size = Vector2(90, 40)
+	_erase_button.pressed.connect(func(): _ctl.set_erase(true))
+	hb.add_child(_erase_button)
+	_erase_button.set_meta("paint", paint)
+	_clear_button = Button.new()
+	_clear_button.focus_mode = Control.FOCUS_NONE
+	_clear_button.custom_minimum_size = Vector2(90, 40)
+	_clear_button.pressed.connect(func(): _ctl.clear_brush_area())
+	hb.add_child(_clear_button)
+	var done := Button.new()
+	done.text = "完成"
+	done.focus_mode = Control.FOCUS_NONE
+	done.custom_minimum_size = Vector2(70, 40)
+	done.pressed.connect(func(): _ctl.cancel_place())
+	hb.add_child(done)
+	_brush_bar.visible = false
+
+func _refresh_brush() -> void:
+	var on: bool = _ctl.is_brush()
+	_brush_bar.visible = on
+	if not on: return
+	_erase_button.button_pressed = _ctl.erase_mode
+	(_erase_button.get_meta("paint") as Button).button_pressed = not _ctl.erase_mode
+	if _ctl.placing == "field":
+		var f := get_node_or_null(^"../Fields")
+		var n: int = f.field_of(_ctl.field_farm).size() if f else 0
+		var y: int = f.yield_for(_ctl.field_farm) if f else 0
+		_brush_title.text = "田地 %.0f m²  每趟 %d 食物" % [n * 0.25, y]
+		_clear_button.text = "清空田地"
+	else:
+		_brush_title.text = "住宅區 %.0f m²" % (Game.zone_count() * 0.25)
+		_clear_button.text = "全部清除"
 
 func _build_toasts() -> void:
 	_toasts = VBoxContainer.new()
@@ -221,6 +292,7 @@ func _refresh() -> void:
 	for sp in _speed_buttons:
 		_speed_buttons[sp].button_pressed = is_equal_approx(Game.speed, sp)
 	_refresh_quest()
+	if _brush_bar: _refresh_brush()
 
 func _refresh_quest() -> void:
 	var q := Game.current_quest()
@@ -242,10 +314,13 @@ func _on_mode(type: String) -> void:
 		_hint.text = "左鍵 選取建築 · 1-5 建造 · 右鍵拖曳 旋轉鏡頭 · WASD / 中鍵 平移 · 滾輪 縮放"
 	else:
 		if type == "zone":
-			_hint.text = "左鍵拖曳 畫住宅區 · 按住 Shift 拖曳 擦除 · 右鍵 / Esc 結束"
+			_hint.text = "左鍵拖曳 畫住宅區 · X 切換擦除（或按住 Shift 拖曳）· 右鍵 / Esc 完成"
+		elif type == "field":
+			_hint.text = "左鍵拖曳 畫田地（離農舍 %d 公尺內）· X 切換擦除（或按住 Shift 拖曳）· 右鍵 / Esc 完成" % int(Defs.FIELD["range"])
 		else:
 			_hint.text = "左鍵 放置%s · R / Shift+R 或 Shift+滾輪 旋轉 · 右鍵 / Esc 取消" % Defs.BUILDINGS[type]["name"]
 	_refresh_quest()
+	_refresh_brush()
 
 func _on_selection(id: int) -> void:
 	_info.visible = id >= 0
@@ -260,9 +335,20 @@ func _fill_info(id: int) -> void:
 	_info_title.text = d["name"]
 	_del_button.visible = not d.get("permanent", false)
 	var lines: Array[String] = [d["desc"]]
-	if d.has("yield"):
+	_field_button.visible = b["type"] == "farm"
+	var f := get_node_or_null(^"../Fields")
+	if b["type"] == "farm" and f:
+		var n: int = f.field_of(id).size()
+		var y: int = f.yield_for(id)
+		lines.append("田地：%.0f m²（上限 %.0f m²）" % [n * 0.25, Defs.FIELD["max_cells"] * 0.25])
+		if y > 0:
+			lines.append("每趟搬回：%d 食物（田越大越多，倉庫越近趟數越多）" % y)
+		else:
+			lines.append("田地太小，至少要 %.0f m² 才有收成" % (Defs.FIELD["min_cells"] * 0.25))
+	elif d.has("yield"):
 		for r in d["yield"]:
 			lines.append("每趟搬回：%d %s（倉庫越近，趟數越多）" % [d["yield"][r], Defs.RESOURCES[r]["name"]])
+	if d.has("yield"):
 		var state := "工作中"
 		if not b["staffed"]: state = "缺工人（需要更多人口）"
 		elif not Game.is_active(b): state = "餓肚子，停工中"

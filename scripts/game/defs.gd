@@ -38,10 +38,10 @@ const BUILDINGS := {
 		"job": {"anim": "chop", "tool": "Axe", "carry": "CarryLog", "hat": "Hood", "target": "tree"},
 	},
 	"farm": {
-		"name": "農田", "desc": "農夫照顧作物，把收成背回倉庫",
-		"cost": {"wood": 20, "stone": 5}, "size": 4,
-		"workers": 1, "yield": {"food": 5},
-		"nav_block": [],
+		"name": "農舍", "desc": "蓋好後畫出田地。農夫照顧麥田，把收成背回倉庫；田越大每趟收成越多",
+		"cost": {"wood": 20, "stone": 5}, "size": 3,
+		"workers": 1, "yield": {"food": 5},        # real per-trip yield comes from the field size (Fields)
+		"nav_block": [Rect2(-1.2, -0.95, 2.4, 1.7)],
 		"job": {"anim": "hoe", "tool": "Hoe", "carry": "CarrySack", "hat": "HatStraw", "target": "field"},
 	},
 	"quarry": {
@@ -149,6 +149,15 @@ const TOOLS := {
 		"label": "畫出範圍"},
 }
 
+## farm fields: painted per farmhouse on the zone grid
+const FIELD := {
+	"range": 10.0,            # max distance from the farmhouse (m)
+	"max_cells": 96,          # 24 m²
+	"min_cells": 8,           # smaller fields don't produce
+	"cells_per_food": 12,     # food per trip = cells / 12 (3 m² per food)
+	"max_yield": 8,
+}
+
 ## residential zones: painted on the same 0.5 m grid as the walk grid
 const ZONE := {
 	"cell": 0.5, "origin": Vector2(-17, -17), "w": 68,
@@ -160,13 +169,13 @@ const ZONE := {
 
 const QUESTS := [
 	{"text": "蓋一座伐木場", "type": "build", "building": "woodcutter", "count": 1, "reward": {"food": 10}},
-	{"text": "蓋一塊農田", "type": "build", "building": "farm", "count": 1, "reward": {"wood": 15}},
+	{"text": "蓋一座農舍並畫出田地", "type": "build", "building": "farm", "count": 1, "reward": {"wood": 15}},
 	{"text": "畫一塊住宅區，等村民蓋房子", "type": "build", "building": "house", "count": 1, "reward": {"stone": 10}},
 	{"text": "蓋一座採石場", "type": "build", "building": "quarry", "count": 1, "reward": {"wood": 20}},
 	{"text": "在生產區旁蓋一座倉庫", "type": "build", "building": "storehouse", "count": 1, "reward": {"food": 20}},
 	{"text": "人口達到 10 人", "type": "population", "value": 10, "reward": {"food": 30}},
 	{"text": "存到 100 木材", "type": "resource", "res": "wood", "value": 100, "reward": {"stone": 30}},
-	{"text": "擁有 3 塊農田", "type": "build", "building": "farm", "count": 3, "reward": {"wood": 40}},
+	{"text": "擁有 3 座農舍", "type": "build", "building": "farm", "count": 3, "reward": {"wood": 40}},
 	{"text": "人口達到 20 人", "type": "population", "value": 20, "reward": {}},
 ]
 

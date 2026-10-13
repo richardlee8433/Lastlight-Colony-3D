@@ -14,6 +14,12 @@ uniform sampler2D zone_tex : filter_linear, repeat_disable;    // residential zo
 uniform vec4 zone_rect;
 uniform float zone_strength = 0.45;
 uniform vec3 zone_color : source_color = vec3(0.98, 0.88, 0.55);
+uniform sampler2D field_tex : filter_linear, repeat_disable;   // farm fields (1 = field, 0.78 = other field while editing)
+uniform sampler2D field_ang_tex : filter_nearest, repeat_disable;  // furrow direction (angle mod PI) / PI
+uniform vec4 field_rect;
+uniform float field_edit = 0.0;                          // 1 while painting a field
+uniform vec3 soil_light : source_color = vec3(0.43, 0.31, 0.19);
+uniform vec3 soil_dark : source_color = vec3(0.24, 0.16, 0.09);
 uniform vec3 dirt_light : source_color = vec3(0.56, 0.45, 0.31);
 uniform vec3 dirt_dark : source_color = vec3(0.38, 0.29, 0.19);
 
@@ -32,6 +38,24 @@ void fragment() {
 	float lum = dot(base, vec3(0.3, 0.55, 0.15));
 	vec3 recol = target * (0.6 + lum * 1.2);                 // keep the baked light/dark detail
 	base = mix(base, recol, grassy * 0.9);
+	// farm fields: tilled soil with furrows across the farmhouse direction
+	vec2 fuv = (wpos.xz - field_rect.xy) / field_rect.zw;
+	float fm = texture(field_tex, fuv).r;
+	if (fm > 0.01) {
+		float fn = texture(noise_tex, wpos.xz * 0.6).r;
+		float soil = smoothstep(0.3, 0.6, fm + (fn - 0.5) * 0.25);
+		float a = texture(field_ang_tex, fuv).r * PI;
+		vec2 nrm = vec2(sin(a), cos(a));
+		float sx = dot(wpos.xz, nrm) / 0.6;
+		float ridge = 0.5 + 0.5 * cos(TAU * (sx - 0.5));
+		vec3 scol = mix(soil_dark, soil_light, ridge * 0.75 + (fn - 0.5) * 0.4);
+		base = mix(base, scol, soil);
+		if (field_edit > 0.0) {
+			float fe = smoothstep(0.15, 0.4, fm) * (1.0 - smoothstep(0.45, 0.75, fm));
+			float mine = smoothstep(0.88, 0.97, fm);
+			base = mix(base, vec3(1.0, 0.82, 0.4), fe * 0.7 + mine * 0.12);
+		}
+	}
 	vec2 wuv = (wpos.xz - wear_rect.xy) / wear_rect.zw;
 	float w = texture(wear_tex, wuv).r;
 	float n1 = texture(noise_tex, wpos.xz * 0.11).r;      // large wobble of the path edge

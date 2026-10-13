@@ -273,8 +273,10 @@ func _check_quest() -> void:
 func save_game() -> void:
 	var list := []
 	for b in buildings:
-		list.append({"type": b["type"], "x": snappedf(b["pos"].x, 0.001), "z": snappedf(b["pos"].y, 0.001),
-			"angle": snappedf(b["angle"], 0.0001)})
+		var e := {"type": b["type"], "x": snappedf(b["pos"].x, 0.001), "z": snappedf(b["pos"].y, 0.001),
+			"angle": snappedf(b["angle"], 0.0001)}
+		if b.has("field"): e["field"] = (b["field"] as Array).duplicate()
+		list.append(e)
 	var data := {
 		"version": SAVE_VERSION, "resources": resources, "population": population, "day": day,
 		"quest_index": quest_index, "starving": starving, "day_timer": _day_timer, "buildings": list,

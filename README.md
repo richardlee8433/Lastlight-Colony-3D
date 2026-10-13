@@ -8,7 +8,9 @@ Open Godot, choose **Import**, and select `project.godot`. Wait for the first as
 ## Controls
 | Action | Input |
 |---|---|
-| Residential zones | Click "住宅區" in the bottom menu (or press `4`), then left-drag to paint a zone; hold `Shift` and drag to erase |
+| Residential zones | Click "住宅區" in the bottom menu (or press `4`), then left-drag to paint a zone |
+| Farm fields | Place a farmhouse ("農舍", `2`); a starter field is painted and the field brush opens. Left-drag to grow the field (within 10 m of the farmhouse). Later: select the farmhouse → "編輯田地" |
+| Erasing areas | In either brush: toggle "擦除" in the brush toolbar or press `X`, or hold `Shift` while dragging. "清空田地" / "全部清除" wipes the whole field / all zones (built houses stay). "完成", right-click or `Esc` ends the brush |
 | Build | Click a button in the bottom menu, or press `1`–`5`. Buildings can be placed anywhere at any angle (no grid). Left-click to place; `R` / `Shift+R` or `Shift` + mouse wheel rotates in 15° steps; right-click or `Esc` cancels |
 | Select / demolish | Left-click a building, then use the side panel or press `Delete` |
 | Camera | Right-drag to rotate, `Q`/`E` to rotate, `WASD` or middle-drag to pan, mouse wheel or pinch to zoom |
@@ -17,7 +19,8 @@ Open Godot, choose **Import**, and select `project.godot`. Wait for the first as
 ## Gameplay (MVP)
 - **Opening**: the map starts as open meadow. Three settlers walk in from the south road to the **supply cart**. The cart is the temporary storage (holding the starting wood 60, stone 20, food 40), and the campfire beside it has 4 sleeping spots. The cart can't be demolished. Saves from before this change get a supply cart automatically.
 - **Resources**: wood, stone, food. **Resources only count once a villager carries them into a storage.** After each work session the worker carries one load (woodcutter 8 wood, farm 5 food, quarry 6 stone) to the **nearest storage**, so the farther the trip, the less gets produced. The resource bar shows how much was brought into storage yesterday.
-- **Buildings**: woodcutter, farm (wheat field), quarry, storehouse (a delivery point: build one near your production to cut down hauling)
+- **Farms (Foundation-style)**: a farm is a farmhouse plus a field you paint. The field turns into furrowed soil with wheat rows, grass is cleared, and the farmer works anywhere in it. Food per trip = field size / 3 m² (min 2 m² to produce, max 8 food at 24 m²). Fields can't overlap other fields, zones, buildings or trees; nothing can be built on a field.
+- **Buildings**: woodcutter, farmhouse, quarry, storehouse (a delivery point: build one near your production to cut down hauling)
 - **Residential zones**: houses are not placed by hand. The player paints residential zones, and when free beds run out (at most 1 left), food is sufficient, and wood and stone can cover the cost, villagers build a house (+4 population cap) on their own in the best open spot within the zone. Houses line up with their neighbors to form rows, with the front door facing the nearest path (or the village center). The zone shows on the ground as a light yellow outline.
 - **House variants**: 6 baked houses (golden / weathered / mossy thatch, different wall colors, chimneys, windows, side sheds, and flower boxes). Each one gets a slight random size adjustment.
 - **Villagers**: every producing building needs one worker. Each villager eats 1 food per day (one day = 30 seconds of game time). When there is free housing and enough food, one new villager arrives each day. When food runs out, only farmers keep working, so the village can recover on its own.
@@ -37,6 +40,7 @@ scripts/game/build_controller.gd free placement (overlap / obstacle / no-build-z
 scripts/game/building_visuals.gd building models (temporary placeholders; the house uses the baked cottage)
 scripts/ui/hud.gd                all UI
 scripts/world/nav_grid.gd        walkable grid (0.5 m) + A* pathfinding; buildings block cells, worn paths lower the cost
+scripts/world/fields.gd          farm fields: painted cells per farmhouse, soil/wheat visuals, yield per trip
 scripts/world/path_wear.gd       wear map, path decay, trampled grass, path saving
 scripts/world/ground_path.gdshader  ground shader (grass ↔ dirt paths)
 scripts/world/villager.gd        villager: model, state machine (work / carry / rest / wander / arrive / leave), procedural animation
@@ -55,9 +59,11 @@ tests/test_gameplay.gd           automated tests
 godot --headless --path . --script res://tests/test_gameplay.gd    # economy, quests, saving
 godot --headless --path . --script res://tests/test_villagers.gd   # pathfinding, jobs, paths, moving in and out
 godot --headless --path . --script res://tests/test_zones.gd      # residential zones: painting, erasing, auto-built houses, saving
+godot --headless --path . --script res://tests/test_fields.gd     # farm fields: starter field, painting rules, erase / clear, yield, saving
 godot --headless --path . --script res://tests/sim_balance.gd     # follow a fixed build order for 30 days and print each day's economy (for checking balance)
 godot --path . --script res://tests/shot_village.gd -- 6          # render a screenshot after 6 minutes of time-lapse (needs a display)
 godot --path . --script res://tests/shot_opening.gd               # render the opening screenshots (needs a display)
+godot --path . --script res://tests/shot_fields.gd                # render a farmhouse + painted field (needs a display)
 ```
 
 ## Regenerating the art (requires `pip install bpy`)

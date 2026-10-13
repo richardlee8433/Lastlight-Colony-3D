@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/world/path_wear.gd" id="11_wear"]
 [ext_resource type="Script" path="res://scripts/world/villager_manager.gd" id="12_vil"]
 [ext_resource type="Script" path="res://scripts/world/zones.gd" id="13_zones"]
+[ext_resource type="Script" path="res://scripts/world/fields.gd" id="14_fields"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.32, 0.5, 0.78, 1)
@@ -87,6 +88,9 @@ script = ExtResource("12_vil")
 
 [node name="Zones" type="Node" parent="."]
 script = ExtResource("13_zones")
+
+[node name="Fields" type="Node3D" parent="."]
+script = ExtResource("14_fields")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("9_hud")

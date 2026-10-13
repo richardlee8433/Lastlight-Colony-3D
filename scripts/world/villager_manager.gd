@@ -5,16 +5,17 @@ extends Node3D
 
 @export var nav_path: NodePath = ^"../Nav"
 @export var wear_path: NodePath = ^"../PathWear"
+@export var fields_path: NodePath = ^"../Fields"
 
 var villagers: Array[Villager] = []
 var leaving: Array[Villager] = []
 var _next_id := 1
 var _started := false
 var _rng := RandomNumberGenerator.new()
-var _field_rows := {}            # building id -> next row index (farmers walk the rows)
 
 @onready var nav: NavGrid = get_node(nav_path)
 @onready var wear: PathWear = get_node_or_null(wear_path)
+@onready var fields: Node = get_node_or_null(fields_path)
 
 func _ready() -> void:
 	_rng.seed = 4242
@@ -153,6 +154,9 @@ func building_center(id: int) -> Vector2:
 func yield_of(v: Villager) -> Dictionary:
 	var b := Game.get_building(v.job_id)
 	if b.is_empty(): return {}
+	if b["type"] == "farm" and fields:
+		var n: int = fields.yield_for(b["id"])
+		return {"food": n} if n > 0 else {}
 	return Defs.BUILDINGS[b["type"]].get("yield", {}).duplicate()
 
 ## every place goods can be delivered: the starting cottage + storehouses
@@ -196,12 +200,11 @@ func work_target(v: Villager) -> Dictionary:
 			var stand := nav.walkable_point(tp + dir * (t.y + 0.45))
 			return {"pos": nav.on_ground(stand), "look": nav.on_ground(tp)}
 		"field":
-			var row: int = _field_rows.get(b["id"], 0)
-			_field_rows[b["id"]] = (row + 1) % 5
-			var local := Vector2(_rng.randf_range(-1.3, 1.3), -1.2 + row * 0.6)
-			var p := Defs.to_world(b, local)
-			var look := Defs.to_world(b, local + Vector2(0.6, 0.0))
-			return {"pos": nav.on_ground(nav.walkable_point(p)), "look": nav.on_ground(look)}
+			# a random spot in the painted field (no field -> nothing to do)
+			if fields == null or fields.yield_for(b["id"]) <= 0: return {}
+			var spot: Dictionary = fields.work_spot(b["id"], _rng)
+			if spot.is_empty(): return {}
+			return {"pos": nav.on_ground(nav.walkable_point(spot["pos"])), "look": nav.on_ground(spot["look"])}
 		_:
 			var p := nav.walkable_point(Defs.to_world(b, d.get("work_spot", Vector2.ZERO)))
 			return {"pos": nav.on_ground(p), "look": nav.on_ground(Defs.to_world(b, d.get("work_look", Vector2.ZERO)))}

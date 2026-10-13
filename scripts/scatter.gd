@@ -19,6 +19,8 @@ var _sets := {}
 var _buckets := {}
 ## bucket index -> 0..1 grass scale (1 = untouched)
 var _trample := {}
+## buckets covered by farm fields (grass removed) — same grid as Defs.ZONE
+var _field := {}
 
 func _ready() -> void:
 	var f := FileAccess.open("res://data/scatter.json", FileAccess.READ)
@@ -93,8 +95,8 @@ func _apply(kind: String, i: int) -> void:
 	var s: Dictionary = _sets[kind]
 	var base: Transform3D = s["xf"][i]
 	var k := 0.0
-	if not s["hidden"][i]:
-		var bi := _bucket_of(base.origin.x, base.origin.z)
+	var bi := _bucket_of(base.origin.x, base.origin.z)
+	if not s["hidden"][i] and not _field.has(bi):
 		k = float(_trample.get(bi, 1.0))
 		if kind != "tuft": k = 0.0 if k < 0.7 else k   # flowers vanish early on a path
 	(s["mm"] as MultiMesh).set_instance_transform(i, Transform3D(base.basis.scaled(Vector3(1, k, 1) if k > 0.0 else Vector3.ZERO), base.origin))
@@ -120,6 +122,18 @@ func _apply_area(center: Vector2, half: Vector2, angle: float, hide: bool) -> vo
 			if absf(l.x) <= half.x and absf(l.y) <= half.y:
 				hidden[i] = 1 if hide else 0
 				_apply(kind, i)
+
+## Farm fields: grass is cleared on every bucket in `on` (bucket index -> true).
+func set_field_buckets(on: Dictionary) -> void:
+	var touched := {}
+	for b in on:
+		if not _field.has(b): touched[b] = true
+	for b in _field:
+		if not on.has(b): touched[b] = true
+	_field = on.duplicate()
+	for b in touched:
+		for e in _buckets.get(b, []):
+			_apply(e[0], e[1])
 
 ## Flattens grass in one bucket. f: 1 = untouched, 0 = gone.
 func set_trample(bucket: int, f: float) -> void:
