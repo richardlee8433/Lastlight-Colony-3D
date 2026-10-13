@@ -24,6 +24,13 @@ func check(cond: bool, msg: String) -> void:
 	else:
 		print("  FAIL ", msg); _fails += 1
 
+func find_spot(ctl, type: String, near: Vector2, angle := 0.0) -> Vector2:
+	for r in range(0, 40):
+		for k in 16:
+			var p: Vector2 = near + Vector2(cos(k * TAU / 16), sin(k * TAU / 16)) * r * 0.5
+			if ctl.can_place(type, p, angle): return p
+	return Vector2(999, 999)
+
 func sim(game, vm, wear, seconds: float, step := 0.1) -> void:
 	var t := 0.0
 	while t < seconds:
@@ -58,19 +65,21 @@ func _run() -> void:
 
 	# --- jobs ---
 	game.resources["wood"] += 200; game.resources["stone"] += 100
-	var wc: int = ctl.try_place("woodcutter", Vector2i(-7, 6))
-	var farm: int = ctl.try_place("farm", Vector2i(-1, 7))
-	var q: int = ctl.try_place("quarry", Vector2i(6, 6))
-	check(wc > 0 and farm > 0 and q > 0, "placed woodcutter, farm, quarry")
+	var wc: int = ctl.try_place("woodcutter", find_spot(ctl, "woodcutter", Vector2(-6, 7.5), 0.4), 0.4)
+	var farm: int = ctl.try_place("farm", find_spot(ctl, "farm", Vector2(1, 9)))
+	var q: int = ctl.try_place("quarry", find_spot(ctl, "quarry", Vector2(8, 7.5), PI), PI)
+	check(wc > 0 and farm > 0 and q > 0, "placed woodcutter, farm, quarry (free positions and angles)")
 	var with_job := 0
 	for v in vm.villagers:
 		if v.job_id >= 0: with_job += 1
 	check(with_job == 3, "all 3 villagers got a job (%d)" % with_job)
-	check(not nav.is_walkable(nav.cell_of(Vector3(Defs.to_world(game.get_building(q), Vector2(-0.3, -0.6)).x, 0, Defs.to_world(game.get_building(q), Vector2(-0.3, -0.6)).y))), "quarry rocks block walking")
+	var rock: Vector2 = Defs.to_world(game.get_building(q), Vector2(-0.3, -0.6))
+	check(not nav.is_walkable(nav.cell_of(Vector3(rock.x, 0, rock.y))), "rotated quarry rocks block walking")
 
+	var stock0 := {"wood": game.resources["wood"], "stone": game.resources["stone"], "food": game.resources["food"]}
 	var worked := {}; var delivered := 0
 	var t := 0.0
-	while t < 90.0:
+	while t < 120.0:
 		sim(game, vm, wear, 1.0)
 		t += 1.0
 		for v in vm.villagers:
@@ -78,10 +87,25 @@ func _run() -> void:
 	for v in vm.villagers: delivered += v.deliveries
 	check(worked.has(wc) and worked.has(farm) and worked.has(q), "every worker reached the work spot (%s)" % str(worked.keys()))
 	check(delivered >= 6, "goods were carried (%d deliveries)" % delivered)
+	check(game.resources["wood"] > stock0["wood"] and game.resources["stone"] > stock0["stone"], "deliveries raised wood and stone")
+
+	# --- a storehouse next to the quarry takes its deliveries ---
+	var qb: Dictionary = game.get_building(q)
+	var sh: int = ctl.try_place("storehouse", find_spot(ctl, "storehouse", qb["pos"] + Vector2(-1.5, -3.5)))
+	check(sh > 0, "placed a storehouse near the quarry")
+	var sh_drop: Vector2 = Defs.to_world(game.get_building(sh), Defs.BUILDINGS["storehouse"]["drop"])
+	var used_storehouse := false
+	t = 0.0
+	while t < 60.0 and not used_storehouse:
+		sim(game, vm, wear, 1.0)
+		t += 1.0
+		for v in vm.villagers:
+			if v.job_id == q and not v.goods.is_empty() and v._drop_at.distance_to(sh_drop) < 0.1: used_storehouse = true
+	check(used_storehouse, "the quarry worker now delivers to the nearer storehouse")
 
 	# --- roads ---
 	check(wear.max_wear() > 0.5, "ground wears where villagers walk (max %.2f)" % wear.max_wear())
-	sim(game, vm, wear, 120.0)
+	sim(game, vm, wear, 90.0)
 	check(s.get_node("Scatter").trampled_count() > 100, "grass trampled on roads (%d)" % s.get_node("Scatter").trampled_count())
 	var worn_cell := Vector2i(-1, -1)
 	for i in wear.wear.size():
@@ -90,13 +114,10 @@ func _run() -> void:
 	check(worn_cell.x >= 0 and nav.astar.get_point_weight_scale(worn_cell) < 0.8, "worn road is cheaper for path-finding")
 
 	# --- growth, houses, leaving ---
-	var hc := Vector2i(999, 999)
-	for z in range(4, 14):
-		for x in range(-10, 10):
-			if hc.x == 999 and ctl.can_place("house", Vector2i(x, z)): hc = Vector2i(x, z)
-	var h: int = ctl.try_place("house", hc)
-	check(h > 0, "placed a house")
-	sim(game, vm, wear, Defs.DAY_LENGTH * 6)
+	game.resources["food"] += 100
+	var h: int = ctl.try_place("house", find_spot(ctl, "house", Vector2(-3, 12), 0.6), 0.6)
+	check(h > 0, "placed a rotated house")
+	sim(game, vm, wear, Defs.DAY_LENGTH * 5)
 	check(vm.villagers.size() == game.population and game.population > 3, "new villagers arrive (%d)" % vm.villagers.size())
 	var homes_at_house := 0
 	var door: Vector2 = Defs.to_world(game.get_building(h), Defs.BUILDINGS["house"]["door"])
@@ -110,14 +131,20 @@ func _run() -> void:
 	sim(game, vm, wear, 40.0)
 	check(vm.leaving.is_empty(), "leavers walked off the map")
 
-	# --- starvation stops work ---
+	# --- starvation: only farmers keep working ---
 	game.resources["food"] = 0
+	game._day_timer = Defs.DAY_LENGTH - 0.05     # the day ends with an empty pantry
+	sim(game, vm, wear, 0.2)
+	var job_types := {}
+	for v in vm.villagers:
+		if v.job_id >= 0: job_types[game.get_building(v.job_id)["type"]] = true
+	check(game.starving and job_types.has("farm") and not job_types.has("woodcutter"), "hungry: farmer keeps working, others stop (%s)" % str(job_types.keys()))
 	game.demolish(farm)
-	sim(game, vm, wear, Defs.DAY_LENGTH * 1.1)
+	vm._sync()
 	var jobs := 0
 	for v in vm.villagers:
 		if v.job_id >= 0: jobs += 1
-	check(game.starving and jobs == 0, "hungry villagers stop working")
+	check(jobs == 0, "no farm, no work while starving")
 	game.delete_save()
 	wear.clear()
 	_done = true

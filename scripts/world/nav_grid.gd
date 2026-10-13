@@ -161,24 +161,32 @@ func block_building(b: Dictionary, notify := true) -> void:
 	var cells := PackedInt32Array()
 	for r in d.get("nav_block", []):
 		var rect: Rect2 = r
-		# rotate the rect's corners into world space (rotations are multiples of 90°)
-		var p0 := Defs.to_world(b, rect.position)
-		var p1 := Defs.to_world(b, rect.end)
-		var wr := Rect2(Vector2(minf(p0.x, p1.x), minf(p0.y, p1.y)), (p1 - p0).abs())
-		var c0 := cell_of(Vector3(wr.position.x, 0, wr.position.y))
-		var c1 := cell_of(Vector3(wr.end.x, 0, wr.end.y))
+		var grown := rect.grow(0.15)
+		# world-space bounds of the rotated rect, then test each cell centre in building space
+		var lo := Vector2(INF, INF); var hi := Vector2(-INF, -INF)
+		for c in [rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)]:
+			var wpt := Defs.to_world(b, c)
+			lo = lo.min(wpt); hi = hi.max(wpt)
+		var c0 := cell_of(Vector3(lo.x, 0, lo.y))
+		var c1 := cell_of(Vector3(hi.x, 0, hi.y))
 		for x in range(c0.x, c1.x + 1):
 			for z in range(c0.y, c1.y + 1):
 				var c := Vector2i(x, z)
 				if not in_bounds(c): continue
 				var cc := cell_center(c)
-				if wr.grow(0.2).has_point(Vector2(cc.x, cc.z)):
+				if grown.has_point(Defs.to_local(b, Vector2(cc.x, cc.z))):
 					var i := z * w + x
 					_dyn[i] += 1
 					cells.append(i)
 					astar.set_point_solid(c, true)
 	_building_cells[b["id"]] = cells
 	if notify: changed.emit()
+
+## true if static scenery (walls, fences, trunks, rocks, bushes) covers this world point
+func scenery_at(p: Vector2) -> bool:
+	var c := cell_of(Vector3(p.x, 0, p.y))
+	if not in_bounds(c): return true
+	return _static[c.y * w + c.x] == 1
 
 func unblock_building(b: Dictionary) -> void:
 	var cells: PackedInt32Array = _building_cells.get(b["id"], PackedInt32Array())

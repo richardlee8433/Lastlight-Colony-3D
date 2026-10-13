@@ -23,6 +23,8 @@ var home := Vector2.ZERO
 var job_id := -1                  # building id, -1 = no job
 var deliveries := 0
 var carrying := ""                # node name of the carried item, "" = none
+var goods := {}                   # what is being carried, e.g. {"wood": 6}
+var _drop_at := Vector2.ZERO      # storage point of the current delivery
 var manager: Node                 # VillagerManager
 var nav: NavGrid
 var wear: PathWear
@@ -143,7 +145,11 @@ func assign_job(id: int) -> void:
 
 func clear_job() -> void:
 	job_id = -1
-	_set_carry(""); _show_tool(false); set_outfit({})
+	_show_tool(false); set_outfit({})
+	if not goods.is_empty() and state in [S.TO_DROP, S.DROP]:
+		return                    # finish the delivery first, then wander
+	goods = {}
+	_set_carry("")
 	_start_wander(0.5)
 
 func repath() -> void:
@@ -263,15 +269,20 @@ func _on_timer() -> void:
 			_show_tool(false)
 			var job: Dictionary = manager.job_of(self)
 			_set_carry(job.get("carry", ""))
-			var every := int(job.get("to_storage_every", 1))
-			var to_storage := every <= 1 or (deliveries + 1) % every == 0
-			var drop: Vector2 = Defs.STORAGE_POINT if to_storage else manager.building_point(job_id, "drop")
-			_look = nav.on_ground(Defs.STORAGE_LOOK) if to_storage else nav.on_ground(manager.building_center(job_id))
-			_go(nav.on_ground(drop), S.TO_DROP)
+			goods = manager.yield_of(self)
+			var st: Dictionary = manager.nearest_storage(Vector2(position.x, position.z))
+			_drop_at = st["drop"]
+			_look = nav.on_ground(st["look"])
+			_go(nav.on_ground(_drop_at), S.TO_DROP)
 		S.DROP:
+			for r in goods:
+				Game.deliver(r, int(goods[r]), _drop_at)
+			goods = {}
 			_set_carry("")
 			deliveries += 1
-			if deliveries % int(Defs.VILLAGER["rest_every"]) == 0:
+			if job_id < 0:
+				_start_wander(0.0)
+			elif deliveries % int(Defs.VILLAGER["rest_every"]) == 0:
 				_go(nav.on_ground(home), S.TO_HOME)
 			else:
 				_start_work_trip()

@@ -8,15 +8,15 @@ Open Godot, choose **Import**, and select `project.godot`. Wait for the first as
 ## Controls
 | Action | Input |
 |---|---|
-| Build | Click a button in the bottom menu, or press `1`–`4`. Left-click to place, `R` to rotate, right-click or `Esc` to cancel |
+| Build | Click a button in the bottom menu, or press `1`–`5`. Buildings can be placed anywhere at any angle (no grid). Left-click to place; `R` / `Shift+R` or `Shift` + mouse wheel rotates in 15° steps; right-click or `Esc` cancels |
 | Select / demolish | Left-click a building, then use the side panel or press `Delete` |
 | Camera | Right-drag to rotate, `Q`/`E` to rotate, `WASD` or middle-drag to pan, mouse wheel or pinch to zoom |
 | Speed | Pause / 1x / 2x / 4x buttons in the top-right corner |
 
 ## Gameplay (MVP)
-- **Resources**: wood, stone, food
-- **Buildings**: woodcutter (wood), farm (food), quarry (stone), house (+4 population cap)
-- **Villagers**: every producing building needs one worker. Each villager eats 1 food per day. When there is free housing and enough food, one new villager arrives each day. When food runs out, every building stops producing.
+- **Resources**: wood, stone, food. **Resources only count once a villager carries them into a storage.** After each work session the worker carries one load (woodcutter 8 wood, farm 5 food, quarry 6 stone) to the **nearest storage**, so the farther the trip, the less gets produced. The resource bar shows how much was brought into storage yesterday.
+- **Buildings**: woodcutter, farm, quarry, house (+4 population cap), storehouse (a delivery point: build one near your production to cut down hauling)
+- **Villagers**: every producing building needs one worker. Each villager eats 1 food per day (one day = 30 seconds of game time). When there is free housing and enough food, one new villager arrives each day. When food runs out, only farmers keep working, so the village can recover on its own.
 - **Quests**: 8 quests that guide the player step by step, each with a reward
 - **Autosave**: the game saves at the end of every in-game day and when the window closes (`user://save.json`)
 
@@ -28,8 +28,8 @@ All balance values (costs, output, day length, quests, villager speed, how fast 
 ## Project layout
 ```
 scripts/game/defs.gd             game data and balance values
-scripts/game/game_state.gd       simulation core (autoload: Game) — resources, population, quests, saving
-scripts/game/build_controller.gd grid, placement preview, selection, building nodes
+scripts/game/game_state.gd       simulation core (autoload: Game) — resources (added via deliveries), population, quests, saving (v2; old grid saves are converted automatically)
+scripts/game/build_controller.gd free placement (overlap / obstacle / no-build-zone checks), placement preview, rotation, selection, delivery popups
 scripts/game/building_visuals.gd building models (temporary placeholders; the house uses the baked cottage)
 scripts/ui/hud.gd                all UI
 scripts/world/nav_grid.gd        walkable grid (0.5 m) + A* pathfinding; buildings block cells, worn paths lower the cost
@@ -47,6 +47,7 @@ tests/test_gameplay.gd           automated tests
 ```
 godot --headless --path . --script res://tests/test_gameplay.gd    # economy, quests, saving
 godot --headless --path . --script res://tests/test_villagers.gd   # pathfinding, jobs, paths, moving in and out
+godot --headless --path . --script res://tests/sim_balance.gd     # follow a fixed build order for 30 days and print each day's economy (for checking balance)
 godot --path . --script res://tests/shot_village.gd -- 6          # render a screenshot after 6 minutes of time-lapse (needs a display)
 ```
 

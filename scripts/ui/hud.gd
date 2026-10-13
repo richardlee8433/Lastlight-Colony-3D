@@ -206,7 +206,11 @@ func _refresh() -> void:
 			txt += "  (%s%.0f/天)" % ["+" if fpd >= 0 else "", fpd]
 			_res_labels[r].add_theme_color_override("font_color",
 				Color(1.0, 0.45, 0.4) if (fpd < 0 or Game.starving) else Defs.RESOURCES[r]["color"].lightened(0.15))
+		elif Game.income_per_day(r) > 0:
+			txt += "  (+%d/天)" % Game.income_per_day(r)
 		_res_labels[r].text = txt
+		_res_labels[r].tooltip_text = "昨天搬進倉庫的量（扣掉食物消耗）" if r == "food" else "昨天搬進倉庫的量"
+		_res_labels[r].mouse_filter = Control.MOUSE_FILTER_PASS
 	_pop_label.text = "人口  %d/%d   工作 %d/%d" % [Game.population, Game.housing(), Game.workers_used(), Game.workers_needed()]
 	_day_label.text = "第 %d 天" % Game.day
 	for type in _build_buttons:
@@ -233,9 +237,9 @@ func _on_mode(type: String) -> void:
 	for t in _build_buttons:
 		_build_buttons[t].button_pressed = (t == type)
 	if type == "":
-		_hint.text = "左鍵 選取建築 · 1-4 建造 · 右鍵拖曳 旋轉鏡頭 · WASD / 中鍵 平移 · 滾輪 縮放"
+		_hint.text = "左鍵 選取建築 · 1-5 建造 · 右鍵拖曳 旋轉鏡頭 · WASD / 中鍵 平移 · 滾輪 縮放"
 	else:
-		_hint.text = "左鍵 放置%s · R 旋轉 · 右鍵 / Esc 取消" % Defs.BUILDINGS[type]["name"]
+		_hint.text = "左鍵 放置%s · R / Shift+R 或 Shift+滾輪 旋轉 · 右鍵 / Esc 取消" % Defs.BUILDINGS[type]["name"]
 	_refresh_quest()
 
 func _on_selection(id: int) -> void:
@@ -250,15 +254,15 @@ func _fill_info(id: int) -> void:
 	var d: Dictionary = Defs.BUILDINGS[b["type"]]
 	_info_title.text = d["name"]
 	var lines: Array[String] = [d["desc"]]
-	if d.has("produces"):
-		for r in d["produces"]:
-			lines.append("產量：每 %.0f 秒 %d %s" % [d["cycle"], d["produces"][r], Defs.RESOURCES[r]["name"]])
+	if d.has("yield"):
+		for r in d["yield"]:
+			lines.append("每趟搬回：%d %s（倉庫越近，趟數越多）" % [d["yield"][r], Defs.RESOURCES[r]["name"]])
 		var state := "工作中"
 		if not b["staffed"]: state = "缺工人（需要更多人口）"
-		elif Game.starving: state = "餓肚子，停工中"
+		elif not Game.is_active(b): state = "餓肚子，停工中"
 		lines.append("狀態：" + state)
-		if b["staffed"] and not Game.starving:
-			lines.append("進度：%d%%" % int(b["progress"] * 100))
+	if d.get("storage", false):
+		lines.append("附近的工人會把資源搬來這裡")
 	if d.has("housing"):
 		lines.append("提供 %d 人居住" % d["housing"])
 	var vm := get_node_or_null(^"../Villagers")

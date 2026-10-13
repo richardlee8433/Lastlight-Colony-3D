@@ -98,11 +98,9 @@ func _assign_homes() -> void:
 func _assign_jobs() -> void:
 	# open positions = staffed producer buildings (Game decides how many are staffed)
 	var open := {}
-	if not Game.starving:
-		for b in Game.buildings:
-			var d: Dictionary = Defs.BUILDINGS[b["type"]]
-			if d.get("workers", 0) > 0 and b["staffed"]:
-				open[b["id"]] = true
+	for b in Game.buildings:
+		if Game.is_active(b):          # staffed, and when starving only food jobs keep going
+			open[b["id"]] = true
 	# release villagers whose job disappeared
 	var taken := {}
 	for v in villagers:
@@ -149,11 +147,33 @@ func building_center(id: int) -> Vector2:
 	var b := Game.get_building(id)
 	return Vector2.ZERO if b.is_empty() else Defs.building_center(b)
 
-func building_point(id: int, key: String) -> Vector2:
-	var b := Game.get_building(id)
-	if b.is_empty(): return Defs.STORAGE_POINT
-	var d: Dictionary = Defs.BUILDINGS[b["type"]]
-	return Defs.to_world(b, d.get(key, Vector2.ZERO))
+## goods produced by one work session of this villager's job
+func yield_of(v: Villager) -> Dictionary:
+	var b := Game.get_building(v.job_id)
+	if b.is_empty(): return {}
+	return Defs.BUILDINGS[b["type"]].get("yield", {}).duplicate()
+
+## every place goods can be delivered: the starting cottage + storehouses
+func storages() -> Array[Dictionary]:
+	var out: Array[Dictionary] = [{"drop": Defs.STORAGE_POINT, "look": Defs.STORAGE_LOOK}]
+	for b in Game.buildings:
+		var d: Dictionary = Defs.BUILDINGS[b["type"]]
+		if d.get("storage", false):
+			out.append({"drop": Defs.to_world(b, d["drop"]), "look": b["pos"]})
+	return out
+
+## closest storage by walking distance (falls back to straight-line distance)
+func nearest_storage(from: Vector2) -> Dictionary:
+	var best := {}; var best_d := INF
+	for s in storages():
+		var p := nav.find_path(nav.on_ground(from), nav.on_ground(s["drop"]))
+		var d := 0.0
+		if p.size() >= 2:
+			for i in range(1, p.size()): d += p[i - 1].distance_to(p[i])
+		else:
+			d = from.distance_to(s["drop"]) * 3.0
+		if d < best_d: best_d = d; best = s
+	return best
 
 ## {"pos": Vector3, "look": Vector3} for the villager's next work spot, or {} if none.
 func work_target(v: Villager) -> Dictionary:

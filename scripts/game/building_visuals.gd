@@ -71,6 +71,7 @@ static func create(type: String, seed_val: int) -> Node3D:
 		"woodcutter": _woodcutter(root, rng)
 		"quarry": _quarry(root, rng)
 		"farm": _farm(root, rng)
+		"storehouse": _storehouse(root, rng)
 	return root
 
 static func _house(r: Node3D, rng: RandomNumberGenerator) -> void:
@@ -136,6 +137,34 @@ static func _farm(r: Node3D, rng: RandomNumberGenerator) -> void:
 	_add(r, head, wheat(), Vector3(1.3, 1.55, 1.3))
 	var hat := CylinderMesh.new(); hat.top_radius = 0.05; hat.bottom_radius = 0.22; hat.height = 0.15
 	_add(r, hat, thatch(), Vector3(1.3, 1.72, 1.3))
+
+static func _storehouse(r: Node3D, rng: RandomNumberGenerator) -> void:
+	# open-fronted barn on a stone plinth, goods stacked inside, front = +z
+	box(r, Vector3(2.7, 0.18, 2.3), Vector3(0, 0.09, -0.15), stone())
+	for x in [-1.25, 0.0, 1.25]:
+		for z in [-1.2, 0.9]:
+			cyl(r, 0.08, 1.9, Vector3(x, 1.13, z), wood_dark())
+	box(r, Vector3(2.6, 1.7, 0.08), Vector3(0, 1.03, -1.22), plaster())
+	box(r, Vector3(0.08, 1.7, 2.1), Vector3(-1.27, 1.03, -0.15), plaster())
+	box(r, Vector3(0.08, 1.7, 2.1), Vector3(1.27, 1.03, -0.15), plaster())
+	box(r, Vector3(2.8, 0.12, 0.14), Vector3(0, 2.05, 0.92), wood_dark())
+	box(r, Vector3(2.8, 0.12, 0.14), Vector3(0, 2.05, -1.22), wood_dark())
+	roof(r, 3.2, 2.9, 1.1, Vector3(0, 2.62, -0.15), thatch())
+	# goods: crates, sacks, barrels, a log stack
+	for i in 3:
+		box(r, Vector3(0.45, 0.4, 0.45), Vector3(-0.8 + i * 0.5, 0.38, -0.85), wood(), Vector3(0, rng.randf_range(-0.15, 0.15), 0))
+	box(r, Vector3(0.42, 0.38, 0.42), Vector3(-0.55, 0.77, -0.85), wood(), Vector3(0, 0.3, 0))
+	for i in 2:
+		cyl(r, 0.22, 0.6, Vector3(0.85, 0.48, -0.75 + i * 0.5), wood_dark(), Vector3.ZERO, 12)
+	for i in 3:
+		var sack := SphereMesh.new(); sack.radius = 0.2; sack.height = 0.36
+		_add(r, sack, wheat(), Vector3(-0.85 + i * 0.32, 0.36, -0.1), Vector3(0, rng.randf() * 3, 0), Vector3(1, 0.9, 0.8))
+	for row in 2:
+		for i in 3 - row:
+			cyl(r, 0.1, 0.9, Vector3(0.45, 0.28 + row * 0.18, -0.2 + (i + row * 0.5) * 0.2), wood(), Vector3(PI / 2, 0, 0))
+	# a sign
+	cyl(r, 0.04, 1.1, Vector3(1.55, 0.55, 1.1), wood_dark())
+	box(r, Vector3(0.5, 0.3, 0.05), Vector3(1.55, 1.0, 1.12), wood())
 
 ## Recursively applies a material override (used for the placement ghost).
 static func override_all(n: Node, m: Material) -> void:

@@ -1,29 +1,24 @@
 extends Node3D
-## World side of the game: grid & occupancy, placement ghost, building nodes, selection.
+## World side of building: free placement (any position, any angle), placement ghost,
+## building nodes, selection, delivery pop-ups.
 
 signal mode_changed(type: String)        # "" when not placing
 signal selection_changed(id: int)        # -1 when nothing selected
 
-const CELL := 1.0
-const GRID_MIN := -15                    # cells, inclusive
-const GRID_MAX := 15                     # cells, exclusive
+const ROTATE_STEP := PI / 12.0           # 15°
 
 @export var camera_path: NodePath = ^"../Camera"
 @export var scatter_path: NodePath = ^"../Scatter"
-@export var blocker_paths: Array[NodePath] = [^"../Hut", ^"../Props", ^"../Nature"]
-@export var ground_path: NodePath = ^"../Ground"
+@export var nav_path: NodePath = ^"../Nav"
 
 var placing := ""
-var ghost_rot := 0
+var ghost_angle := 0.0
 var selected := -1
 
-var _blocked := {}            # Vector2i -> true  (scenery)
-var _occupied := {}           # Vector2i -> building id
-var _height := {}             # Vector2i -> ground height
 var _nodes := {}              # building id -> Node3D
 var _ghost: Node3D
 var _ghost_pad: MeshInstance3D
-var _ghost_cell := Vector2i(999, 999)
+var _ghost_pos := Vector2.ZERO
 var _ghost_ok := false
 var _select_pad: MeshInstance3D
 var _ok_mat: StandardMaterial3D
@@ -32,6 +27,7 @@ var _ghost_mat: StandardMaterial3D
 
 @onready var _cam: Camera3D = get_node(camera_path)
 @onready var _scatter: Node = get_node_or_null(scatter_path)
+@onready var _nav: Node = get_node_or_null(nav_path)
 
 func _ready() -> void:
 	_ok_mat = _pad_mat(Color(0.35, 0.95, 0.4, 0.35))
@@ -42,13 +38,11 @@ func _ready() -> void:
 	_ghost_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_select_pad = _make_pad(_pad_mat(Color(1.0, 0.85, 0.3, 0.45)))
 	_select_pad.visible = false
-	_scan_scenery()
-	_scan_ground()
 	Game.building_added.connect(_on_added)
 	Game.building_removed.connect(_on_removed)
-	Game.produced.connect(_on_produced)
+	Game.delivered.connect(_on_delivered)
 	Game.changed.connect(_refresh_status)
-	# scatter builds its multimeshes in its own _ready, which may run after ours
+	# scatter and nav finish loading in their own _ready, which runs after ours
 	call_deferred("_spawn_existing")
 
 func _spawn_existing() -> void:
@@ -56,95 +50,61 @@ func _spawn_existing() -> void:
 		_on_added(b, false)
 	_refresh_status()
 
-# ---------------- grid ----------------
+# ---------------- placement rules ----------------
 
-func cells_of(type: String, cell: Vector2i) -> Array[Vector2i]:
-	var s: int = Defs.BUILDINGS[type]["size"]
-	var out: Array[Vector2i] = []
-	for dx in s:
-		for dz in s:
-			out.append(cell + Vector2i(dx, dz))
-	return out
+## Why a building can't go here ("" = it can).
+func place_problem(type: String, pos: Vector2, angle: float) -> String:
+	var quad := Defs.footprint_corners(type, pos, angle)
+	for c in quad:
+		if not Defs.BUILD_BOUNDS.has_point(c): return "超出建造範圍"
+	for r in Defs.NO_BUILD:
+		var rr: Rect2 = r
+		var rq := PackedVector2Array([rr.position, Vector2(rr.end.x, rr.position.y), rr.end, Vector2(rr.position.x, rr.end.y)])
+		if Defs.quads_overlap(quad, rq): return "太靠近村莊中心"
+	var grown := Defs.footprint_corners(type, pos, angle, Defs.BUILD_GAP)
+	for b in Game.buildings:
+		if Defs.quads_overlap(grown, Defs.footprint_corners(b["type"], b["pos"], b["angle"])):
+			return "和其他建築重疊"
+	if _nav:
+		var h := Defs.half_extents(type)
+		var nx := maxi(2, ceili(h.x * 2 / 0.4)); var nz := maxi(2, ceili(h.y * 2 / 0.4))
+		for i in nx + 1:
+			for j in nz + 1:
+				var l := Vector2(-h.x + 2 * h.x * i / nx, -h.y + 2 * h.y * j / nz)
+				if _nav.scenery_at(pos + Defs.rot2(l, angle)): return "有樹木或障礙物"
+	return ""
 
-## Grid cell whose footprint is centred under a world point.
-func cell_for_point(type: String, p: Vector3) -> Vector2i:
-	var s: int = Defs.BUILDINGS[type]["size"]
-	return Vector2i(floori(p.x / CELL - s / 2.0 + 0.5), floori(p.z / CELL - s / 2.0 + 0.5))
-
-func center_of(type: String, cell: Vector2i) -> Vector3:
-	var s: int = Defs.BUILDINGS[type]["size"]
-	var c := Vector2(cell.x + s / 2.0, cell.y + s / 2.0) * CELL
-	return Vector3(c.x, _footprint_height(type, cell), c.y)
-
-func rect_of(type: String, cell: Vector2i) -> Rect2:
-	var s: int = Defs.BUILDINGS[type]["size"]
-	return Rect2(Vector2(cell) * CELL, Vector2(s, s) * CELL)
-
-func can_place(type: String, cell: Vector2i) -> bool:
-	for c in cells_of(type, cell):
-		if c.x < GRID_MIN or c.y < GRID_MIN or c.x >= GRID_MAX or c.y >= GRID_MAX: return false
-		if _blocked.has(c) or _occupied.has(c): return false
-	return true
+func can_place(type: String, pos: Vector2, angle := 0.0) -> bool:
+	return place_problem(type, pos, angle) == ""
 
 func building_at_point(p: Vector3) -> int:
-	var c := Vector2i(floori(p.x / CELL), floori(p.z / CELL))
-	return int(_occupied.get(c, -1))
+	var q := Vector2(p.x, p.z)
+	for b in Game.buildings:
+		var l := Defs.to_local(b, q)
+		var h := Defs.half_extents(b["type"])
+		if absf(l.x) <= h.x and absf(l.y) <= h.y: return b["id"]
+	return -1
 
 ## Places a building through Game (pays the cost). Returns the id or -1.
-func try_place(type: String, cell: Vector2i, rot := 0) -> int:
-	if not can_place(type, cell):
-		Game.toast.emit("這裡不能蓋")
+func try_place(type: String, pos: Vector2, angle := 0.0) -> int:
+	var why := place_problem(type, pos, angle)
+	if why != "":
+		Game.toast.emit("這裡不能蓋：" + why)
 		return -1
-	var b := Game.add_building(type, cell, rot)
+	var b := Game.add_building(type, pos, angle)
 	return -1 if b.is_empty() else int(b["id"])
 
-func _footprint_height(type: String, cell: Vector2i) -> float:
-	var h := 0.0; var n := 0
-	for c in cells_of(type, cell):
-		if _height.has(c):
-			h += _height[c]; n += 1
-	return h / n if n > 0 else 0.0
+func ground_height(type: String, pos: Vector2, angle: float) -> float:
+	if _nav == null: return 0.0
+	var h := Defs.half_extents(type) * 0.8
+	var sum := 0.0
+	for l in [Vector2.ZERO, Vector2(-h.x, -h.y), Vector2(h.x, -h.y), Vector2(h.x, h.y), Vector2(-h.x, h.y)]:
+		var w: Vector2 = pos + Defs.rot2(l, angle)
+		sum += _nav.height_at(w.x, w.y)
+	return sum / 5.0
 
-## Marks grid cells covered by scenery meshes (cottage, props, trees, rocks) as blocked.
-func _scan_scenery() -> void:
-	for path in blocker_paths:
-		var n := get_node_or_null(path)
-		if n == null: continue
-		var is_nature := String(path).ends_with("Nature")
-		var min_y := 0.25 if is_nature else -10.0
-		var max_y := 2.4 if is_nature else 100.0   # canopy above roof height doesn't block
-		for mi in _meshes(n):
-			var xf := mi.global_transform
-			for s in mi.mesh.get_surface_count():
-				var verts: PackedVector3Array = mi.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
-				for v in verts:
-					var w := xf * v
-					if w.y < min_y or w.y > max_y: continue
-					_blocked[Vector2i(floori(w.x / CELL), floori(w.z / CELL))] = true
-
-func _scan_ground() -> void:
-	var n := get_node_or_null(ground_path)
-	if n == null: return
-	var sum := {}; var cnt := {}
-	for mi in _meshes(n):
-		var xf := mi.global_transform
-		for s in mi.mesh.get_surface_count():
-			var verts: PackedVector3Array = mi.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
-			for v in verts:
-				var w := xf * v
-				var c := Vector2i(floori(w.x / CELL), floori(w.z / CELL))
-				sum[c] = sum.get(c, 0.0) + w.y
-				cnt[c] = cnt.get(c, 0) + 1
-	for c in sum:
-		_height[c] = sum[c] / cnt[c]
-
-func _meshes(n: Node) -> Array[MeshInstance3D]:
-	var out: Array[MeshInstance3D] = []
-	if n is MeshInstance3D and (n as MeshInstance3D).mesh:
-		out.append(n)
-	for c in n.get_children():
-		out.append_array(_meshes(c))
-	return out
+func _world_pos(b: Dictionary) -> Vector3:
+	return Vector3(b["pos"].x, ground_height(b["type"], b["pos"], b["angle"]), b["pos"].y)
 
 # ---------------- placing mode ----------------
 
@@ -154,12 +114,10 @@ func begin_place(type: String) -> void:
 	placing = type
 	_ghost = BuildingVisuals.create(type, 1)
 	BuildingVisuals.override_all(_ghost, _ghost_mat)
-	_ghost.rotation.y = ghost_rot * PI / 2
 	add_child(_ghost)
 	_ghost_pad = _make_pad(_ok_mat)
-	var s: float = Defs.BUILDINGS[type]["size"] * CELL
-	(_ghost_pad.mesh as PlaneMesh).size = Vector2(s, s)
-	_ghost_cell = Vector2i(999, 999)
+	var h := Defs.half_extents(type) * 2.0
+	(_ghost_pad.mesh as PlaneMesh).size = h
 	_update_ghost(get_viewport().get_mouse_position())
 	mode_changed.emit(type)
 
@@ -174,27 +132,33 @@ func cancel_place() -> void:
 func _update_ghost(mouse: Vector2) -> void:
 	if placing == "" or _ghost == null: return
 	var p = _ground_point(mouse)
-	if p == null: return
-	var cell := cell_for_point(placing, p)
-	_ghost_cell = cell
-	_ghost_ok = can_place(placing, cell) and Game.can_afford(Defs.BUILDINGS[placing]["cost"])
-	var c := center_of(placing, cell)
-	_ghost.position = c
-	_ghost_pad.position = c + Vector3(0, 0.06, 0)
+	if p != null:
+		_ghost_pos = Vector2(p.x, p.z)
+	_ghost_ok = can_place(placing, _ghost_pos, ghost_angle) and Game.can_afford(Defs.BUILDINGS[placing]["cost"])
+	var y := ground_height(placing, _ghost_pos, ghost_angle)
+	_ghost.position = Vector3(_ghost_pos.x, y, _ghost_pos.y)
+	_ghost.rotation.y = ghost_angle
+	_ghost_pad.position = _ghost.position + Vector3(0, 0.06, 0)
+	_ghost_pad.rotation.y = ghost_angle
 	_ghost_pad.material_override = _ok_mat if _ghost_ok else _bad_mat
+
+func _rotate_ghost(steps: int) -> void:
+	ghost_angle = wrapf(ghost_angle + steps * ROTATE_STEP, -PI, PI)
+	_update_ghost(get_viewport().get_mouse_position())
 
 # ---------------- selection ----------------
 
 func select(id: int) -> void:
 	selected = id
-	if id < 0 or not _nodes.has(id):
+	var b := Game.get_building(id) if id >= 0 else {}
+	if b.is_empty() or not _nodes.has(id):
 		selected = -1
 		_select_pad.visible = false
 	else:
-		var b := Game.get_building(id)
-		var s: float = Defs.BUILDINGS[b["type"]]["size"] * CELL
-		(_select_pad.mesh as PlaneMesh).size = Vector2(s + 0.2, s + 0.2)
-		_select_pad.position = center_of(b["type"], b["cell"]) + Vector3(0, 0.07, 0)
+		var h := Defs.half_extents(b["type"]) * 2.0 + Vector2(0.2, 0.2)
+		(_select_pad.mesh as PlaneMesh).size = h
+		_select_pad.position = _world_pos(b) + Vector3(0, 0.07, 0)
+		_select_pad.rotation.y = b["angle"]
 		_select_pad.visible = true
 	selection_changed.emit(selected)
 
@@ -210,33 +174,35 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		_update_ghost(event.position)
 	elif event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
+		if placing != "" and event.shift_pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+			_rotate_ghost(1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -1)
+			get_viewport().set_input_as_handled()
+		elif event.button_index == MOUSE_BUTTON_LEFT:
 			if placing != "":
-				var p = _ground_point(event.position)
-				if p != null:
-					var id := try_place(placing, cell_for_point(placing, p), ghost_rot)
-					if id >= 0:
-						_ghost_cell = Vector2i(999, 999)
-						_update_ghost(event.position)
-						if not Game.can_afford(Defs.BUILDINGS[placing]["cost"]):
-							cancel_place()
+				_update_ghost(event.position)
+				var id := try_place(placing, _ghost_pos, ghost_angle)
+				if id >= 0:
+					_update_ghost(event.position)
+					if not Game.can_afford(Defs.BUILDINGS[placing]["cost"]):
+						cancel_place()
 				get_viewport().set_input_as_handled()
 			else:
 				var p = _ground_point(event.position)
 				select(building_at_point(p) if p != null else -1)
 		elif event.button_index == MOUSE_BUTTON_RIGHT and placing != "":
 			cancel_place()
-	elif event is InputEventKey and event.pressed and not event.echo:
+	elif event is InputEventKey and event.pressed:
+		if event.keycode == KEY_R:
+			_rotate_ghost(-1 if event.shift_pressed else 1)
+			return
+		if event.echo: return
 		match event.keycode:
 			KEY_ESCAPE:
 				if placing != "": cancel_place()
 				else: select(-1)
-			KEY_R:
-				ghost_rot = (ghost_rot + 1) % 4
-				if _ghost: _ghost.rotation.y = ghost_rot * PI / 2
 			KEY_DELETE, KEY_BACKSPACE:
 				demolish_selected()
-			KEY_1, KEY_2, KEY_3, KEY_4:
+			KEY_1, KEY_2, KEY_3, KEY_4, KEY_5:
 				var i: int = event.keycode - KEY_1
 				if i < Defs.BUILD_ORDER.size(): begin_place(Defs.BUILD_ORDER[i])
 
@@ -246,7 +212,13 @@ func _ground_point(mouse: Vector2) -> Variant:
 	if absf(d.y) < 1e-4: return null
 	var t := -o.y / d.y
 	if t < 0: return null
-	return o + d * t
+	var p := o + d * t
+	# one refinement step against the actual terrain height
+	if _nav:
+		var hgt: float = _nav.height_at(p.x, p.z)
+		t = (hgt - o.y) / d.y
+		if t > 0: p = o + d * t
+	return p
 
 # ---------------- building nodes ----------------
 
@@ -255,7 +227,7 @@ func _on_added(b: Dictionary, animate := true) -> void:
 	var node := Node3D.new()
 	node.name = "B%d_%s" % [b["id"], type]
 	var vis := BuildingVisuals.create(type, int(b["id"]) * 7919)
-	vis.rotation.y = int(b["rot"]) * PI / 2
+	vis.rotation.y = b["angle"]
 	node.add_child(vis)
 	var status := Label3D.new()
 	status.name = "Status"
@@ -269,13 +241,11 @@ func _on_added(b: Dictionary, animate := true) -> void:
 	status.position = Vector3(0, 2.8, 0)
 	status.visible = false
 	node.add_child(status)
-	node.position = center_of(type, b["cell"])
+	node.position = _world_pos(b)
 	add_child(node)
 	_nodes[b["id"]] = node
-	for c in cells_of(type, b["cell"]):
-		_occupied[c] = b["id"]
-	if _scatter and _scatter.has_method("clear_rect"):
-		_scatter.clear_rect(rect_of(type, b["cell"]).grow(0.15))
+	if _scatter and _scatter.has_method("clear_area"):
+		_scatter.clear_area(b["pos"], Defs.half_extents(type) + Vector2(0.15, 0.15), b["angle"])
 	if animate:
 		node.scale = Vector3(1, 0.05, 1)
 		var tw := create_tween()
@@ -284,10 +254,8 @@ func _on_added(b: Dictionary, animate := true) -> void:
 
 func _on_removed(b: Dictionary) -> void:
 	var id: int = b["id"]
-	for c in cells_of(b["type"], b["cell"]):
-		_occupied.erase(c)
-	if _scatter and _scatter.has_method("restore_rect"):
-		_scatter.restore_rect(rect_of(b["type"], b["cell"]).grow(0.15))
+	if _scatter and _scatter.has_method("restore_area"):
+		_scatter.restore_area(b["pos"], Defs.half_extents(b["type"]) + Vector2(0.15, 0.15), b["angle"])
 	if _nodes.has(id):
 		var n: Node3D = _nodes[id]
 		_nodes.erase(id)
@@ -303,16 +271,15 @@ func _refresh_status() -> void:
 		var d: Dictionary = Defs.BUILDINGS[b["type"]]
 		if d.get("workers", 0) > 0 and not b["staffed"]:
 			lbl.text = "缺工人"; lbl.visible = true
-		elif d.has("produces") and Game.starving:
+		elif d.get("workers", 0) > 0 and not Game.is_active(b):
 			lbl.text = "餓肚子"; lbl.visible = true
 		else:
 			lbl.visible = false
 	if placing != "":
-		_ghost_cell = Vector2i(999, 999)
 		_update_ghost(get_viewport().get_mouse_position())
 
-func _on_produced(id: int, res: String, amount: int) -> void:
-	if not _nodes.has(id): return
+func _on_delivered(res: String, amount: int, at: Vector2) -> void:
+	if not is_inside_tree(): return
 	var lbl := Label3D.new()
 	lbl.font = Fonts.cjk()
 	lbl.text = "+%d %s" % [amount, Defs.RESOURCES[res]["name"]]
@@ -322,7 +289,8 @@ func _on_produced(id: int, res: String, amount: int) -> void:
 	lbl.modulate = Defs.RESOURCES[res]["color"].lightened(0.25)
 	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	lbl.no_depth_test = true
-	lbl.position = _nodes[id].position + Vector3(0, 2.2, 0)
+	var y: float = _nav.height_at(at.x, at.y) if _nav else 0.0
+	lbl.position = Vector3(at.x, y + 1.9, at.y)
 	add_child(lbl)
 	var tw := create_tween().set_parallel()
 	tw.tween_property(lbl, "position:y", lbl.position.y + 1.2, 1.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
@@ -336,7 +304,6 @@ func _pad_mat(c: Color) -> StandardMaterial3D:
 	m.albedo_color = c
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.no_depth_test = false
 	return m
 
 func _make_pad(m: Material) -> MeshInstance3D:

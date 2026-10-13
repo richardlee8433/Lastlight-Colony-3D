@@ -1,9 +1,10 @@
 extends Node
-## Autoload "Game": the whole simulation lives here, independent of visuals.
-## World/UI listen to signals and call the public methods.
+## Autoload "Game": the simulation state (resources, people, buildings, quests, saving).
+## Goods are produced by villagers and only count once they are carried into a storage
+## (see Villager / VillagerManager, which call deliver()).
 
 signal changed                                   # any resource / population / building change
-signal produced(building_id: int, res: String, amount: int)
+signal delivered(res: String, amount: int, at: Vector2)
 signal building_added(b: Dictionary)
 signal building_removed(b: Dictionary)
 signal toast(text: String)
@@ -12,12 +13,13 @@ signal day_passed(day: int)
 signal reset                                     # new game started (paths, villagers clear)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 
 var resources := {}
 var population := 0
 var day := 1
 var speed := 1.0                 # 0 = paused
+## building: {"id", "type", "pos": Vector2 (world x,z centre), "angle": float (radians), "staffed"}
 var buildings: Array[Dictionary] = []
 var quest_index := 0
 var starving := false
@@ -25,6 +27,8 @@ var starving := false
 var _next_id := 1
 var _day_timer := 0.0
 var _autosave := true
+var _today := {}                 # goods delivered today
+var _yesterday := {}             # goods delivered during the previous full day
 
 func _ready() -> void:
 	if not load_game():
@@ -37,6 +41,7 @@ func new_game() -> void:
 	quest_index = 0
 	starving = false
 	_day_timer = 0.0
+	_today = {}; _yesterday = {}
 	for b in buildings.duplicate():
 		buildings.erase(b)
 		building_removed.emit(b)
@@ -82,19 +87,19 @@ func get_building(id: int) -> Dictionary:
 		if b["id"] == id: return b
 	return {}
 
+## Goods carried into storage during the last full day.
+func income_per_day(res: String) -> int:
+	return int(_yesterday.get(res, 0))
+
+## Net food per day: yesterday's deliveries minus what the village eats.
 func food_per_day() -> float:
-	var prod := 0.0
-	for b in buildings:
-		var d: Dictionary = Defs.BUILDINGS[b["type"]]
-		if b["staffed"] and d.has("produces") and d["produces"].has("food"):
-			prod += float(d["produces"]["food"]) * Defs.DAY_LENGTH / float(d["cycle"])
-	return prod - population * Defs.FOOD_PER_VILLAGER
+	return income_per_day("food") - population * Defs.FOOD_PER_VILLAGER
 
 # ---------------- actions ----------------
 
-## Adds a building at a grid cell. Returns the record, or {} if unaffordable.
-## The caller (BuildController) is responsible for checking the grid is free.
-func add_building(type: String, cell: Vector2i, rot: int, pay := true) -> Dictionary:
+## Adds a building at a world position (x, z) with any rotation. Returns the record, or {} if unaffordable.
+## The caller (BuildController) is responsible for checking the spot is free.
+func add_building(type: String, pos: Vector2, angle := 0.0, pay := true) -> Dictionary:
 	var d: Dictionary = Defs.BUILDINGS[type]
 	if pay:
 		if not can_afford(d["cost"]):
@@ -102,7 +107,7 @@ func add_building(type: String, cell: Vector2i, rot: int, pay := true) -> Dictio
 			return {}
 		for r in d["cost"]:
 			resources[r] -= int(d["cost"][r])
-	var b := {"id": _next_id, "type": type, "cell": cell, "rot": rot, "staffed": false, "progress": 0.0}
+	var b := {"id": _next_id, "type": type, "pos": pos, "angle": angle, "staffed": false}
 	_next_id += 1
 	buildings.append(b)
 	_assign_workers()
@@ -125,6 +130,15 @@ func demolish(id: int) -> void:
 	toast.emit("已拆除%s，退回一半資源" % d["name"])
 	changed.emit()
 
+## A villager carried goods into a storage at world point `at`.
+func deliver(res: String, amount: int, at := Vector2.ZERO) -> void:
+	if amount <= 0 or not resources.has(res): return
+	resources[res] += amount
+	_today[res] = int(_today.get(res, 0)) + amount
+	delivered.emit(res, amount, at)
+	changed.emit()
+	_check_quest()
+
 func set_speed(s: float) -> void:
 	speed = s
 	changed.emit()
@@ -134,22 +148,9 @@ func set_speed(s: float) -> void:
 func _process(delta: float) -> void:
 	step(delta * speed)
 
-## Advances the simulation by dt seconds of game time (tests call this directly).
+## Advances the day clock by dt seconds of game time (tests call this directly).
 func step(dt: float) -> void:
 	if dt <= 0.0: return
-	for b in buildings:
-		var d: Dictionary = Defs.BUILDINGS[b["type"]]
-		if not d.has("produces") or not b["staffed"] or starving:
-			continue
-		b["progress"] += dt / float(d["cycle"])
-		while b["progress"] >= 1.0:
-			b["progress"] -= 1.0
-			for r in d["produces"]:
-				var amt := int(d["produces"][r])
-				resources[r] += amt
-				produced.emit(b["id"], r, amt)
-			changed.emit()
-			_check_quest()
 	_day_timer += dt
 	while _day_timer >= Defs.DAY_LENGTH:
 		_day_timer -= Defs.DAY_LENGTH
@@ -160,6 +161,8 @@ func day_progress() -> float:
 
 func _end_of_day() -> void:
 	day += 1
+	_yesterday = _today
+	_today = {}
 	var eat := population * Defs.FOOD_PER_VILLAGER
 	if resources["food"] >= eat:
 		resources["food"] -= eat
@@ -172,7 +175,7 @@ func _end_of_day() -> void:
 	else:
 		resources["food"] = 0
 		if not starving:
-			toast.emit("食物不足！村民餓肚子，停止工作")
+			toast.emit("食物不足！只剩農夫還在工作")
 		starving = true
 	_assign_workers()
 	day_passed.emit(day)
@@ -192,6 +195,12 @@ func _assign_workers() -> void:
 			free -= need
 		else:
 			b["staffed"] = false
+
+## Whether a staffed building is actually working right now (when starving only food jobs continue).
+func is_active(b: Dictionary) -> bool:
+	var d: Dictionary = Defs.BUILDINGS[b["type"]]
+	if d.get("workers", 0) == 0 or not b["staffed"]: return false
+	return not starving or d.get("yield", {}).has("food")
 
 # ---------------- quests ----------------
 
@@ -230,10 +239,12 @@ func _check_quest() -> void:
 func save_game() -> void:
 	var list := []
 	for b in buildings:
-		list.append({"type": b["type"], "x": b["cell"].x, "y": b["cell"].y, "rot": b["rot"], "progress": b["progress"]})
+		list.append({"type": b["type"], "x": snappedf(b["pos"].x, 0.001), "z": snappedf(b["pos"].y, 0.001),
+			"angle": snappedf(b["angle"], 0.0001)})
 	var data := {
 		"version": SAVE_VERSION, "resources": resources, "population": population, "day": day,
 		"quest_index": quest_index, "starving": starving, "day_timer": _day_timer, "buildings": list,
+		"today": _today, "yesterday": _yesterday,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
@@ -244,8 +255,9 @@ func load_game() -> bool:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if f == null: return false
 	var data = JSON.parse_string(f.get_as_text())
-	if typeof(data) != TYPE_DICTIONARY or int(data.get("version", 0)) != SAVE_VERSION:
-		return false
+	if typeof(data) != TYPE_DICTIONARY: return false
+	var version := int(data.get("version", 0))
+	if version < 1 or version > SAVE_VERSION: return false
 	resources = {}
 	for r in Defs.RESOURCES:
 		resources[r] = int(data["resources"].get(r, 0))
@@ -254,14 +266,22 @@ func load_game() -> bool:
 	quest_index = int(data["quest_index"])
 	starving = bool(data.get("starving", false))
 	_day_timer = float(data.get("day_timer", 0.0))
+	_today = data.get("today", {}); _yesterday = data.get("yesterday", {})
 	buildings.clear()
 	_next_id = 1
 	for e in data["buildings"]:
 		if not Defs.BUILDINGS.has(e["type"]): continue
-		var b := {"id": _next_id, "type": e["type"], "cell": Vector2i(int(e["x"]), int(e["y"])),
-			"rot": int(e["rot"]), "staffed": false, "progress": float(e.get("progress", 0.0))}
+		var pos: Vector2; var angle: float
+		if version == 1:
+			# grid save: cell is the footprint corner, rot is in quarter turns
+			var s: int = Defs.BUILDINGS[e["type"]]["size"]
+			pos = Vector2(int(e["x"]) + s / 2.0, int(e["y"]) + s / 2.0)
+			angle = int(e.get("rot", 0)) * PI / 2.0
+		else:
+			pos = Vector2(float(e["x"]), float(e["z"]))
+			angle = float(e.get("angle", 0.0))
+		buildings.append({"id": _next_id, "type": e["type"], "pos": pos, "angle": angle, "staffed": false})
 		_next_id += 1
-		buildings.append(b)
 	_assign_workers()
 	return true
 

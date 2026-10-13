@@ -13,34 +13,38 @@ const START := {
 	"housing": 4,   # the starter cottage
 }
 
-## seconds of real time per in-game day at 1x speed
-const DAY_LENGTH := 8.0
+## seconds of game time per in-game day (at 1x speed)
+const DAY_LENGTH := 30.0
 ## food eaten per villager per day
 const FOOD_PER_VILLAGER := 1
 ## a new villager arrives each day if there is free housing and at least this much food
 const GROWTH_FOOD_MIN := 10
 
-## size = footprint in grid cells (square), cycle = seconds per production at 1x
+## size = square footprint side in metres. Producers have one worker; "yield" is what the
+## worker carries to the nearest storage after each work session — so distance matters.
+## Layout keys use building-local (x, z) metres, front of the building = +z:
+##   nav_block  rects villagers can't walk through
+##   work_spot / work_look   where the worker stands and what they face ("spot" jobs)
+##   door       where residents rest (houses)     drop   where goods are delivered (storehouses)
 const BUILDINGS := {
 	"woodcutter": {
-		"name": "伐木場", "desc": "工人砍樹產出木材",
+		"name": "伐木場", "desc": "伐木工到附近的樹林砍樹，扛回倉庫",
 		"cost": {"wood": 15}, "size": 3,
-		"workers": 1, "produces": {"wood": 3}, "cycle": 4.0,
+		"workers": 1, "yield": {"wood": 8},
 		"nav_block": [Rect2(-1.05, -0.75, 2.1, 1.5), Rect2(-0.55, -1.3, 1.25, 0.45), Rect2(0.8, -1.25, 0.5, 0.5)],
-		"drop": Vector2(0.0, -1.8),
-		"job": {"anim": "chop", "tool": "Axe", "carry": "CarryLog", "hat": "Hood", "target": "tree", "to_storage_every": 3},
+		"job": {"anim": "chop", "tool": "Axe", "carry": "CarryLog", "hat": "Hood", "target": "tree"},
 	},
 	"farm": {
-		"name": "農田", "desc": "種植作物產出食物",
+		"name": "農田", "desc": "農夫照顧作物，把收成背回倉庫",
 		"cost": {"wood": 20, "stone": 5}, "size": 4,
-		"workers": 1, "produces": {"food": 4}, "cycle": 5.0,
+		"workers": 1, "yield": {"food": 5},
 		"nav_block": [],
 		"job": {"anim": "hoe", "tool": "Hoe", "carry": "CarrySack", "hat": "HatStraw", "target": "field"},
 	},
 	"quarry": {
-		"name": "採石場", "desc": "開採石頭產出石材",
+		"name": "採石場", "desc": "石匠敲下石塊，搬回倉庫",
 		"cost": {"wood": 25}, "size": 3,
-		"workers": 1, "produces": {"stone": 2}, "cycle": 5.0,
+		"workers": 1, "yield": {"stone": 6},
 		"nav_block": [Rect2(-1.2, -1.4, 1.8, 1.5), Rect2(0.5, 0.6, 1.25, 0.45), Rect2(-1.05, 0.75, 0.3, 0.3)],
 		"work_spot": Vector2(0.1, 0.5), "work_look": Vector2(-0.2, -0.3),
 		"job": {"anim": "mine", "tool": "Pick", "carry": "CarryStone", "hat": "HatCap", "target": "spot"},
@@ -52,17 +56,31 @@ const BUILDINGS := {
 		"nav_block": [Rect2(-1.35, -1.0, 2.7, 2.0)],
 		"door": Vector2(0.0, 1.45),
 	},
+	"storehouse": {
+		"name": "倉庫", "desc": "村民把資源搬到最近的倉庫，蓋在生產區旁邊可以縮短搬運",
+		"cost": {"wood": 30, "stone": 10}, "size": 3,
+		"workers": 0, "storage": true,
+		"nav_block": [Rect2(-1.35, -1.35, 2.7, 2.35)],
+		"drop": Vector2(0.0, 1.55),
+	},
 }
+
+## areas where nothing can be built (world x, z): the starting cottage and its doorstep
+const NO_BUILD := [Rect2(-3.3, -2.8, 6.6, 6.5)]
+## buildable area (world x, z)
+const BUILD_BOUNDS := Rect2(-15.5, -15.5, 31.0, 31.0)
+## gap kept between buildings (metres)
+const BUILD_GAP := 0.25
 
 ## ---- villagers & paths ----
 const VILLAGER := {
-	"speed": 1.35,            # m/s of game time
-	"work_time": 5.0,         # seconds working before carrying goods
+	"speed": 1.5,            # m/s of game time
+	"work_time": 4.0,         # seconds working before carrying the yield to storage
 	"rest_every": 3,          # go home to rest every N deliveries
 	"rest_time": 4.0,
 	"drop_time": 0.7,
 }
-## the starting cottage: storage + first home
+## the starting cottage: first storage + first home
 const STORAGE_POINT := Vector2(0.0, 2.75)
 const STORAGE_LOOK := Vector2(0.0, 1.6)
 const STARTER_HOUSING := 4
@@ -78,22 +96,54 @@ const PATHS := {
 }
 
 static func building_center(b: Dictionary) -> Vector2:
-	var s: int = BUILDINGS[b["type"]]["size"]
-	return Vector2(b["cell"].x + s / 2.0, b["cell"].y + s / 2.0)
+	return b["pos"]
 
-## building-local (x, z) -> world (x, z), matching BuildingVisuals rotation (rot * 90° around Y)
+## rotate a local (x, z) vector by a building angle (same as Node3D.rotation.y = angle)
+static func rot2(v: Vector2, a: float) -> Vector2:
+	return Vector2(v.x * cos(a) + v.y * sin(a), -v.x * sin(a) + v.y * cos(a))
+
+## building-local (x, z) -> world (x, z)
 static func to_world(b: Dictionary, local: Vector2) -> Vector2:
-	var a := int(b["rot"]) * PI / 2.0
-	var v := Vector3(local.x, 0, local.y).rotated(Vector3.UP, a)
-	return building_center(b) + Vector2(v.x, v.z)
+	return b["pos"] + rot2(local, b["angle"])
 
-const BUILD_ORDER := ["woodcutter", "farm", "quarry", "house"]
+## world (x, z) -> building-local (x, z)
+static func to_local(b: Dictionary, world: Vector2) -> Vector2:
+	return rot2(world - b["pos"], -b["angle"])
+
+static func half_extents(type: String) -> Vector2:
+	var s: float = BUILDINGS[type]["size"]
+	return Vector2(s, s) * 0.5
+
+## corners of an oriented footprint (world x, z)
+static func footprint_corners(type: String, pos: Vector2, angle: float, grow := 0.0) -> PackedVector2Array:
+	var h := half_extents(type) + Vector2(grow, grow)
+	var out := PackedVector2Array()
+	for c in [Vector2(-h.x, -h.y), Vector2(h.x, -h.y), Vector2(h.x, h.y), Vector2(-h.x, h.y)]:
+		out.append(pos + rot2(c, angle))
+	return out
+
+## separating-axis test for two convex quads
+static func quads_overlap(a: PackedVector2Array, b: PackedVector2Array) -> bool:
+	for poly in [a, b]:
+		for i in 4:
+			var e: Vector2 = poly[(i + 1) % 4] - poly[i]
+			var axis := Vector2(-e.y, e.x)
+			var amin := INF; var amax := -INF; var bmin := INF; var bmax := -INF
+			for p in a:
+				var d := axis.dot(p); amin = minf(amin, d); amax = maxf(amax, d)
+			for p in b:
+				var d := axis.dot(p); bmin = minf(bmin, d); bmax = maxf(bmax, d)
+			if amax < bmin or bmax < amin: return false
+	return true
+
+const BUILD_ORDER := ["woodcutter", "farm", "quarry", "house", "storehouse"]
 
 const QUESTS := [
 	{"text": "蓋一座伐木場", "type": "build", "building": "woodcutter", "count": 1, "reward": {"food": 10}},
 	{"text": "蓋一塊農田", "type": "build", "building": "farm", "count": 1, "reward": {"wood": 15}},
-	{"text": "蓋一間民房", "type": "build", "building": "house", "count": 1, "reward": {"stone": 10}},
 	{"text": "蓋一座採石場", "type": "build", "building": "quarry", "count": 1, "reward": {"wood": 20}},
+	{"text": "蓋一間民房", "type": "build", "building": "house", "count": 1, "reward": {"stone": 10}},
+	{"text": "在生產區旁蓋一座倉庫", "type": "build", "building": "storehouse", "count": 1, "reward": {"food": 20}},
 	{"text": "人口達到 10 人", "type": "population", "value": 10, "reward": {"food": 30}},
 	{"text": "存到 100 木材", "type": "resource", "res": "wood", "value": 100, "reward": {"stone": 30}},
 	{"text": "擁有 3 塊農田", "type": "build", "building": "farm", "count": 3, "reward": {"wood": 40}},

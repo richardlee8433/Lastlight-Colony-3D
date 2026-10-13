@@ -98,21 +98,25 @@ func _apply(kind: String, i: int) -> void:
 		if kind != "tuft": k = 0.0 if k < 0.7 else k   # flowers vanish early on a path
 	(s["mm"] as MultiMesh).set_instance_transform(i, Transform3D(base.basis.scaled(Vector3(1, k, 1) if k > 0.0 else Vector3.ZERO), base.origin))
 
-## Hides grass/flowers inside an XZ rectangle (world units), e.g. under a new building.
-func clear_rect(r: Rect2) -> void:
-	_apply_rect(r, true)
+## Hides grass/flowers under a building footprint (centre, half extents, rotation), e.g. a new building.
+func clear_area(center: Vector2, half: Vector2, angle: float) -> void:
+	_apply_area(center, half, angle, true)
 
 ## Restores them (after demolishing).
-func restore_rect(r: Rect2) -> void:
-	_apply_rect(r, false)
+func restore_area(center: Vector2, half: Vector2, angle: float) -> void:
+	_apply_area(center, half, angle, false)
 
-func _apply_rect(r: Rect2, hide: bool) -> void:
+func _apply_area(center: Vector2, half: Vector2, angle: float, hide: bool) -> void:
+	var r := half.length()
 	for kind in _sets:
 		var xfs: Array[Transform3D] = _sets[kind]["xf"]
 		var hidden: PackedByteArray = _sets[kind]["hidden"]
 		for i in xfs.size():
 			var o := xfs[i].origin
-			if r.has_point(Vector2(o.x, o.z)):
+			var d := Vector2(o.x, o.z) - center
+			if absf(d.x) > r or absf(d.y) > r: continue
+			var l := Defs.rot2(d, -angle)
+			if absf(l.x) <= half.x and absf(l.y) <= half.y:
 				hidden[i] = 1 if hide else 0
 				_apply(kind, i)
 
