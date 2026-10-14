@@ -32,21 +32,21 @@ const GROWTH_FOOD_MIN := 10
 const BUILDINGS := {
 	"woodcutter": {
 		"name": "Woodcutter", "desc": "Paint a forest area after building it. The woodcutter fells the grown trees inside and carries the logs to storage; stumps regrow and saplings sprout",
-		"cost": {"wood": 15}, "size": 3,
+		"cost": {"wood": 15}, "size": 3, "build_time": 16,
 		"workers": 1, "yield": {"wood": 8},
 		"nav_block": [Rect2(-1.05, -0.75, 2.1, 1.5), Rect2(-0.55, -1.3, 1.25, 0.45), Rect2(0.8, -1.25, 0.5, 0.5)],
 		"job": {"anim": "chop", "tool": "Axe", "carry": "CarryLog", "hat": "Hood", "target": "tree"},
 	},
 	"farm": {
 		"name": "Farmhouse", "desc": "After building it, paint its field. The farmer tends the wheat and carries the harvest to storage; bigger fields give more per trip",
-		"cost": {"wood": 20, "stone": 5}, "size": 3,
+		"cost": {"wood": 20, "stone": 5}, "size": 3, "build_time": 16,
 		"workers": 1, "yield": {"food": 5},        # real per-trip yield comes from the field size (Fields)
 		"nav_block": [Rect2(-1.2, -0.95, 2.4, 1.7)],
 		"job": {"anim": "hoe", "tool": "Hoe", "carry": "CarrySack", "hat": "HatStraw", "target": "field"},
 	},
 	"quarry": {
 		"name": "Quarry", "desc": "Built on a stone deposit. The mason breaks off stone and hauls it to storage",
-		"cost": {"wood": 25}, "size": 4, "on_deposit": true,
+		"cost": {"wood": 25}, "size": 4, "build_time": 20, "on_deposit": true,
 		"workers": 1, "yield": {"stone": 6},
 		# the rock itself is the deposit (blocked in NavGrid); these are the crane, bench, block stack, sledge
 		"nav_block": [Rect2(-1.85, -1.45, 0.8, 0.75), Rect2(1.4, -0.72, 0.5, 0.95), Rect2(0.85, 1.0, 1.05, 0.4), Rect2(-1.7, 0.85, 0.7, 0.75)],
@@ -55,7 +55,7 @@ const BUILDINGS := {
 	},
 	"house": {
 		"name": "House", "desc": "Room for 4 villagers",
-		"cost": {"wood": 20, "stone": 15}, "size": 3,
+		"cost": {"wood": 20, "stone": 15}, "size": 3, "build_time": 20,
 		"workers": 0, "housing": 4,
 		"nav_block": [Rect2(-1.35, -1.0, 2.7, 2.0)],
 		"door": Vector2(0.0, 1.45),
@@ -69,7 +69,7 @@ const BUILDINGS := {
 	},
 	"storehouse": {
 		"name": "Storehouse", "desc": "Villagers haul goods to the nearest storage. Build one near production to shorten trips",
-		"cost": {"wood": 30, "stone": 10}, "size": 3,
+		"cost": {"wood": 30, "stone": 10}, "size": 3, "build_time": 24,
 		"workers": 0, "storage": true,
 		"nav_block": [Rect2(-1.35, -1.35, 2.7, 2.35)],
 		"drop": Vector2(0.0, 1.55),
@@ -150,6 +150,10 @@ const TOOLS := {
 		"label": "Paint area"},
 }
 
+## construction: a placed building is a site until builders have worked "build_time" seconds on it;
+## each work session adds VILLAGER.work_time. Sites are staffed before workplaces.
+const CONSTRUCTION := {"stage2": 0.5}     # progress where the site turns from foundation to timber frame
+
 ## stone deposits: quarries can only be built on one of these (one quarry each)
 const DEPOSITS := [
 	{"pos": Vector2(10.5, 5.5), "model": 0, "angle": 2.4},
@@ -166,6 +170,8 @@ const FIELD := {
 	"min_cells": 8,           # smaller fields don't produce
 	"cells_per_food": 12,     # food per trip = cells / 12 (3 m² per food)
 	"max_yield": 8,
+	"grow_days": 1.25,        # freshly tilled -> ripe (only once the farmhouse is finished)
+	"harvest_trips": 5,       # trips of food a ripe field gives before it is tilled again
 }
 
 ## woodcutter forest areas and tree growth (times in in-game days)

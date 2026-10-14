@@ -44,7 +44,7 @@ func _run() -> void:
 	var zones = s.get_node("Zones")
 	var fields = s.get_node("Fields")
 	var wear = s.get_node("PathWear")
-	game._autosave = false
+	game._autosave = false; game.instant_build = true
 	game.delete_save(); game.new_game(); game.speed = 0.0
 	game.resources["wood"] = 500; game.resources["stone"] = 500; game.resources["food"] = 300
 

@@ -43,7 +43,7 @@ func _run() -> void:
 	var vm = s.get_node("Villagers")
 	var scatter = s.get_node("Scatter")
 	var wear = s.get_node("PathWear")
-	game._autosave = false
+	game._autosave = false; game.instant_build = true
 	game.delete_save(); game.new_game(); game.speed = 0.0
 	game.resources["wood"] = 500; game.resources["stone"] = 500; game.resources["food"] = 200
 
@@ -109,7 +109,25 @@ func _run() -> void:
 	if farmer:
 		var t: Dictionary = vm.work_target(farmer)
 		check(not t.is_empty() and fields.is_field(Vector2(t["pos"].x, t["pos"].z)) or Vector2(t["pos"].x, t["pos"].z).distance_to(spot) < Defs.FIELD["range"] + 1.0, "farmer works in the field")
-		check(vm.yield_of(farmer).get("food", 0) == fields.yield_for(id), "harvest per trip follows the field")
+		# --- crop cycle: tilled -> growing -> ripe -> harvested -> tilled ---
+		var fb0: Dictionary = game.get_building(id)
+		fb0["crop"] = 0.0; fb0.erase("harvest"); fields._update_crop(fb0)
+		var mmi = fields._wheat[id]
+		check(fields.crop_stage(id) == "tilled" and not mmi.visible, "a fresh field is bare tilled soil")
+		check(vm.yield_of(farmer).is_empty(), "no food while the crop grows (the farmer tends it)")
+		var day: float = Defs.DAY_LENGTH
+		fields.tick(Defs.FIELD["grow_days"] * day * 0.4)
+		var g: float = mmi.material_override.get_shader_parameter("growth")
+		check(fields.crop_stage(id) == "growing" and mmi.visible and g > 0.3 and g < 0.5, "young wheat grows (%.2f)" % g)
+		fields.tick(Defs.FIELD["grow_days"] * day * 0.7)
+		check(fields.crop_stage(id) == "ripe" and int(fb0.get("harvest", 0)) == Defs.FIELD["harvest_trips"], "the wheat ripens")
+		var food: int = vm.yield_of(farmer).get("food", 0)
+		check(food == fields.yield_for(id) and food > 0, "harvest per trip follows the field (%d)" % food)
+		check(mmi.multimesh.visible_instance_count > 0 and mmi.multimesh.visible_instance_count < mmi.multimesh.instance_count, "harvested rows disappear")
+		for k in Defs.FIELD["harvest_trips"] - 1: vm.yield_of(farmer)
+		check(fields.crop_stage(id) == "tilled" and not mmi.visible, "after the harvest the field is tilled again")
+		fields.tick(Defs.FIELD["grow_days"] * day * 0.2)
+		check(fields.crop_stage(id) == "growing", "and a new crop starts")
 
 	# --- other things respect fields ---
 	var fc: Vector2 = fields.cell_center(fields.field_of(id)[fields.field_of(id).size() / 2])

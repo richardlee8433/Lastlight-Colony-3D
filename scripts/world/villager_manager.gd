@@ -19,6 +19,8 @@ var _rng := RandomNumberGenerator.new()
 @onready var fields: Node = get_node_or_null(fields_path)
 @onready var forest: Node = get_node_or_null(forest_path)
 var _chop := {}                  # villager id -> tree id being felled
+var _was_site := {}              # villager id -> whether their job was a construction site when assigned
+const BUILDER_JOB := {"anim": "chop", "tool": "Axe", "carry": "", "hat": "HatCap", "target": "site"}
 
 func _ready() -> void:
 	_rng.seed = 4242
@@ -91,7 +93,7 @@ func homes() -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for b in Game.buildings:
 		var d: Dictionary = Defs.BUILDINGS[b["type"]]
-		if d.has("housing"):
+		if d.has("housing") and Game.is_built(b):
 			var door := Defs.to_world(b, d.get("door", Vector2.ZERO))
 			for i in int(d["housing"]): out.append(door)
 	return out
@@ -113,6 +115,11 @@ func _assign_jobs() -> void:
 		if v.job_id >= 0:
 			if open.has(v.job_id) and not taken.has(v.job_id):
 				taken[v.job_id] = true
+				# the site this builder worked on is finished: same building, new job (outfit, target)
+				var site_now := not Game.is_built(Game.get_building(v.job_id))
+				if _was_site.get(v.vid, site_now) != site_now:
+					_was_site[v.vid] = site_now
+					v.assign_job(v.job_id)
 			else:
 				v.clear_job()
 				_chop.erase(v.vid)
@@ -130,6 +137,7 @@ func _assign_jobs() -> void:
 				if v.job_id < 0: best = v; break
 		if best:
 			best.job_id = id      # set before assign_job so job_of() works
+			_was_site[best.vid] = not Game.is_built(Game.get_building(id))
 			best.assign_job(id)
 			taken[id] = true
 
@@ -148,6 +156,7 @@ func job_of(v: Villager) -> Dictionary:
 	if v.job_id < 0: return {}
 	var b := Game.get_building(v.job_id)
 	if b.is_empty(): return {}
+	if not Game.is_built(b): return BUILDER_JOB
 	return Defs.BUILDINGS[b["type"]].get("job", {})
 
 func building_center(id: int) -> Vector2:
@@ -158,8 +167,13 @@ func building_center(id: int) -> Vector2:
 func yield_of(v: Villager) -> Dictionary:
 	var b := Game.get_building(v.job_id)
 	if b.is_empty(): return {}
+	if not Game.is_built(b):
+		# a builder's work session: progress on the site, nothing to carry
+		Game.add_build_progress(b["id"], float(Defs.VILLAGER["work_time"]) / float(Defs.BUILDINGS[b["type"]].get("build_time", 10.0)))
+		return {}
 	if b["type"] == "farm" and fields:
-		var n: int = fields.yield_for(b["id"])
+		# food only from a ripe field; while the wheat grows the farmer tends it
+		var n: int = fields.harvest(b["id"])
 		return {"food": n} if n > 0 else {}
 	if b["type"] == "woodcutter" and forest:
 		# wood only if the tree this villager worked on was still standing
@@ -173,7 +187,7 @@ func storages() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for b in Game.buildings:
 		var d: Dictionary = Defs.BUILDINGS[b["type"]]
-		if d.get("storage", false):
+		if d.get("storage", false) and Game.is_built(b):
 			out.append({"drop": Defs.to_world(b, d["drop"]), "look": b["pos"]})
 	return out
 
@@ -195,9 +209,17 @@ func work_target(v: Villager) -> Dictionary:
 	var b := Game.get_building(v.job_id)
 	if b.is_empty(): return {}
 	var d: Dictionary = Defs.BUILDINGS[b["type"]]
-	var job: Dictionary = d.get("job", {})
+	var job: Dictionary = job_of(v)
 	var c := Defs.building_center(b)
 	match job.get("target", "spot"):
+		"site":
+			# somewhere just outside the footprint, facing the middle
+			var h := Defs.half_extents(b["type"])
+			var side := _rng.randi() % 4
+			var t := _rng.randf_range(-0.7, 0.7)
+			var local: Vector2 = [Vector2(t * h.x, h.y + 0.45), Vector2(t * h.x, -h.y - 0.45), Vector2(h.x + 0.45, t * h.y), Vector2(-h.x - 0.45, t * h.y)][side]
+			var p := nav.walkable_point(Defs.to_world(b, local))
+			return {"pos": nav.on_ground(p), "look": nav.on_ground(b["pos"])}
 		"tree":
 			# the closest grown tree in the lodge's forest area, approached from the lodge side
 			if forest == null: return {}

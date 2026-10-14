@@ -15,3 +15,4 @@ _*.png.import
 __pycache__/
 _forest*.png
 _quarry*.png
+_stages*.png

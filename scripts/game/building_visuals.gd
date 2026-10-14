@@ -63,7 +63,9 @@ static func roof(p: Node3D, w: float, d: float, h: float, pos: Vector3, m: Mater
 	return _add(p, pr, m, pos)
 
 ## Returns a Node3D centred on the footprint, base at y=0.
-static func create(type: String, seed_val: int) -> Node3D:
+static func create(type: String, seed_val: int, stage := 2) -> Node3D:
+	if stage < 2:
+		return construction(type, stage)
 	var root := Node3D.new()
 	var rng := RandomNumberGenerator.new(); rng.seed = seed_val
 	match type:
@@ -73,6 +75,21 @@ static func create(type: String, seed_val: int) -> Node3D:
 		"farm": _farm(root, rng)
 		"storehouse": _storehouse(root, rng)
 		"cart": _cart(root, rng)
+	return root
+
+const SITE_MODELS := ["res://models/site_0.glb", "res://models/site_1.glb"]
+
+## A construction site (stage 0 foundation, 1 timber frame), built for 3 x 3 m and stretched to the footprint.
+static func construction(type: String, stage: int) -> Node3D:
+	var root := Node3D.new()
+	var path: String = SITE_MODELS[clampi(stage, 0, 1)]
+	var h := Defs.half_extents(type)
+	if ResourceLoader.exists(path):
+		var m: Node3D = (load(path) as PackedScene).instantiate()
+		m.scale = Vector3(h.x / 1.5, minf(h.x, h.y) / 1.5, h.y / 1.5)
+		root.add_child(m)
+	else:
+		box(root, Vector3(h.x * 2, 0.1, h.y * 2), Vector3(0, 0.05, 0), soil())
 	return root
 
 const HOUSE_VARIANTS := 6

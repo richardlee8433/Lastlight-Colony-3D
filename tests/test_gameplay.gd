@@ -40,7 +40,7 @@ func find_spot(type: String, near := Vector2(0, 7), angle := 0.0) -> Vector2:
 func _run() -> void:
 	game = root.get_node("Game")
 	ctl = current_scene.get_node("BuildController")
-	game._autosave = false
+	game._autosave = false; game.instant_build = true
 	game.delete_save()
 	game.new_game()
 	game.speed = 0.0

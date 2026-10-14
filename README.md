@@ -21,9 +21,11 @@ Open Godot, choose **Import**, and select `project.godot`. Wait for the first as
 ## Gameplay (MVP)
 - **Opening**: the map starts as open meadow. Three settlers walk in from the south road to the **supply cart**. The cart is the temporary storage (holding the starting wood 60, stone 20, food 40), and the campfire beside it has 4 sleeping spots. The cart can't be demolished. Saves from before this change get a supply cart automatically.
 - **Resources**: wood, stone, food. **Resources only count once a villager carries them into a storage.** After each work session the worker carries one load (woodcutter 8 wood, farm 5 food, quarry 6 stone) to the **nearest storage**, so the farther the trip, the less gets produced. The resource bar shows how much was brought into storage yesterday.
+- **Construction**: a placed building is a construction site. A villager builds it in two visible stages (staked foundation with material piles, then a timber frame with scaffolding) before it is finished; only finished buildings give beds, jobs or storage. Sites get their builders before workplaces, so production can pause while something is built. Cancelling a site refunds everything. Houses grown in zones are built the same way.
+- **Roads**: every new building gets a dirt path from its door to the nearest road (or the village centre); after that, paths grow and fade with use.
 - **Stone deposits**: four rock outcrops on the map. A quarry can only be built on a free deposit (one quarry each): while placing one, the deposits get a glowing ring and the quarry snaps onto the nearest; any rotation works. The mason works the rock face and hauls stone to the nearest storage, so a storehouse next to the quarry pays off.
 - **Woodcutters (Foundation-style)**: a woodcutter's lodge plus a painted forest area. Every tree inside the map is a separate model; only trees inside an area are felled. A grown tree gives 3 trips of wood, falls and leaves a stump; the stump sprouts after a day and grows back in about three days, and empty spots in the area fill with saplings (up to one tree per 5 m²). Trees outside areas are scenery and are never cut. While painting, trees inside the area are tinted green.
-- **Farms (Foundation-style)**: a farm is a farmhouse plus a field you paint. The field turns into furrowed soil with wheat rows, grass is cleared, and the farmer works anywhere in it. Food per trip = field size / 3 m² (min 2 m² to produce, max 8 food at 24 m²). Fields can't overlap other fields, zones, buildings or trees; nothing can be built on a field.
+- **Farms (Foundation-style)**: a farm is a farmhouse plus a field you paint. The field turns into furrowed soil with wheat rows, grass is cleared, and the farmer works anywhere in it. The wheat grows from freshly tilled soil to young green plants to ripe gold (~1.25 days); a ripe field is harvested over 5 trips (rows disappear as they are cut) and then tilled again. Food per harvest trip = field size / 3 m² (min 2 m² to produce, max 8 food at 24 m²). Fields can't overlap other fields, zones, buildings or trees; nothing can be built on a field.
 - **Buildings**: woodcutter, farmhouse, quarry, storehouse (a delivery point: build one near your production to cut down hauling)
 - **Residential zones**: houses are not placed by hand. The player paints residential zones, and when free beds run out (at most 1 left), food is sufficient, and wood and stone can cover the cost, villagers build a house (+4 population cap) on their own in the best open spot within the zone. Houses line up with their neighbors to form rows, with the front door facing the nearest path (or the village center). The zone shows on the ground as a light yellow outline.
 - **House variants**: 6 baked houses (golden / weathered / mossy thatch, different wall colors, chimneys, windows, side sheds, and flower boxes). Each one gets a slight random size adjustment.
@@ -70,6 +72,7 @@ godot --headless --path . --script res://tests/test_gameplay.gd    # economy, qu
 godot --headless --path . --script res://tests/test_villagers.gd   # pathfinding, jobs, paths, moving in and out
 godot --headless --path . --script res://tests/test_zones.gd      # residential zones: painting, erasing, auto-built houses, saving
 godot --headless --path . --script res://tests/test_i18n.gd       # every UI string translated, font covers all glyphs, runtime switching
+godot --headless --path . --script res://tests/test_construction.gd # construction sites, builders, stages, refunds, saving, auto paths
 godot --headless --path . --script res://tests/test_deposits.gd   # stone deposits: quarry placement rules, snapping, mason at work
 godot --headless --path . --script res://tests/test_forest.gd     # forest areas: felling, stumps, regrowth, saplings, saving
 godot --headless --path . --script res://tests/test_fields.gd     # farm fields: starter field, painting rules, erase / clear, yield, saving
@@ -77,6 +80,7 @@ godot --headless --path . --script res://tests/sim_balance.gd     # follow a fix
 godot --path . --script res://tests/shot_village.gd -- 6          # render a screenshot after 6 minutes of time-lapse (needs a display)
 godot --path . --script res://tests/shot_opening.gd               # render the opening screenshots (needs a display)
 godot --path . --script res://tests/shot_ui.gd                    # render the UI in English and Chinese (needs a display)
+godot --path . --script res://tests/shot_stages.gd                # render construction stages and wheat stages (needs a display)
 godot --path . --script res://tests/shot_quarry.gd                # render deposits while placing, then a working quarry (needs a display)
 godot --path . --script res://tests/shot_forest.gd                # render a woodcutter with its forest area (needs a display)
 godot --path . --script res://tests/shot_fields.gd                # render a farmhouse + painted field (needs a display)
@@ -90,7 +94,7 @@ python3 tools/export_world_data.py data/world.json empty   # walkable grid, grou
 python3 tools/villager.py models                           # villager model (add "preview" to also render a preview image)
 python3 tools/house_variants.py models 6 preview           # 6 house variants → models/houses/
 python3 tools/farmhouse.py models                          # farmhouse → models/farmhouse.glb
-python3 tools/buildings.py models                          # woodcutter's lodge, storehouse, quarry, stone deposits → models/*.glb
+python3 tools/buildings.py models                          # woodcutter's lodge, storehouse, quarry, stone deposits, construction stages → models/*.glb
 python3 tools/trees.py models                              # choppable tree variants + stumps → models/trees/
 python3 tools/bake_export.py <output folder> empty nature_only   # only re-export nature.glb (scenery outside the map's trees)
 ```

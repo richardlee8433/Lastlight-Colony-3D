@@ -111,7 +111,7 @@ func tick(dt: float) -> void:
 func should_grow() -> bool:
 	if _since_last < Defs.ZONE["grow_cooldown"]: return false
 	if Game.zone_count() == 0: return false
-	if Game.housing() - Game.population > int(Defs.ZONE["free_beds_trigger"]): return false
+	if Game.housing(true) - Game.population > int(Defs.ZONE["free_beds_trigger"]): return false     # houses being built count
 	if Game.starving or int(Game.resources.get("food", 0)) < Defs.GROWTH_FOOD_MIN: return false
 	return Game.can_afford(Defs.BUILDINGS["house"]["cost"])
 
@@ -122,7 +122,7 @@ func grow() -> int:
 	var b := Game.add_building("house", spot["pos"], spot["angle"])
 	if b.is_empty(): return -1
 	_since_last = 0.0
-	Game.toast.emit(Loc.t("Villagers built a new house"))
+	Game.toast.emit(Loc.t("Villagers started building a house"))
 	house_grown.emit(b["id"])
 	return b["id"]
 

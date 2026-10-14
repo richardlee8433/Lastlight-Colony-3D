@@ -49,7 +49,7 @@ func _run() -> void:
 	var nav = s.get_node("Nav")
 	var wear = s.get_node("PathWear")
 	var vm = s.get_node("Villagers")
-	game._autosave = false
+	game._autosave = false; game.instant_build = true
 	game.delete_save()
 	game.new_game()
 	game.speed = 0.0                  # drive the simulation manually

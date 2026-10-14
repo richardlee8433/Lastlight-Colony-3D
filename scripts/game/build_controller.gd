@@ -421,13 +421,16 @@ func _on_added(b: Dictionary, animate := true) -> void:
 	var type: String = b["type"]
 	var node := Node3D.new()
 	node.name = "B%d_%s" % [b["id"], type]
-	var vis := BuildingVisuals.create(type, int(b["id"]) * 7919)
+	var stage := Game.build_stage(b)
+	var vis := BuildingVisuals.create(type, int(b["id"]) * 7919, stage)
+	vis.name = "Visual"
 	vis.rotation.y = b["angle"]
 	node.add_child(vis)
+	node.set_meta("stage", stage)
 	var status := Label3D.new()
 	status.name = "Status"
 	status.font = Fonts.cjk()
-	status.font_size = 64
+	status.font_size = 48
 	status.pixel_size = 0.004
 	status.outline_size = 14
 	status.modulate = Color(1.0, 0.85, 0.35)
@@ -459,12 +462,32 @@ func _on_removed(b: Dictionary) -> void:
 		tw.tween_callback(n.queue_free)
 	if selected == id: select(-1)
 
+## A construction site moved to its next stage (foundation -> frame -> finished): swap the model.
+func _restage(b: Dictionary, node: Node3D) -> void:
+	var stage := Game.build_stage(b)
+	if int(node.get_meta("stage", 2)) == stage: return
+	node.set_meta("stage", stage)
+	var old := node.get_node_or_null("Visual")
+	if old: old.name = "Old"; old.queue_free()
+	var vis := BuildingVisuals.create(b["type"], int(b["id"]) * 7919, stage)
+	vis.name = "Visual"
+	vis.rotation.y = b["angle"]
+	node.add_child(vis)
+	vis.scale = Vector3(1, 0.05, 1)
+	var tw := create_tween()
+	tw.tween_property(vis, "scale", Vector3.ONE, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
 func _refresh_status() -> void:
 	for b in Game.buildings:
 		if not _nodes.has(b["id"]): continue
+		_restage(b, _nodes[b["id"]])
 		var lbl: Label3D = _nodes[b["id"]].get_node("Status")
 		var d: Dictionary = Defs.BUILDINGS[b["type"]]
-		if d.get("workers", 0) > 0 and not b["staffed"]:
+		if not Game.is_built(b):
+			if b["staffed"]: lbl.text = Loc.t("Building %d%%") % int(Game.build_progress(b) * 100.0)
+			else: lbl.text = Loc.t("Waiting for a builder")
+			lbl.visible = true
+		elif d.get("workers", 0) > 0 and not b["staffed"]:
 			lbl.text = Loc.t("No worker"); lbl.visible = true
 		elif d.get("workers", 0) > 0 and not Game.is_active(b):
 			lbl.text = Loc.t("Hungry"); lbl.visible = true

@@ -21,7 +21,7 @@ func _process(_d: float) -> bool:
 	if f == 3:
 		game = root.get_node("Game"); vm = current_scene.get_node("Villagers"); wear = current_scene.get_node("PathWear")
 		cam = current_scene.get_node("Camera")
-		game._autosave = false; game.delete_save(); game.new_game(); game.speed = 0.0
+		game._autosave = false; game.instant_build = true; game.delete_save(); game.new_game(); game.speed = 0.0
 		vm._first_sync()
 		_sim(6.0)
 		cam.target = Vector3(0.0, 0.3, 5.0); cam._dist = 19.0; cam._pitch = 0.75; cam._yaw = -0.3; cam._apply()

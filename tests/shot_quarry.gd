@@ -22,7 +22,7 @@ func _process(_d: float) -> bool:
 	if f == 3:
 		game = root.get_node("Game"); vm = current_scene.get_node("Villagers"); wear = current_scene.get_node("PathWear")
 		cam = current_scene.get_node("Camera"); ctl = current_scene.get_node("BuildController")
-		game._autosave = false; game.delete_save(); game.new_game(); game.speed = 0.0
+		game._autosave = false; game.instant_build = true; game.delete_save(); game.new_game(); game.speed = 0.0
 		game.resources["wood"] = 300; game.resources["stone"] = 300
 		vm._first_sync()
 		ctl.begin_place("quarry")

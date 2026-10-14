@@ -32,7 +32,7 @@ func _run() -> void:
 	var vm = s.get_node("Villagers")
 	var deps = s.get_node("Deposits")
 	var wear = s.get_node("PathWear")
-	game._autosave = false
+	game._autosave = false; game.instant_build = true
 	game.delete_save(); game.new_game(); game.speed = 0.0
 	game.resources["wood"] = 500; game.resources["stone"] = 100; game.resources["food"] = 200
 

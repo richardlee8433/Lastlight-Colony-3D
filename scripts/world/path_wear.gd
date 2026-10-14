@@ -34,6 +34,7 @@ func _ready() -> void:
 	_nav = get_node_or_null(nav_path)
 	_setup_ground()
 	Game.reset.connect(clear)
+	Game.building_added.connect(_on_building_added)
 	Game.day_passed.connect(func(_d): save())
 	if FileAccess.file_exists(Game.SAVE_PATH):
 		load_wear()
@@ -89,6 +90,52 @@ func deposit(p: Vector3, amount: float) -> void:
 			_dirty_cells[_cell_index(x, z)] = true
 	_dirty_tex = true
 
+## Lays a dirt path along the walking route between two points (at least `level` wear).
+func lay_path(from: Vector2, to: Vector2, level := 0.55) -> int:
+	if _nav == null: return 0
+	var pts: PackedVector3Array = _nav.find_path(_nav.on_ground(_nav.walkable_point(from)), _nav.on_ground(_nav.walkable_point(to)))
+	if pts.size() < 2: return 0
+	var n := 0
+	for i in range(1, pts.size()):
+		var a := pts[i - 1]; var b := pts[i]
+		var steps := maxi(1, ceili(a.distance_to(b) / 0.2))
+		for k in steps + 1:
+			var p := a.lerp(b, float(k) / steps)
+			var fx := (p.x - ORIGIN.x) / RES; var fz := (p.z - ORIGIN.y) / RES
+			var cx := floori(fx); var cz := floori(fz)
+			for dz in range(-1, 2):
+				for dx in range(-1, 2):
+					var x := cx + dx; var z := cz + dz
+					if x < 0 or z < 0 or x >= SIZE or z >= SIZE: continue
+					var d2 := pow(x + 0.5 - fx, 2) + pow(z + 0.5 - fz, 2)
+					var v := level * exp(-d2 / 1.4)
+					var j := z * SIZE + x
+					if v > wear[j]:
+						wear[j] = v; n += 1
+						_dirty_cells[_cell_index(x, z)] = true
+	_dirty_tex = true
+	return n
+
+## A new building gets a path from its entrance to the nearest road (or the village centre).
+func connect_building(b: Dictionary) -> void:
+	if b.is_empty() or Defs.BUILDINGS[b["type"]].get("permanent", false): return
+	var d: Dictionary = Defs.BUILDINGS[b["type"]]
+	var h := Defs.half_extents(b["type"])
+	var local: Vector2 = d.get("door", d.get("drop", d.get("work_spot", Vector2(0, h.y + 0.4))))
+	var entrance := Defs.to_world(b, local)
+	var target := Game.center() + Vector2(0, 1.6)
+	var best := entrance.distance_to(target)
+	for z in range(0, SIZE, 2):
+		for x in range(0, SIZE, 2):
+			if wear[z * SIZE + x] < 0.45: continue
+			var p := ORIGIN + Vector2(x + 0.5, z + 0.5) * RES
+			var dd := entrance.distance_to(p)
+			if dd < 1.2 or dd >= best: continue
+			var l := Defs.to_local(b, p)
+			if absf(l.x) <= h.x + 0.3 and absf(l.y) <= h.y + 0.3: continue      # its own doorstep
+			best = dd; target = p
+	lay_path(entrance, target)
+
 func wear_at(p: Vector3) -> float:
 	var x := floori((p.x - ORIGIN.x) / RES); var z := floori((p.z - ORIGIN.y) / RES)
 	if x < 0 or z < 0 or x >= SIZE or z >= SIZE: return 0.0
@@ -121,6 +168,9 @@ func tick(dt: float, real_dt: float) -> void:
 	if _cells_acc >= 0.4 and not _dirty_cells.is_empty():
 		_cells_acc = 0.0
 		_update_cells()
+
+func _on_building_added(b: Dictionary) -> void:
+	connect_building.call_deferred(b)      # after the nav grid has blocked the new footprint
 
 func _process(delta: float) -> void:
 	tick(delta * Game.speed, delta)

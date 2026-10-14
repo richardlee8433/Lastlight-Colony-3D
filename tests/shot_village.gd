@@ -38,7 +38,7 @@ func _spot(type: String, near: Vector2, angle: float) -> Vector2:
 func _setup() -> void:
 	game = root.get_node("Game"); var s = current_scene
 	vm = s.get_node("Villagers"); wear = s.get_node("PathWear"); ctl = s.get_node("BuildController"); cam = s.get_node("Camera")
-	game._autosave = false
+	game._autosave = false; game.instant_build = true
 	game.delete_save(); game.new_game(); game.speed = 0.0
 	vm._first_sync()
 	game.resources["wood"] = 400; game.resources["stone"] = 300; game.resources["food"] = 200

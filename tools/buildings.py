@@ -248,11 +248,92 @@ def quarry(col):
         hv.blob(col, (math.cos(a) * d, math.sin(a) * d, 0.03), rnd.uniform(0.04, 0.08), pale, 1, 0.6, 0.3, seed + 200 + k)
     return 4.0, 4.0
 
+def site(col, stage):
+    """Construction site for a 3 x 3 m footprint (the game scales it to each building).
+    stage 0: levelled ground, stakes and string, first foundation stones, material piles.
+    stage 1: stone plinth, timber frame with rafters, scaffolding, a ladder, thatch bundles."""
+    seed = 500 + stage * 11; rnd = random.Random(seed)
+    M = mats(seed, "golden", 0, 0)
+    soil = hv.mat_wood("soil", (0.16, 0.10, 0.05), (0.30, 0.21, 0.12), (6, 6, 6))
+    rope = hv.mat_flat("rope", (0.45, 0.36, 0.2), 0.9)
+    t = 0.11; kk = [0]
+    def B(p0, p1, tt=t, m=None):
+        kk[0] += 1; return hv.beam(col, p0, p1, tt, m or M["beam"], seed * 100 + kk[0])
+    hx, hy = 1.15, 0.95
+    hv.cube(col, (2.9, 2.6, 0.04), (0, 0, 0.0), soil, bevel=0.01, wobble=0.02, seed=seed)
+    # material piles: logs (left), stones (right back), planks (front right)
+    for row in range(2 if stage == 1 else 3):
+        for k in range(4 - row):
+            log(col, M, (-1.3 + (k + row * 0.5) * 0.22, -0.2, 0.1 + row * 0.18), 1.1, 0.1, "y")
+    for k in range(9 if stage == 0 else 4):
+        hv.blob(col, (1.15 + rnd.uniform(-0.25, 0.25), 1.05 + rnd.uniform(-0.2, 0.2), 0.1 + (k // 5) * 0.12), rnd.uniform(0.11, 0.16), M["stone"], 1, 0.75, 0.3, seed + 40 + k)
+    for k in range(4):
+        hv.cube(col, (1.1, 0.16, 0.035), (0.9, -1.15, 0.03 + k * 0.04), M["plank"], rot=(0, 0, rnd.uniform(-0.08, 0.08)), bevel=0.005)
+    if stage == 0:
+        # stakes and string marking the footprint, the first foundation stones along one side
+        corners = [(-hx, -hy), (hx, -hy), (hx, hy), (-hx, hy)]
+        for (x, y) in corners:
+            B((x, y, 0), (x, y, 0.45), 0.05)
+        for i in range(4):
+            a = corners[i]; b = corners[(i + 1) % 4]
+            B((a[0], a[1], 0.38), (b[0], b[1], 0.38), 0.012, rope)
+        for k in range(7):
+            x = -hx + 0.15 + k * 0.34
+            o = hv.blob(col, (x, hy - 0.05, 0.1), 0.15, M["stone"], 2, 0.7, 0.3, seed + k)
+            o.scale = (1.3, 1.0, 1.0)
+        for k in range(4):
+            y = hy - 0.4 - k * 0.34
+            o = hv.blob(col, (-hx + 0.05, y, 0.1), 0.15, M["stone"], 2, 0.7, 0.3, seed + 20 + k)
+        # a shovel stuck in the ground
+        B((0.3, 0.2, 0.0), (0.42, 0.28, 0.95), 0.035)
+        hv.cube(col, (0.16, 0.03, 0.2), (0.3, 0.2, 0.06), M["iron"], bevel=0.01)
+    else:
+        # plinth
+        hv.cube(col, (2 * hx + 0.2, 2 * hy + 0.2, 0.25), (0, 0, 0.125), M["stone"], bevel=0.04)
+        H = 1.7; top = 0.25 + H
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                B((sx * hx, sy * hy, 0.25), (sx * hx, sy * hy, top))
+            B((sx * hx, 0, 0.25), (sx * hx, 0, top))
+        B((0, hy, 0.25), (0, hy, top))
+        for sy in (-1, 1):
+            B((-hx - 0.15, sy * hy, top), (hx + 0.15, sy * hy, top), t * 1.1)
+            B((-hx, sy * hy, 1.05), (hx, sy * hy, 1.05), t * 0.7)
+        for sx in (-1, 1):
+            B((sx * hx, -hy - 0.15, top), (sx * hx, hy + 0.15, top), t * 1.1)
+        # rafters (no thatch yet) and a ridge pole
+        ridge = top + 1.2
+        for k in range(4):
+            x = -hx + k * (2 * hx / 3)
+            B((x, -hy - 0.3, top - 0.1), (x, 0, ridge), 0.08)
+            B((x, hy + 0.3, top - 0.1), (x, 0, ridge), 0.08)
+        B((-hx - 0.2, 0, ridge), (hx + 0.2, 0, ridge), 0.09)
+        for k in range(2):
+            z = top + 0.35 + k * 0.4; yy = (hy + 0.3) * (1 - (z - top + 0.1) / 1.3)
+            for sy in (-1, 1):
+                B((-hx - 0.1, sy * yy, z), (hx + 0.1, sy * yy, z), 0.04)
+        # scaffolding along the front with a plank deck and a ladder
+        for x in (-hx - 0.1, 0.0, hx + 0.1):
+            B((x, -hy - 0.55, 0), (x, -hy - 0.55, top + 0.3), 0.06, M["log"])
+        B((-hx - 0.2, -hy - 0.55, 1.2), (hx + 0.2, -hy - 0.55, 1.2), 0.05, M["log"])
+        hv.cube(col, (2 * hx + 0.3, 0.35, 0.04), (0, -hy - 0.4, 1.26), M["plank"], bevel=0.005)
+        for sx in (-1, 1):
+            B((hx + 0.35 + sx * 0.17, -hy - 0.9, 0), (hx + 0.2 + sx * 0.17, -hy - 0.6, 1.4), 0.04)
+        for k in range(5):
+            z = 0.25 + k * 0.25
+            B((hx + 0.2, -hy - 0.88 + k * 0.05, z), (hx + 0.52, -hy - 0.88 + k * 0.05, z), 0.03)
+        # thatch bundles waiting by the wall
+        for k in range(5):
+            bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.13, depth=0.8, location=(-0.6 + k * 0.28, hy + 0.5, 0.13 + (k % 2) * 0.1), rotation=(0, math.pi / 2, rnd.uniform(-0.3, 0.3)))
+            o = bpy.context.object; o.data.materials.append(M["thatch"]); bpy.context.scene.collection.objects.unlink(o); col.objects.link(o)
+    return 3.0, 3.0
+
 if __name__ == "__main__":
     only = [a for a in sys.argv[2:] if a != "preview"]
     jobs = [("woodcutter", woodcutter, 2.9, 2.9), ("storehouse", storehouse, 3.6, 3.0),
             ("quarry", quarry, None, None),
-            ("deposit_0", lambda c: deposit(c, 0), None, None), ("deposit_1", lambda c: deposit(c, 1), None, None)]
+            ("deposit_0", lambda c: deposit(c, 0), None, None), ("deposit_1", lambda c: deposit(c, 1), None, None),
+            ("site_0", lambda c: site(c, 0), None, None), ("site_1", lambda c: site(c, 1), None, None)]
     for name, fn, fit_w, fit_d in jobs:
         if only and name not in only: continue
         bpy.ops.wm.read_factory_settings(use_empty=True)

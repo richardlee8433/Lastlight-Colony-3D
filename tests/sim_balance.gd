@@ -21,6 +21,7 @@ func _process(_d):
 	game._autosave = false; game.delete_save(); game.new_game(); game.speed = 0.0; vm._first_sync()
 	var zones = s.get_node("Zones")
 	var forest = s.get_node("Forest")
+	var fields = s.get_node("Fields")
 	for x in range(-9, -2):
 		for z in range(4, 10):
 			zones.paint(Vector2(x, z), true)
@@ -29,7 +30,7 @@ func _process(_d):
 	var i := 0
 	for day in 30:
 		for k in 300:
-			game.step(0.1); vm.tick(0.1); wear.tick(0.1, 0.5); zones.tick(0.1); forest.tick(0.1)
+			game.step(0.1); vm.tick(0.1); wear.tick(0.1, 0.5); zones.tick(0.1); forest.tick(0.1); fields.tick(0.1)
 			if i < plan.size() and game.can_afford(Defs.BUILDINGS[plan[i][0]]["cost"]):
 				var p = spot(ctl, plan[i][0], plan[i][1])
 				if p != null and ctl.try_place(plan[i][0], p) > 0:

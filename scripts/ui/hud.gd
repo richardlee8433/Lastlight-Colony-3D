@@ -366,7 +366,11 @@ func _fill_info(id: int) -> void:
 	var d: Dictionary = Defs.BUILDINGS[b["type"]]
 	_info_title.text = Defs.label(b["type"])
 	_del_button.visible = not d.get("permanent", false)
+	_del_button.text = Loc.t("Cancel construction (full refund)") if not Game.is_built(b) else Loc.t("Demolish (refund half)")
 	var lines: Array[String] = [Defs.desc(b["type"])]
+	if not Game.is_built(b):
+		lines.append(Loc.t("Under construction: %d%%") % int(Game.build_progress(b) * 100.0))
+		lines.append(Loc.t("Builder: working") if b["staffed"] else Loc.t("Waiting for a builder (all villagers are busy)"))
 	_field_button.visible = b["type"] == "farm" or b["type"] == "woodcutter"
 	_field_button.text = Loc.t("Edit forest area") if b["type"] == "woodcutter" else Loc.t("Edit field")
 	var f := get_node_or_null(^"../Fields")
@@ -378,6 +382,11 @@ func _fill_info(id: int) -> void:
 		lines.append(Loc.t("Field: %.0f m² (max %.0f m²)") % [n * 0.25, Defs.FIELD["max_cells"] * 0.25])
 		if y > 0:
 			lines.append(Loc.t("Per trip: %d food (bigger field = more; closer storage = more trips)") % y)
+			if Game.is_built(b):
+				match f.crop_stage(id):
+					"tilled": lines.append(Loc.t("Crop: freshly tilled"))
+					"growing": lines.append(Loc.t("Crop: growing %d%%") % int(float(b.get("crop", 0.0)) * 100.0))
+					"ripe": lines.append(Loc.t("Crop: ripe, harvesting (%d trips left)") % int(b.get("harvest", 0)))
 		else:
 			lines.append(Loc.t("Field too small: needs at least %.0f m² to produce") % (Defs.FIELD["min_cells"] * 0.25))
 	elif b["type"] == "woodcutter" and fo:

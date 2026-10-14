@@ -13,6 +13,7 @@ signal day_passed(day: int)
 signal reset                                     # new game started (paths, villagers clear)
 signal zones_changed
 signal language_changed
+signal building_completed(b: Dictionary)
 
 const SAVE_PATH := "user://save.json"
 const SAVE_VERSION := 2
@@ -33,6 +34,7 @@ var trees: Array[Dictionary] = []
 
 var _next_id := 1
 var fresh_start := false         # true right after new_game (settlers walk in)
+var instant_build := false       # tests: buildings are finished the moment they are placed
 var _day_timer := 0.0
 var _autosave := true
 var _today := {}                 # goods delivered today
@@ -82,29 +84,53 @@ func set_zone(index: int, on: bool) -> void:
 
 # ---------------- queries ----------------
 
-func housing() -> int:
+## Beds in finished buildings (planned = also count houses still under construction).
+func housing(planned := false) -> int:
 	var h: int = Defs.START["housing"]
 	for b in buildings:
-		h += int(Defs.BUILDINGS[b["type"]].get("housing", 0))
+		if planned or is_built(b):
+			h += int(Defs.BUILDINGS[b["type"]].get("housing", 0))
 	return h
+
+## A placed building stays a construction site until its "build" progress reaches 1.
+func is_built(b: Dictionary) -> bool:
+	return float(b.get("build", 1.0)) >= 1.0
+
+func build_progress(b: Dictionary) -> float:
+	return clampf(float(b.get("build", 1.0)), 0.0, 1.0)
+
+## 0 = foundation, 1 = timber frame, 2 = finished
+func build_stage(b: Dictionary) -> int:
+	if is_built(b): return 2
+	return 1 if build_progress(b) >= Defs.CONSTRUCTION["stage2"] else 0
+
+## jobs: one builder per construction site, plus the workers of finished workplaces
+func _jobs_of(b: Dictionary) -> int:
+	if not is_built(b): return 1
+	return int(Defs.BUILDINGS[b["type"]].get("workers", 0))
 
 func workers_needed() -> int:
 	var n := 0
-	for b in buildings:
-		n += int(Defs.BUILDINGS[b["type"]].get("workers", 0))
+	for b in buildings: n += _jobs_of(b)
 	return n
 
 func workers_used() -> int:
 	var n := 0
 	for b in buildings:
-		if b["staffed"]:
-			n += int(Defs.BUILDINGS[b["type"]].get("workers", 0))
+		if b["staffed"]: n += _jobs_of(b)
 	return n
 
+func sites() -> int:
+	var n := 0
+	for b in buildings:
+		if not is_built(b): n += 1
+	return n
+
+## finished buildings of a type (construction sites don't count)
 func count_of(type: String) -> int:
 	var n := 0
 	for b in buildings:
-		if b["type"] == type: n += 1
+		if b["type"] == type and is_built(b): n += 1
 	return n
 
 func can_afford(cost: Dictionary) -> bool:
@@ -144,6 +170,8 @@ func add_building(type: String, pos: Vector2, angle := 0.0, pay := true) -> Dict
 		for r in d["cost"]:
 			resources[r] -= int(d["cost"][r])
 	var b := {"id": _next_id, "type": type, "pos": pos, "angle": angle, "staffed": false}
+	if pay and not instant_build and d.has("build_time"):
+		b["build"] = 0.0                 # a construction site: builders finish it
 	_next_id += 1
 	buildings.append(b)
 	_assign_workers()
@@ -160,13 +188,16 @@ func demolish(id: int) -> void:
 	if d.get("permanent", false):
 		toast.emit(Loc.t("%s can't be demolished") % Loc.t(d["name"]))
 		return
+	var site := not is_built(b)
 	for r in d["cost"]:
-		resources[r] += int(d["cost"][r] / 2.0)
+		# a construction site that is cancelled gives everything back
+		resources[r] += int(d["cost"][r]) if site else int(d["cost"][r] / 2.0)
 	buildings.erase(b)
 	population = min(population, housing())
 	_assign_workers()
 	building_removed.emit(b)
-	toast.emit(Loc.t("%s demolished, half the cost refunded") % Loc.t(d["name"]))
+	if site: toast.emit(Loc.t("Construction of %s cancelled, materials returned") % Loc.t(d["name"]))
+	else: toast.emit(Loc.t("%s demolished, half the cost refunded") % Loc.t(d["name"]))
 	changed.emit()
 
 ## A villager carried goods into a storage at world point `at`.
@@ -185,6 +216,29 @@ func set_language(l: String) -> void:
 	Loc.save_settings()
 	language_changed.emit()
 	changed.emit(); quest_changed.emit()
+
+## A builder finished a work session on a site (fraction = work time / build time).
+func add_build_progress(id: int, fraction: float) -> void:
+	var b := get_building(id)
+	if b.is_empty() or is_built(b): return
+	b["build"] = minf(1.0, float(b["build"]) + fraction)
+	if b["build"] >= 1.0:
+		b.erase("build")
+		_assign_workers()
+		toast.emit(Loc.t("%s is finished") % Loc.t(Defs.BUILDINGS[b["type"]]["name"]))
+		building_completed.emit(b)
+		_check_quest()
+	changed.emit()
+
+## Finish every construction site at once (tests, debugging).
+func finish_all_construction() -> void:
+	for b in buildings:
+		if not is_built(b):
+			b.erase("build")
+			building_completed.emit(b)
+	_assign_workers()
+	changed.emit()
+	_check_quest()
 
 func set_speed(s: float) -> void:
 	speed = s
@@ -234,7 +288,13 @@ func _end_of_day() -> void:
 
 func _assign_workers() -> void:
 	var free := population
+	# construction sites get their builders first (one each, oldest first)
 	for b in buildings:
+		if not is_built(b):
+			b["staffed"] = free > 0
+			if free > 0: free -= 1
+	for b in buildings:
+		if not is_built(b): continue
 		var need := int(Defs.BUILDINGS[b["type"]].get("workers", 0))
 		if need == 0:
 			b["staffed"] = true
@@ -246,6 +306,7 @@ func _assign_workers() -> void:
 
 ## Whether a staffed building is actually working right now (when starving only food jobs continue).
 func is_active(b: Dictionary) -> bool:
+	if not is_built(b): return b["staffed"]        # builders keep building even when food runs out
 	var d: Dictionary = Defs.BUILDINGS[b["type"]]
 	if d.get("workers", 0) == 0 or not b["staffed"]: return false
 	return not starving or d.get("yield", {}).has("food")
@@ -291,6 +352,9 @@ func save_game() -> void:
 			"angle": snappedf(b["angle"], 0.0001)}
 		if b.has("field"): e["field"] = (b["field"] as Array).duplicate()
 		if b.has("area"): e["area"] = (b["area"] as Array).duplicate()
+		if not is_built(b): e["build"] = snappedf(b["build"], 0.001)
+		if b.has("crop"): e["crop"] = snappedf(b["crop"], 0.001)
+		if b.has("harvest"): e["harvest"] = int(b["harvest"])
 		list.append(e)
 	var data := {
 		"version": SAVE_VERSION, "resources": resources, "population": population, "day": day,
@@ -357,6 +421,9 @@ func load_game() -> bool:
 			pos = Vector2(float(e["x"]), float(e["z"]))
 			angle = float(e.get("angle", 0.0))
 		var nb := {"id": _next_id, "type": e["type"], "pos": pos, "angle": angle, "staffed": false}
+		for key in ["build", "crop"]:
+			if e.has(key): nb[key] = float(e[key])
+		if e.has("harvest"): nb["harvest"] = int(e["harvest"])
 		for key in ["field", "area"]:           # painted farm field / forest area cells
 			if e.has(key):
 				var cells: Array = []

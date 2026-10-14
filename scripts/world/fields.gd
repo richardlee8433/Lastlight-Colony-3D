@@ -32,6 +32,7 @@ func _ready() -> void:
 	Game.building_added.connect(_on_added)
 	Game.building_removed.connect(_on_removed)
 	Game.reset.connect(_on_reset)
+	Game.building_completed.connect(_on_completed)
 	call_deferred("_init_existing")
 
 func _init_existing() -> void:
@@ -170,6 +171,53 @@ func auto_field(farm: Dictionary) -> int:
 	changed.emit(farm["id"])
 	return f.size()
 
+func _process(delta: float) -> void:
+	var dt := delta * Game.speed
+	if dt > 0.0: tick(dt)
+
+## Crops grow on finished farms with a working field: tilled -> young -> ripe. A ripe field is
+## harvested over a few trips (rows disappear as they are cut), then it is tilled again.
+func tick(dt: float) -> void:
+	var rate: float = dt / (Defs.FIELD["grow_days"] * Defs.DAY_LENGTH)
+	for b in Game.buildings:
+		if b["type"] != "farm" or not Game.is_built(b) or yield_for(b["id"]) <= 0: continue
+		if int(b.get("harvest", 0)) > 0: continue
+		var c: float = float(b.get("crop", 0.0)) + rate
+		if c >= 1.0:
+			c = 1.0
+			b["harvest"] = Defs.FIELD["harvest_trips"]
+		b["crop"] = c
+		_update_crop(b)
+
+## "tilled", "growing" or "ripe"
+func crop_stage(farm_id: int) -> String:
+	var b := Game.get_building(farm_id)
+	if int(b.get("harvest", 0)) > 0: return "ripe"
+	return "tilled" if float(b.get("crop", 0.0)) < 0.08 else "growing"
+
+## One harvest trip: food from a ripe field (0 while the crop is still growing).
+func harvest(farm_id: int) -> int:
+	var b := Game.get_building(farm_id)
+	if b.is_empty() or int(b.get("harvest", 0)) <= 0: return 0
+	var n := yield_for(farm_id)
+	b["harvest"] = int(b["harvest"]) - 1
+	if b["harvest"] <= 0:
+		b.erase("harvest")
+		b["crop"] = 0.0                     # cut and tilled again
+	_update_crop(b)
+	return n
+
+func _update_crop(b: Dictionary) -> void:
+	if not _wheat.has(b["id"]): return
+	var mmi: MultiMeshInstance3D = _wheat[b["id"]]
+	var g: float = float(b.get("crop", 0.0)) if Game.is_built(b) else 0.0
+	mmi.visible = g >= 0.08
+	(mmi.material_override as ShaderMaterial).set_shader_parameter("growth", g)
+	var total := mmi.multimesh.instance_count
+	var left := int(b.get("harvest", 0))
+	# harvesting sweeps across the rows
+	mmi.multimesh.visible_instance_count = -1 if left <= 0 else int(total * float(left) / float(Defs.FIELD["harvest_trips"]))
+
 ## Food carried home per trip — bigger fields give more, up to a cap.
 func yield_for(farm_id: int) -> int:
 	var n := field_of(farm_id).size()
@@ -206,6 +254,9 @@ func _on_added(b: Dictionary) -> void:
 				field_of(fid).erase(i); owner_map[i] = 0; touched[fid] = true
 		for fid in touched: _refresh_farm(fid)
 		if not touched.is_empty(): _refresh_textures()
+
+func _on_completed(b: Dictionary) -> void:
+	if b["type"] == "farm": _update_crop(b)
 
 func _on_removed(b: Dictionary) -> void:
 	if b["type"] != "farm": return
@@ -302,9 +353,10 @@ func _build_wheat(farm_id: int) -> void:
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = "Wheat%d" % farm_id
 	mmi.multimesh = mm
-	mmi.material_override = Wheat.material()
+	mmi.material_override = Wheat.material().duplicate()      # own growth stage per farm
 	add_child(mmi)
 	_wheat[farm_id] = mmi
+	_update_crop(farm)
 
 func wheat_count(farm_id: int) -> int:
 	return _wheat[farm_id].multimesh.instance_count if _wheat.has(farm_id) else 0

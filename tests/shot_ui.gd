@@ -17,7 +17,7 @@ func _process(_d: float) -> bool:
 		game = root.get_node("Game"); vm = current_scene.get_node("Villagers"); wear = current_scene.get_node("PathWear")
 		cam = current_scene.get_node("Camera"); ctl = current_scene.get_node("BuildController")
 		start_lang = Loc.lang
-		game._autosave = false; game.delete_save(); game.new_game(); game.speed = 0.0
+		game._autosave = false; game.instant_build = true; game.delete_save(); game.new_game(); game.speed = 0.0
 		vm._first_sync()
 		var id: int = -1
 		var spot := Vector2(-5.5, -4.5)

@@ -37,7 +37,7 @@ func _run() -> void:
 	var defs = load("res://scripts/game/defs.gd")
 	var fonts = load("res://scripts/ui/fonts.gd") if ResourceLoader.exists("res://scripts/ui/fonts.gd") else null
 	var start_lang: String = loc.lang
-	game._autosave = false
+	game._autosave = false; game.instant_build = true
 
 	# --- every Loc.t("...") literal and every Defs text has a translation ---
 	var keys := {}

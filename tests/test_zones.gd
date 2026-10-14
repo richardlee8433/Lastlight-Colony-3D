@@ -29,7 +29,7 @@ func _run() -> void:
 	var s = current_scene
 	var zones = s.get_node("Zones")
 	var ctl = s.get_node("BuildController")
-	game._autosave = false
+	game._autosave = false; game.instant_build = true
 	game.delete_save(); game.new_game(); game.speed = 0.0
 
 	# --- ground overlay is wired ---

@@ -27,6 +27,18 @@ static func save_settings() -> void:
 
 ## Zh-TW text keyed by the English text used in the code (and in Defs).
 const ZH := {
+	"Crop: freshly tilled": "作物：剛整好地",
+	"Crop: growing %d%%": "作物：生長中 %d%%",
+	"Crop: ripe, harvesting (%d trips left)": "作物：成熟了，收成中（還有 %d 趟）",
+	"Building %d%%": "建造中 %d%%",
+	"Waiting for a builder": "等待工人建造",
+	"Under construction: %d%%": "建造中：%d%%",
+	"Builder: working": "工人：正在建造",
+	"Waiting for a builder (all villagers are busy)": "等待工人（村民都在忙）",
+	"Cancel construction (full refund)": "取消建造（全額退還）",
+	"Construction of %s cancelled, materials returned": "已取消建造%s，材料全數退還",
+	"%s is finished": "%s蓋好了！",
+	"Villagers started building a house": "村民在住宅區開始蓋一間新房子",
 	"must be built on a stone deposit": "要蓋在石礦上",
 	"this deposit already has a quarry": "這座石礦已經有採石場了",
 	"Every stone deposit already has a quarry": "每座石礦都已經有採石場了",
@@ -124,7 +136,6 @@ const ZH := {
 	"Hauling": "搬運中",
 	"Just arrived": "剛搬來",
 	"Strolling": "閒逛中",
-	"Villagers built a new house": "村民在住宅區蓋了一間新房子",
 	"Paint where people may live. When the village needs beds and can pay, villagers build houses there themselves (each: Wood 20, Stone 15)": "畫出住宅區。村子需要更多住處、資源也夠時，村民會自己在區域裡蓋房子（每間 木材 20 石材 15）",
 	"After building it, paint its field. The farmer tends the wheat and carries the harvest to storage; bigger fields give more per trip": "蓋好後畫出田地。農夫照顧麥田，把收成背回倉庫；田越大每趟收成越多",
 	"The settlers' supply cart: temporary storage, with 4 bedrolls by the campfire": "移民帶來的補給車：臨時倉庫，旁邊的營火有 4 個睡鋪",

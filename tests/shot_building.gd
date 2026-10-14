@@ -18,7 +18,7 @@ func _process(_d: float) -> bool:
 	f += 1
 	if f == 3:
 		game = root.get_node("Game"); ctl = current_scene.get_node("BuildController"); cam = current_scene.get_node("Camera")
-		game._autosave = false; game.delete_save(); game.new_game()
+		game._autosave = false; game.instant_build = true; game.delete_save(); game.new_game()
 		game.resources["wood"] = 500; game.resources["stone"] = 500
 		ctl.try_place(type, pos, 0.25)
 		cam.target = Vector3(pos.x, 0.3, pos.y); cam._dist = 6.5; cam._pitch = 0.55; cam._yaw = -0.5; cam._apply()
