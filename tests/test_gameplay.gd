@@ -53,7 +53,7 @@ func _run() -> void:
 	var cart_id: int = game.buildings[0]["id"]
 	game.demolish(cart_id)
 	check(game.count_of("cart") == 1, "the supply cart can't be demolished")
-	check(ctl.place_problem("house", Vector2(20, 0), 0.0) != "", "cannot build outside the map")
+	check(ctl.place_problem("house", Vector2(Defs.MAP_HALF + 3.0, 0), 0.0) != "", "cannot build outside the map")
 	var p := find_spot("woodcutter", Vector2(-6, 8), 0.3)
 	var id: int = ctl.try_place("woodcutter", p, 0.3)
 	check(id > 0, "place woodcutter at %s, rotated 0.3 rad" % p)

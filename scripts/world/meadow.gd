@@ -2,9 +2,9 @@ class_name Meadow
 ## Large-scale meadow variation shared by the ground shader and the grass tufts, so lush,
 ## normal and dry patches line up: 0 = dry/yellowish, 0.5 = normal, 1 = lush/deep green.
 
-const ORIGIN := Vector2(-17, -17)
-const SIZE_M := 34.0
-const RES := 256
+const ORIGIN := Vector2(-40, -40)        # covers the map and the border forest
+const SIZE_M := 80.0
+const RES := 600                         # ~7.5 px per metre
 
 static var _img: Image
 static var _tex: ImageTexture

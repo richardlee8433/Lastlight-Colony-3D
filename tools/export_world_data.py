@@ -7,6 +7,7 @@ Output:
   blocked              indices of cells blocked by scenery (walls, fences, trunks, rocks, bushes...)
   height               ground height per cell
   trees                [[x, z, trunk_radius, kind, height], ...]  in-map trees (separate, choppable models in game)
+  border_trees         [[x, z, kind, height, ground_y], ...]  the forest around the map (instanced in game)
 """
 import sys, os, json, math
 from collections import defaultdict
@@ -20,7 +21,7 @@ sys.argv = ["hut2.py", tempfile.mkdtemp(), "build_only"] + (["empty"] if "empty"
 exec(compile(open(os.path.join(HERE, "hut2.py")).read(), "hut2.py", "exec"))
 
 CELL = 0.5
-HALF = 17.0
+HALF = 34.0
 W = H = int(2 * HALF / CELL)
 BAND = (0.12, 1.25)          # only geometry at walking height blocks
 SKIP = ("ground", "tuft_src", "flower_src", "fl_", "crown", "Camera", "Light")
@@ -78,8 +79,19 @@ for o in bpy.context.scene.objects:
             # [x, z, trunk radius, kind (0 broadleaf, 1 pine), height]
             trees.append([round(x, 2), round(z, 2), round(o.dimensions.x / 2, 2), int(t[3]), round(float(t[2]), 2)])
 
+# border forest outside the map (drawn instanced by the game): [x, z, kind, height, ground height]
+border = []
+for o in bpy.context.scene.objects:
+    if o.name.startswith("trunk") and o.get("tree") is not None:
+        x, _, z = to_g(o.location)
+        if not (abs(x) < HALF - 0.5 and abs(z) < HALF - 0.5):
+            t = o["tree"]
+            ok, hit, _n, _i = ground.ray_cast(Vector((o.location.x, o.location.y, 50.0)), Vector((0, 0, -1)))
+            gy = hit.z if ok else 0.0
+            border.append([round(x, 2), round(z, 2), int(t[3]), round(float(t[2]), 2), round(gy, 2)])
+
 data = {"cell": CELL, "origin": [-HALF, -HALF], "w": W, "h": H,
-        "blocked": sorted(blocked), "height": height, "trees": trees}
+        "blocked": sorted(blocked), "height": height, "trees": trees, "border_trees": border}
 with open(OUT_PATH, "w") as f:
     json.dump(data, f, separators=(",", ":"))
 print("blocked", len(blocked), "of", W * H, "trees", len(trees))

@@ -6,8 +6,8 @@ extends Camera3D
 @export var target := Vector3(0.3, 0.8, 0.3)
 @export var start_position := Vector3(-9.5, 15.0, 15.5)
 @export var min_distance := 9.0
-@export var max_distance := 38.0
-@export var pan_limit := 13.0
+@export var max_distance := 60.0
+@export var pan_limit := 30.0
 @export var key_pan_speed := 14.0
 
 var _dist := 1.0

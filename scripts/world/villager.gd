@@ -311,7 +311,8 @@ func _start_wander(delay: float) -> void:
 		state = S.IDLE; _timer = delay; _anim = "idle"; return
 	var center := home if _rng.randf() < 0.7 else Game.center()
 	var p := center + Vector2(_rng.randf_range(-4.5, 4.5), _rng.randf_range(-4.5, 4.5))
-	p = Vector2(clampf(p.x, -15.5, 15.5), clampf(p.y, -15.5, 15.5))
+	var bb: Rect2 = Defs.BUILD_BOUNDS
+	p = Vector2(clampf(p.x, bb.position.x, bb.end.x), clampf(p.y, bb.position.y, bb.end.y))
 	_look = Vector3.ZERO
 	_go(nav.on_ground(nav.walkable_point(p)), S.WANDER)
 

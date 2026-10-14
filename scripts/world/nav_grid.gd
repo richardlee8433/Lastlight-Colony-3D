@@ -7,12 +7,13 @@ extends Node
 signal changed
 
 var cell := 0.5
-var origin := Vector2(-17, -17)
-var w := 68
-var h := 68
+var origin := Vector2(-34, -34)          # all overwritten from data/world.json
+var w := 136
+var h := 136
 var astar := AStarGrid2D.new()
 var trees: Array[Vector3] = []          # map trees at the start: (x, trunk_radius, z)
 var tree_data: Array = []               # world.json rows [x, z, radius, kind, height]
+var border_data: Array = []             # the forest around the map: [x, z, kind, height, ground y]
 
 var _static := PackedByteArray()
 var _dyn := PackedInt32Array()          # how many buildings block each cell
@@ -41,6 +42,7 @@ func _ready() -> void:
 					var ci := floori((cpos.x - origin.x) / cell); var cj := floori((cpos.y - origin.y) / cell)
 					if ci >= 0 and cj >= 0 and ci < w and cj < h: _static[cj * w + ci] = 1
 	tree_data = data["trees"]
+	border_data = data.get("border_trees", [])
 	for t in data["trees"]:
 		trees.append(Vector3(t[0], t[2], t[1]))
 	astar.region = Rect2i(0, 0, w, h)

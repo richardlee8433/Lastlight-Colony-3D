@@ -8,6 +8,8 @@ args = [a for a in sys.argv[1:]]
 OUT = args[0] if args else "."
 PREVIEW = "preview" in args
 EMPTY = "empty" in args          # no cottage, props or dirt yard: the game's open starting meadow
+MAP_HALF = 34.0                  # playable map: x and y in [-34, 34] m (68 x 68 m)
+GROUND_HALF = 40.0               # the ground continues a little further under the border forest
 os.makedirs(OUT, exist_ok=True)
 random.seed(7)
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -250,12 +252,14 @@ def flower_mask(x, y):
     return max(0.0, (n - 0.18) * 3.0)
 
 bm = bmesh.new()
-bmesh.ops.create_grid(bm, x_segments=220, y_segments=220, size=34)
+bmesh.ops.create_grid(bm, x_segments=400, y_segments=400, size=2 * GROUND_HALF)
 for v in bm.verts:
     x, y = v.co.x, v.co.y
     d = math.hypot(x, y + 0.5)
     hill = 0.22 * noise.noise(Vector((x * 0.12, y * 0.12, 0.5))) + 0.05 * noise.noise(Vector((x * 0.8, y * 0.8, 1)))
-    v.co.z = hill * min(1.0, max(0.0, (d - 4.5) / 4.0)) - 0.02 * dirt_mask(x, y)
+    # broad, gentle swells further out (the village area stays nearly flat)
+    swell = 0.55 * noise.noise(Vector((x * 0.045, y * 0.045, 3.0))) * min(1.0, max(0.0, (d - 12.0) / 10.0))
+    v.co.z = hill * min(1.0, max(0.0, (d - 4.5) / 4.0)) + swell - 0.02 * dirt_mask(x, y)
 ground = mesh_obj("ground", bm, M["ground"])
 for p in ground.data.polygons: p.use_smooth = True
 me = ground.data
@@ -543,9 +547,24 @@ if not EMPTY:
     cube("wroof", (1.6, 1.0, 0.06), (-4.0, 2.6 - 0.25, 1.75), M["plank"], rot=(0.5, 0, 0), bevel=0.01)
     cube("wroof", (1.6, 1.0, 0.06), (-4.0, 2.6 + 0.25, 1.75), M["plank"], rot=(-0.5, 0, 0), bevel=0.01)
 
-# rocks
+# rocks: a few near the village, more scattered over the larger map
 for i, (x, y, s_) in enumerate([(-6.8, 1.8, 0.7), (-6.2, 2.5, 0.4), (6.0, -3.0, 0.35), (4.2, -5.3, 0.25), (-7.2, -2.7, 0.5), (7.5, 2.0, 0.9)]):
     blob("rock", (x, y, s_ * 0.15), s_, M["stone"], 3, 0.6, 0.3, 500 + i)
+
+def keep_clear(x, y, margin=0.0):
+    """Village start area and the two roads settlers arrive on (south and east edges) stay open."""
+    if math.hypot(x, y + 1.0) < 9.5 + margin: return True
+    if abs(x - 0.2) < 3.2 + margin and y < -6.0: return True          # south road (game +z)
+    if abs(y + 0.9) < 3.2 + margin and x > 6.0: return True           # east road
+    return False
+
+rr_rock = random.Random(77)
+for i in range(22):
+    for _ in range(20):
+        x, y = rr_rock.uniform(-MAP_HALF + 2, MAP_HALF - 2), rr_rock.uniform(-MAP_HALF + 2, MAP_HALF - 2)
+        if not keep_clear(x, y, 1.0): break
+    s_ = rr_rock.uniform(0.25, 0.8)
+    blob("rock", (x, y, s_ * 0.15), s_, M["stone"], 3, 0.6, 0.3, 520 + i)
 
 # ============ trees & bushes ============
 def broadleaf(loc, h, seed):
@@ -582,15 +601,53 @@ def tree(fn, loc, h, seed):
     for name in set(bpy.data.objects.keys()) - before:
         bpy.data.objects[name]["tree"] = [loc[0], loc[1], h, 0 if fn is broadleaf else 1, seed]
 
+# --- tree layout for the 68 m map ---
+# * groves and single trees inside the map (separate, choppable models in the game)
+# * a dense border forest just outside the map (baked into the scenery)
+trees_xy = []
+def try_tree(fn, x, y, h, seed, spacing=2.2):
+    if keep_clear(x, y): return False
+    for (tx, ty) in trees_xy:
+        if (tx - x) ** 2 + (ty - y) ** 2 < spacing * spacing: return False
+    trees_xy.append((x, y))
+    tree(fn, (x, y), h, seed)
+    return True
+
 rr = random.Random(42)
-for i in range(46):
-    a = rr.uniform(-0.5, math.pi + 0.5)
-    d = rr.uniform(9.0, 22)
-    x, y = math.cos(a) * d * 1.2, math.sin(a) * d * 0.9 + 1.5
-    h = rr.uniform(4.5, 7.0)
-    tree(broadleaf if rr.random() < 0.6 else pine, (x, y), h, 600 + i)
+# a few trees framing the village, as before
 for i, (x, y, h) in enumerate([(-8.0, -1.5, 5.5), (8.5, -2.5, 5.0), (-6.8, 5.5, 6.5), (6.5, 6.0, 6.0)]):
-    tree(broadleaf, (x, y), h, 700 + i)
+    trees_xy.append((x, y)); tree(broadleaf, (x, y), h, 700 + i)
+# groves
+seed_n = 600
+for g in range(10):
+    a = g / 10.0 * math.tau + rr.uniform(-0.25, 0.25)
+    d = rr.uniform(14.0, 27.0)
+    cx, cy = math.cos(a) * d, math.sin(a) * d
+    r = rr.uniform(3.5, 6.0)
+    pine_share = rr.uniform(0.15, 0.7)
+    for k in range(rr.randint(7, 13)):
+        for _ in range(8):
+            ang = rr.uniform(0, math.tau); rd = r * math.sqrt(rr.random())
+            x, y = cx + math.cos(ang) * rd, cy + math.sin(ang) * rd
+            if abs(x) < MAP_HALF - 1.5 and abs(y) < MAP_HALF - 1.5 and try_tree(pine if rr.random() < pine_share else broadleaf, x, y, rr.uniform(4.5, 7.0), seed_n):
+                seed_n += 1; break
+# single trees in the meadow
+for i in range(22):
+    for _ in range(10):
+        x, y = rr.uniform(-MAP_HALF + 2, MAP_HALF - 2), rr.uniform(-MAP_HALF + 2, MAP_HALF - 2)
+        if try_tree(broadleaf if rr.random() < 0.7 else pine, x, y, rr.uniform(4.5, 6.8), seed_n, 4.0):
+            seed_n += 1; break
+# border forest outside the playable map
+x = -GROUND_HALF + 1.0
+while x < GROUND_HALF - 0.5:
+    y = -GROUND_HALF + 1.0
+    while y < GROUND_HALF - 0.5:
+        jx, jy = x + rr.uniform(-1.0, 1.0), y + rr.uniform(-1.0, 1.0)
+        if max(abs(jx), abs(jy)) > MAP_HALF + 0.8:
+            trees_xy.append((jx, jy))
+            tree(broadleaf if rr.random() < 0.55 else pine, (jx, jy), rr.uniform(5.0, 7.5), seed_n); seed_n += 1
+        y += 3.0
+    x += 3.0
 
 def bush(loc, s_, seed, flowers=None):
     rr = random.Random(seed)
@@ -605,6 +662,12 @@ def bush(loc, s_, seed, flowers=None):
 bush((-2.9, 2.1, 0.25), 0.6, 11, "petal_v"); bush((3.0, -2.6, 0.2), 0.45, 12, "petal_w")
 bush((-2.7, -0.4, 0.2), 0.45, 13); bush((2.9, 2.2, 0.2), 0.5, 14, "petal_v")
 bush((-0.9, 2.3, 0.2), 0.4, 15)
+rr_b = random.Random(91)
+for i in range(30):
+    for _ in range(12):
+        x, y = rr_b.uniform(-MAP_HALF + 2, MAP_HALF - 2), rr_b.uniform(-MAP_HALF + 2, MAP_HALF - 2)
+        if not keep_clear(x, y, 0.5) and all((tx - x) ** 2 + (ty - y) ** 2 > 2.5 for (tx, ty) in trees_xy): break
+    bush((x, y, 0.2), rr_b.uniform(0.4, 0.65), 30 + i, rr_b.choice([None, "petal_v", "petal_w"]))
 
 # ============ scatter: grass tufts + flower clumps (geometry nodes) ============
 def make_tuft():
@@ -684,10 +747,13 @@ def scatter(target, src, attr, density, smin, smax, seed, tilt=0.15):
     md = target.modifiers.new(ng.name, "NODES"); md.node_group = ng
 
 tuft = make_tuft()
-dens = 10 if PREVIEW else 16
-scatter(ground, tuft, "grass", dens, 0.45, 1.0, 10, 0.08)
-scatter(ground, make_flowerclump("petal_v", 3), "flowers", 6 if PREVIEW else 14, 0.8, 1.4, 20, 0.1)
-scatter(ground, make_flowerclump("petal_w", 4), "flowers", 3 if PREVIEW else 7, 0.8, 1.3, 30, 0.1)
+fl_v = make_flowerclump("petal_v", 3); fl_w = make_flowerclump("petal_w", 4)
+if "build_only" not in args:
+    # the game grows its own grass and flowers in chunks (scripts/scatter.gd); these are for renders only
+    dens = 10 if PREVIEW else 16
+    scatter(ground, tuft, "grass", dens, 0.45, 1.0, 10, 0.08)
+    scatter(ground, fl_v, "flowers", 6 if PREVIEW else 14, 0.8, 1.4, 20, 0.1)
+    scatter(ground, fl_w, "flowers", 3 if PREVIEW else 7, 0.8, 1.3, 30, 0.1)
 
 # ============ lighting / render ============
 world = bpy.data.worlds.new("w"); scene.world = world; world.use_nodes = True

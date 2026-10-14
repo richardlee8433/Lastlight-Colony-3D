@@ -28,6 +28,7 @@ var _mask_img: Image
 var _mask_tex: ImageTexture
 var _rng := RandomNumberGenerator.new()
 var _ready_done := false
+var _border: Array[MultiMeshInstance3D] = []   # the forest around the map (scenery, instanced)
 var chops_done := 0                       # work sessions that gave wood (stats / tests)
 var _hl_mat: StandardMaterial3D           # tint on trees inside the area being painted
 
@@ -65,6 +66,7 @@ func _init_existing() -> void:
 		if nav and not t["wild"] and (t["growth"] >= 0.5 or t["stump"] > 0.0): nav.block_tree(t["pos"])
 	_rebuild_owner_map()
 	_ready_done = true
+	if _border.is_empty(): _build_border()
 	for b in Game.buildings:
 		if b["type"] == "woodcutter" and area_of(b["id"]).is_empty():
 			auto_area(b)               # saves from before forest areas
@@ -392,6 +394,51 @@ func _highlight_node(n: Node, on: bool) -> void:
 
 func tree_count() -> int:
 	return Game.trees.size()
+
+## The border forest outside the playable map: the same tree models, one instanced batch per model.
+func _build_border() -> void:
+	var nav := _nav()
+	if nav == null or nav.border_data.is_empty(): return
+	var groups := {}                       # model path -> Array[Transform3D]
+	var rng := RandomNumberGenerator.new(); rng.seed = 4711
+	for i in nav.border_data.size():
+		var r: Array = nav.border_data[i]
+		var kind: int = int(r[2])
+		var path: String = MODELS[kind][i % MODELS[kind].size()]
+		var s: float = float(r[3]) / BASE_H
+		var y: float = float(r[4]) if r.size() > 4 else 0.0
+		var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s, s)), Vector3(r[0], y - 0.1, r[1]))
+		if not groups.has(path): groups[path] = []
+		groups[path].append(xf)
+	for path in groups:
+		if not ResourceLoader.exists(path): continue
+		var src: Node = (load(path) as PackedScene).instantiate()
+		var mesh := _find_mesh(src)
+		src.queue_free()
+		if mesh == null: continue
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = mesh
+		var list: Array = groups[path]
+		mm.instance_count = list.size()
+		for i in list.size(): mm.set_instance_transform(i, list[i])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "Border_" + path.get_file().get_basename()
+		mmi.multimesh = mm
+		add_child(mmi)
+		_border.append(mmi)
+
+func _find_mesh(n: Node) -> Mesh:
+	if n is MeshInstance3D: return (n as MeshInstance3D).mesh
+	for c in n.get_children():
+		var m := _find_mesh(c)
+		if m: return m
+	return null
+
+func border_count() -> int:
+	var n := 0
+	for m in _border: n += m.multimesh.instance_count
+	return n
 
 # ---------------- events ----------------
 

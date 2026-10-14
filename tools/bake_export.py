@@ -76,8 +76,9 @@ others = [o for o in scene.objects if o.type == "MESH" and o not in hut_objs and
 nature = [o for o in others if o.name.startswith(NATURE_PREFIX)]
 # trees inside the playable map are separate models in the game (tools/trees.py) so they can be chopped
 def in_map_tree(o):
-    t = o.get("tree")
-    return t is not None and abs(t[0]) < 16.5 and abs(t[1]) < 16.5
+    # every tree is drawn by the game: choppable trees inside the map (tools/trees.py models) and the
+    # border forest outside it (instanced from the same models, positions in world.json)
+    return o.get("tree") is not None
 drop = [o for o in others if in_map_tree(o)]
 nature = [o for o in nature if o not in drop]
 others = [o for o in others if o not in drop]
@@ -175,9 +176,9 @@ if NATURE_ONLY:
 for md in list(ground.modifiers): ground.modifiers.remove(md)
 me = ground.data
 uv = me.uv_layers.new(name="UV")
-half = 17.0
+half = GROUND_HALF
 for loop in me.loops:
     co = me.vertices[loop.vertex_index].co
     uv.data[loop.index].uv = (co.x / (2 * half) + 0.5, co.y / (2 * half) + 0.5)
-export(bake(ground, "ground", S, kinds=("DIFFUSE",)), "ground.glb")
+export(bake(ground, "ground", 2 * S, kinds=("DIFFUSE",)), "ground.glb")
 print("ALL DONE")

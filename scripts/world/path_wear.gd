@@ -5,8 +5,8 @@ extends Node
 ## prefers worn cells — so frequently used routes become roads. Unused roads fade.
 
 const RES := 0.25                       # metres per wear pixel
-const ORIGIN := Vector2(-17, -17)
-const SIZE := 136                        # 34 m / 0.25
+const ORIGIN := Vector2(-34, -34)
+const SIZE := 272                        # 68 m / 0.25
 const SAVE_PATH := "user://paths.dat"
 const GROUND_SHADER := preload("res://scripts/world/ground_path.gdshader")
 

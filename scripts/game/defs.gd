@@ -79,7 +79,9 @@ const BUILDINGS := {
 ## areas where nothing can be built (world x, z): the starting cottage and its doorstep
 const NO_BUILD := []
 ## buildable area (world x, z)
-const BUILD_BOUNDS := Rect2(-15.5, -15.5, 31.0, 31.0)
+## the playable map is x, z in [-MAP_HALF, MAP_HALF]; the border forest lies just outside
+const MAP_HALF := 34.0
+const BUILD_BOUNDS := Rect2(-MAP_HALF + 2.5, -MAP_HALF + 2.5, 2.0 * MAP_HALF - 5.0, 2.0 * MAP_HALF - 5.0)
 ## gap kept between buildings (metres)
 const BUILD_GAP := 0.25
 
@@ -92,7 +94,7 @@ const VILLAGER := {
 	"drop_time": 0.7,
 }
 ## villagers arrive along the existing dirt roads
-const SPAWN_POINTS := [Vector2(0.2, 16.3), Vector2(16.3, 0.9)]
+const SPAWN_POINTS := [Vector2(0.2, 33.3), Vector2(33.3, 0.9)]
 
 const PATHS := {
 	"deposit": 0.16,          # wear added per second of walking (at the centre of the footprint)
@@ -156,10 +158,12 @@ const CONSTRUCTION := {"stage2": 0.5}     # progress where the site turns from f
 
 ## stone deposits: quarries can only be built on one of these (one quarry each)
 const DEPOSITS := [
-	{"pos": Vector2(10.5, 5.5), "model": 0, "angle": 2.4},
-	{"pos": Vector2(-2.5, -8.5), "model": 1, "angle": 0.6},
-	{"pos": Vector2(-12.0, 6.0), "model": 1, "angle": -1.2},
-	{"pos": Vector2(-12.0, -6.0), "model": 0, "angle": 1.0},
+	{"pos": Vector2(10.5, -7.0), "model": 0, "angle": 2.4},
+	{"pos": Vector2(-13.5, 4.5), "model": 1, "angle": 0.6},
+	{"pos": Vector2(-5.0, -15.0), "model": 1, "angle": -1.2},
+	{"pos": Vector2(16.0, 12.0), "model": 0, "angle": 1.0},
+	{"pos": Vector2(-16.5, 19.0), "model": 1, "angle": 2.0},
+	{"pos": Vector2(24.0, -16.0), "model": 0, "angle": -0.4},
 ]
 const DEPOSIT := {"radius": 1.15, "snap": 6.0}   # rock blocks walking within radius; the ghost snaps from this far
 
@@ -190,7 +194,7 @@ const FOREST := {
 
 ## residential zones: painted on the same 0.5 m grid as the walk grid
 const ZONE := {
-	"cell": 0.5, "origin": Vector2(-17, -17), "w": 68,
+	"cell": 0.5, "origin": Vector2(-34, -34), "w": 136,
 	"brush_radius": 1.3,
 	"grow_check": 2.0,        # seconds between growth checks
 	"grow_cooldown": 8.0,     # minimum seconds between two new houses

@@ -21,9 +21,10 @@ Open Godot, choose **Import**, and select `project.godot`. Wait for the first as
 ## Gameplay (MVP)
 - **Opening**: the map starts as open meadow. Three settlers walk in from the south road to the **supply cart**. The cart is the temporary storage (holding the starting wood 60, stone 20, food 40), and the campfire beside it has 4 sleeping spots. The cart can't be demolished. Saves from before this change get a supply cart automatically.
 - **Resources**: wood, stone, food. **Resources only count once a villager carries them into a storage.** After each work session the worker carries one load (woodcutter 8 wood, farm 5 food, quarry 6 stone) to the **nearest storage**, so the farther the trip, the less gets produced. The resource bar shows how much was brought into storage yesterday.
+- **Map**: 68 x 68 m with groves, single trees, rocks and bushes; a border forest surrounds it (instanced from the tree models, positions in `world.json`). Grass and flowers are grown by the game in 8 m chunks, nearest the camera first, so the bigger map starts quickly; the meadow colour of the ground covers the distance.
 - **Construction**: a placed building is a construction site. A villager builds it in two visible stages (staked foundation with material piles, then a timber frame with scaffolding) before it is finished; only finished buildings give beds, jobs or storage. Sites get their builders before workplaces, so production can pause while something is built. Cancelling a site refunds everything. Houses grown in zones are built the same way.
 - **Roads**: every new building gets a dirt path from its door to the nearest road (or the village centre); after that, paths grow and fade with use.
-- **Stone deposits**: four rock outcrops on the map. A quarry can only be built on a free deposit (one quarry each): while placing one, the deposits get a glowing ring and the quarry snaps onto the nearest; any rotation works. The mason works the rock face and hauls stone to the nearest storage, so a storehouse next to the quarry pays off.
+- **Stone deposits**: six rock outcrops on the map (four 13–19 m from the village, two further out). A quarry can only be built on a free deposit (one quarry each): while placing one, the deposits get a glowing ring and the quarry snaps onto the nearest; any rotation works. The mason works the rock face and hauls stone to the nearest storage, so a storehouse next to the quarry pays off.
 - **Woodcutters (Foundation-style)**: a woodcutter's lodge plus a painted forest area. Every tree inside the map is a separate model; only trees inside an area are felled. A grown tree gives 3 trips of wood, falls and leaves a stump; the stump sprouts after a day and grows back in about three days, and empty spots in the area fill with saplings (up to one tree per 5 m²). Trees outside areas are scenery and are never cut. While painting, trees inside the area are tinted green.
 - **Farms (Foundation-style)**: a farm is a farmhouse plus a field you paint. The field turns into furrowed soil with wheat rows, grass is cleared, and the farmer works anywhere in it. The wheat grows from freshly tilled soil to young green plants to ripe gold (~1.25 days); a ripe field is harvested over 5 trips (rows disappear as they are cut) and then tilled again. Food per harvest trip = field size / 3 m² (min 2 m² to produce, max 8 food at 24 m²). Fields can't overlap other fields, zones, buildings or trees; nothing can be built on a field.
 - **Buildings**: woodcutter, farmhouse, quarry, storehouse (a delivery point: build one near your production to cut down hauling)
@@ -88,13 +89,13 @@ godot --path . --script res://tests/shot_fields.gd                # render a far
 
 ## Regenerating the art (requires `pip install bpy`)
 ```
-python3 tools/bake_export.py <output folder> empty   # build scene (empty meadow) → bake textures → export GLB + scatter.json
+python3 tools/bake_export.py <output folder> empty   # build the 68 m map (empty meadow), bake ground + scenery (add nature_only for scenery only)
 python3 tools/repack_glb.py <output folder>/models/*.glb   # convert embedded textures to JPEG to shrink files
-python3 tools/export_world_data.py data/world.json empty   # walkable grid, ground heights, tree positions
+python3 tools/export_world_data.py data/world.json empty   # walkable grid, ground heights, map trees, border forest
 python3 tools/villager.py models                           # villager model (add "preview" to also render a preview image)
 python3 tools/house_variants.py models 6 preview           # 6 house variants → models/houses/
 python3 tools/farmhouse.py models                          # farmhouse → models/farmhouse.glb
 python3 tools/buildings.py models                          # woodcutter's lodge, storehouse, quarry, stone deposits, construction stages → models/*.glb
 python3 tools/trees.py models                              # choppable tree variants + stumps → models/trees/
-python3 tools/bake_export.py <output folder> empty nature_only   # only re-export nature.glb (scenery outside the map's trees)
+python3 tools/bake_export.py <output folder> empty nature_only   # only re-export nature.glb (rocks and bushes; trees are drawn by the game)
 ```
