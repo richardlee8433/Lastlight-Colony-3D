@@ -197,6 +197,26 @@ func block_building(b: Dictionary, notify := true) -> void:
 	_building_cells[b["id"]] = cells
 	if notify: changed.emit()
 
+## Blocks the cells under a rotated rectangle (centre, half size, angle) under `key`
+## (props around buildings); unblock with unblock_building({"id": key}).
+func block_rect(key: Variant, center: Vector2, half: Vector2, angle: float) -> void:
+	var cells := PackedInt32Array()
+	var r := half.length() + cell
+	var c0 := cell_of(Vector3(center.x - r, 0, center.y - r)); var c1 := cell_of(Vector3(center.x + r, 0, center.y + r))
+	for x in range(c0.x, c1.x + 1):
+		for z in range(c0.y, c1.y + 1):
+			var c := Vector2i(x, z)
+			if not in_bounds(c): continue
+			var cc := cell_center(c)
+			var l := Defs.rot2(Vector2(cc.x, cc.z) - center, -angle)
+			if absf(l.x) <= half.x and absf(l.y) <= half.y:
+				var i := z * w + x
+				_dyn[i] += 1
+				cells.append(i)
+				astar.set_point_solid(c, true)
+	_building_cells[key] = cells
+	changed.emit()
+
 ## true if static scenery (walls, fences, trunks, rocks, bushes) covers this world point
 func scenery_at(p: Vector2) -> bool:
 	var c := cell_of(Vector3(p.x, 0, p.y))

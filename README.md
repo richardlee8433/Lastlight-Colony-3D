@@ -23,6 +23,7 @@ Open Godot, choose **Import**, and select `project.godot`. Wait for the first as
 - **Resources**: wood, stone, food. **Resources only count once a villager carries them into a storage.** After each work session the worker carries one load (woodcutter 8 wood, farm 5 food, quarry 6 stone) to the **nearest storage**, so the farther the trip, the less gets produced. The resource bar shows how much was brought into storage yesterday.
 - **Map**: 68 x 68 m with groves, single trees, rocks and bushes; a border forest surrounds it (instanced from the tree models, positions in `world.json`). Grass and flowers are grown by the game in 8 m chunks, nearest the camera first, so the bigger map starts quickly; the meadow colour of the ground covers the distance.
 - **Trees and light**: crowns are made of textured leaf cards (broadleaf clusters, drooping pine tiers) with crown-shaped normals, sway in the wind and get a slight colour variation per tree (`scripts/world/foliage.gdshader`). Warmer sun, aerial haze and colour grading in `main.tscn`.
+- **Lived-in props**: finished buildings get props around them — gardens, fences, laundry lines, firewood, flower boxes and benches at houses; crates, barrels and sacks at the storehouse; hay bales at farms (`scripts/world/clutter.gd`, models from `tools/props.py`). Spots on paths, doorsteps, fields or other buildings are skipped; larger props block walking; a new building clears props in its way.
 - **Construction**: a placed building is a construction site. A villager builds it in two visible stages (staked foundation with material piles, then a timber frame with scaffolding) before it is finished; only finished buildings give beds, jobs or storage. Sites get their builders before workplaces, so production can pause while something is built. Cancelling a site refunds everything. Houses grown in zones are built the same way.
 - **Roads**: every new building gets a dirt path from its door to the nearest road (or the village centre); after that, paths grow and fade with use.
 - **Stone deposits**: six rock outcrops on the map (four 13–19 m from the village, two further out). A quarry can only be built on a free deposit (one quarry each): while placing one, the deposits get a glowing ring and the quarry snaps onto the nearest; any rotation works. The mason works the rock face and hauls stone to the nearest storage, so a storehouse next to the quarry pays off.
@@ -74,6 +75,7 @@ godot --headless --path . --script res://tests/test_gameplay.gd    # economy, qu
 godot --headless --path . --script res://tests/test_villagers.gd   # pathfinding, jobs, paths, moving in and out
 godot --headless --path . --script res://tests/test_zones.gd      # residential zones: painting, erasing, auto-built houses, saving
 godot --headless --path . --script res://tests/test_i18n.gd       # every UI string translated, font covers all glyphs, runtime switching
+godot --headless --path . --script res://tests/test_clutter.gd     # props around buildings: placement rules, blocking, removal
 godot --headless --path . --script res://tests/test_construction.gd # construction sites, builders, stages, refunds, saving, auto paths
 godot --headless --path . --script res://tests/test_deposits.gd   # stone deposits: quarry placement rules, snapping, mason at work
 godot --headless --path . --script res://tests/test_forest.gd     # forest areas: felling, stumps, regrowth, saplings, saving
@@ -97,6 +99,7 @@ python3 tools/villager.py models                           # villager model (add
 python3 tools/house_variants.py models 6 preview           # 6 house variants → models/houses/
 python3 tools/farmhouse.py models                          # farmhouse → models/farmhouse.glb
 python3 tools/buildings.py models                          # woodcutter's lodge, storehouse, quarry, stone deposits, construction stages → models/*.glb
+python3 tools/props.py models                              # lived-in props (crates, fences, laundry...) → models/props/
 python3 tools/leaf_textures.py models/trees                 # leaf / needle textures for the tree crowns
 python3 tools/trees.py models                              # leaf-card tree variants (add "stumps" to rebuild stumps) → models/trees/
 python3 tools/bake_export.py <output folder> empty nature_only   # only re-export nature.glb (rocks and bushes; trees are drawn by the game)
