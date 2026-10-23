@@ -18,6 +18,49 @@ const MODELS := {
 	1: ["res://models/trees/pine_0.glb", "res://models/trees/pine_1.glb"],
 }
 const STUMPS := {0: "res://models/trees/stump_broadleaf.glb", 1: "res://models/trees/stump_pine.glb"}
+const FOLIAGE_SHADER := preload("res://scripts/world/foliage.gdshader")
+const LEAF_TEX := {"leaves_broad": "res://models/trees/leaf_broad.png", "leaves_pine": "res://models/trees/leaf_pine.png"}
+
+static var _mesh_cache := {}              # model path -> Mesh with the foliage shader on its leaf cards
+
+## The tree model's mesh with its "leaves_*" surface switched to the foliage shader.
+static func tree_mesh(path: String) -> Mesh:
+	if _mesh_cache.has(path): return _mesh_cache[path]
+	var src: Node = (load(path) as PackedScene).instantiate()
+	var mesh: Mesh = _find_mesh_static(src)
+	src.queue_free()
+	if mesh == null: return null
+	mesh = mesh.duplicate()
+	for i in mesh.get_surface_count():
+		var m := mesh.surface_get_material(i)
+		var key := ""
+		for k in LEAF_TEX:
+			if m and m.resource_name.begins_with(k): key = k
+		if key != "":
+			var sm := ShaderMaterial.new()
+			sm.shader = FOLIAGE_SHADER
+			sm.set_shader_parameter("leaf_tex", load(LEAF_TEX[key]))
+			mesh.surface_set_material(i, sm)
+		elif m is StandardMaterial3D:
+			(m as StandardMaterial3D).vertex_color_use_as_albedo = true
+	_mesh_cache[path] = mesh
+	return mesh
+
+static func _find_mesh_static(n: Node) -> Mesh:
+	if n is MeshInstance3D: return (n as MeshInstance3D).mesh
+	for c in n.get_children():
+		var m := _find_mesh_static(c)
+		if m: return m
+	return null
+
+## A gentle colour variation per tree (greener, yellower, darker).
+static func tree_tint(id: int, kind: int) -> Color:
+	var r := RandomNumberGenerator.new(); r.seed = id * 7919 + 13
+	if kind == 1:
+		return Color(r.randf_range(0.9, 1.05), r.randf_range(0.98, 1.1), r.randf_range(0.88, 1.0))
+	var fresh := Color(0.88, 1.02, 0.72); var warm := Color(1.06, 0.98, 0.62); var deep := Color(0.74, 0.86, 0.66)
+	var a := r.randf()
+	return fresh.lerp(warm, a * 0.8) if r.randf() < 0.6 else fresh.lerp(deep, a)
 
 var owner_map := PackedInt32Array()       # cell -> woodcutter id (0 = none)
 var editing := -1                         # woodcutter whose area is being painted
@@ -359,7 +402,14 @@ func _make_visual(t: Dictionary) -> void:
 		_nodes[t["id"]].queue_free(); _nodes.erase(t["id"])
 	var path: String = STUMPS[t["kind"]] if t["stump"] > 0.0 else MODELS[t["kind"]][int(t["var"]) % MODELS[t["kind"]].size()]
 	if not ResourceLoader.exists(path): return
-	var n: Node3D = (load(path) as PackedScene).instantiate()
+	var n: Node3D
+	if t["stump"] > 0.0:
+		n = (load(path) as PackedScene).instantiate()
+	else:
+		var mi := MeshInstance3D.new()
+		mi.mesh = tree_mesh(path)
+		mi.set_instance_shader_parameter("tint", tree_tint(int(t["id"]), int(t["kind"])))
+		n = mi
 	var nav := _nav()
 	var p: Vector2 = t["pos"]
 	n.position = Vector3(p.x, (nav.height_at(p.x, p.y) if nav else 0.0) - 0.04, p.y)
@@ -412,16 +462,18 @@ func _build_border() -> void:
 		groups[path].append(xf)
 	for path in groups:
 		if not ResourceLoader.exists(path): continue
-		var src: Node = (load(path) as PackedScene).instantiate()
-		var mesh := _find_mesh(src)
-		src.queue_free()
+		var mesh := tree_mesh(path)
 		if mesh == null: continue
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
 		mm.mesh = mesh
 		var list: Array = groups[path]
 		mm.instance_count = list.size()
-		for i in list.size(): mm.set_instance_transform(i, list[i])
+		var pine: bool = (path as String).contains("pine")
+		for i in list.size():
+			mm.set_instance_transform(i, list[i])
+			mm.set_instance_color(i, tree_tint(i * 31 + path.length(), 1 if pine else 0))
 		var mmi := MultiMeshInstance3D.new()
 		mmi.name = "Border_" + path.get_file().get_basename()
 		mmi.multimesh = mm

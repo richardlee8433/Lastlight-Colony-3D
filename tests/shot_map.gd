@@ -18,7 +18,8 @@ func _process(_d: float) -> bool:
 		sc.grow_around(Vector2.ZERO, 100.0)
 		cam.target = Vector3(0, 0, 2); cam._dist = 60.0; cam._pitch = 1.0; cam._yaw = 0.0; cam._apply()
 	if f == 12:
-		root.get_viewport().get_texture().get_image().save_png("res://_map_overview.png")
+		if not OS.get_cmdline_user_args().has("village_only"):
+			root.get_viewport().get_texture().get_image().save_png("res://_map_overview.png")
 		cam.target = Vector3(0, 0.3, 3); cam._dist = 22.0; cam._pitch = 0.7; cam._yaw = -0.5; cam._apply()
 	if f == 22:
 		root.get_viewport().get_texture().get_image().save_png("res://_map_village.png")

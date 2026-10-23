@@ -16,8 +16,8 @@
 [ext_resource type="Script" path="res://scripts/world/deposits.gd" id="16_deposits"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
-sky_top_color = Color(0.32, 0.5, 0.78, 1)
-sky_horizon_color = Color(0.72, 0.78, 0.82, 1)
+sky_top_color = Color(0.26, 0.47, 0.8, 1)
+sky_horizon_color = Color(0.7, 0.79, 0.86, 1)
 ground_bottom_color = Color(0.2, 0.22, 0.15, 1)
 ground_horizon_color = Color(0.72, 0.78, 0.82, 1)
 sun_angle_max = 10.0
@@ -29,23 +29,29 @@ sky_material = SubResource("sky_mat")
 background_mode = 2
 sky = SubResource("sky")
 ambient_light_source = 3
-ambient_light_energy = 0.8
+ambient_light_energy = 0.7
 reflected_light_source = 2
 tonemap_mode = 4
-tonemap_exposure = 1.05
+tonemap_exposure = 1.08
+tonemap_white = 6.0
 ssao_enabled = true
-ssao_radius = 1.2
-ssao_intensity = 2.5
+ssao_radius = 1.4
+ssao_intensity = 1.8
+ssao_light_affect = 0.15
 ssil_enabled = true
 glow_enabled = true
-glow_intensity = 0.4
-glow_bloom = 0.05
+glow_intensity = 0.55
+glow_strength = 0.9
+glow_bloom = 0.06
+glow_hdr_threshold = 0.9
 fog_enabled = true
-fog_light_color = Color(0.75, 0.8, 0.85, 1)
-fog_density = 0.0012
+fog_light_color = Color(0.68, 0.78, 0.9, 1)
+fog_density = 0.0019
+fog_aerial_perspective = 0.35
 fog_sky_affect = 0.08
 adjustment_enabled = true
-adjustment_saturation = 1.08
+adjustment_contrast = 1.06
+adjustment_saturation = 1.18
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -54,8 +60,8 @@ script = ExtResource("1_main")
 environment = SubResource("env")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
-light_color = Color(1, 0.9, 0.75, 1)
-light_energy = 1.7
+light_color = Color(1, 0.87, 0.68, 1)
+light_energy = 1.85
 light_angular_distance = 1.5
 shadow_enabled = true
 shadow_blur = 1.2
