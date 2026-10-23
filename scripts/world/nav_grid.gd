@@ -45,6 +45,7 @@ func _ready() -> void:
 	border_data = data.get("border_trees", [])
 	for t in data["trees"]:
 		trees.append(Vector3(t[0], t[2], t[1]))
+	Water.apply_to_nav(self)               # carve the stream and pond, block the water, lay the bridges
 	astar.region = Rect2i(0, 0, w, h)
 	astar.cell_size = Vector2(cell, cell)
 	astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES

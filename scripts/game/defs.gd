@@ -156,6 +156,18 @@ const TOOLS := {
 ## each work session adds VILLAGER.work_time. Sites are staffed before workplaces.
 const CONSTRUCTION := {"stage2": 0.5}     # progress where the site turns from foundation to timber frame
 
+## water: a stream (control points, smoothed in game) and a pond; banks are carved into the ground
+const WATER := {
+	"river": [Vector2(19, -42), Vector2(17.5, -30), Vector2(14.5, -21), Vector2(16, -12), Vector2(19, -4),
+		Vector2(19.5, 3), Vector2(22, 10), Vector2(26, 17), Vector2(31, 24), Vector2(42, 31)],
+	"river_width": 1.7,          # half width of the water (m)
+	"pond": {"pos": Vector2(-12.0, -11.0), "radius": 3.4},
+	"bed_depth": 0.75,           # how deep the bed is carved below the surrounding ground
+	"level_below": 0.32,         # water surface below the original ground
+	"bridges": [Vector2(19.5, 1.0), Vector2(15.5, -14.0)],   # near these points the stream gets a bridge
+	"bridge_width": 0.9,         # half width of the walkable deck
+}
+
 ## stone deposits: quarries can only be built on one of these (one quarry each)
 const DEPOSITS := [
 	{"pos": Vector2(10.5, -7.0), "model": 0, "angle": 2.4},

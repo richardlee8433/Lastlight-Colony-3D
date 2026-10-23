@@ -34,6 +34,13 @@ func find_spot(ctl, type: String, near: Vector2, ang := 0.0) -> Vector2:
 			if ctl.can_place(type, p, ang): return p
 	return Vector2.INF
 
+## map trees that aren't in the stream or pond
+func dry_tree_count(nav) -> int:
+	var n := 0
+	for row in nav.tree_data:
+		if Water.sample(Vector2(row[0], row[1])).y <= 0.3: n += 1
+	return n
+
 func _run() -> void:
 	var game = root.get_node("Game")
 	var s = current_scene
@@ -49,7 +56,7 @@ func _run() -> void:
 	game.resources["wood"] = 500; game.resources["stone"] = 500; game.resources["food"] = 300
 
 	# --- the map's trees are separate, choppable models ---
-	check(game.trees.size() == nav.tree_data.size() and game.trees.size() > 20, "map trees seeded (%d)" % game.trees.size())
+	check(game.trees.size() == dry_tree_count(nav) and game.trees.size() > 20, "map trees seeded (%d)" % game.trees.size())
 	check(forest._nodes.size() == game.trees.size(), "every tree has a model")
 	var all_grown := true
 	for t in game.trees:
@@ -187,6 +194,6 @@ func _run() -> void:
 	var grown := 0
 	for a in game.trees:
 		if forest.is_grown(a): grown += 1
-	check(game.trees.size() == nav.tree_data.size() and grown == game.trees.size(), "new game: the map's trees are back (%d)" % grown)
+	check(game.trees.size() == dry_tree_count(nav) and grown == game.trees.size(), "new game: the map's trees are back (%d)" % grown)
 	game.delete_save()
 	_done = true

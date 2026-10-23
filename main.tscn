@@ -15,6 +15,7 @@
 [ext_resource type="Script" path="res://scripts/world/forest.gd" id="15_forest"]
 [ext_resource type="Script" path="res://scripts/world/deposits.gd" id="16_deposits"]
 [ext_resource type="Script" path="res://scripts/world/clutter.gd" id="17_clutter"]
+[ext_resource type="Script" path="res://scripts/world/water.gd" id="18_water"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.26, 0.47, 0.8, 1)
@@ -109,6 +110,9 @@ script = ExtResource("16_deposits")
 
 [node name="Clutter" type="Node3D" parent="."]
 script = ExtResource("17_clutter")
+
+[node name="Water" type="Node3D" parent="."]
+script = ExtResource("18_water")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("9_hud")

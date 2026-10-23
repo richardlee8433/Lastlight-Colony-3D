@@ -328,12 +328,47 @@ def site(col, stage):
             o = bpy.context.object; o.data.materials.append(M["thatch"]); bpy.context.scene.collection.objects.unlink(o); col.objects.link(o)
     return 3.0, 3.0
 
+def bridge(col):
+    """Arched wooden footbridge, 6 m long along Y (the game stretches it to each crossing), deck ~1.8 m wide.
+    Deck top is at z = 0.05 at the ends and ~0.23 in the middle, origin at the centre."""
+    seed = 77; rnd = random.Random(seed)
+    M = mats(seed, "golden", 0, 1)
+    L = 6.0; W = 1.8
+    def arc(y): return 0.05 + 0.18 * (1.0 - (2.0 * y / L) ** 2)
+    n = 24
+    for k in range(n):
+        y = -L / 2 + (k + 0.5) * L / n
+        z = arc(y)
+        hv.cube(col, (W + rnd.uniform(-0.04, 0.06), L / n * 0.9, 0.06), (rnd.uniform(-0.02, 0.02), y, z - 0.03), M["plank"],
+                rot=(math.atan2(-0.72 * y / L * 2.0 / L * L / 2, 1.0) * 0.0, 0, rnd.uniform(-0.03, 0.03)), bevel=0.01, wobble=0.004, seed=seed + k)
+    # stringers under the deck
+    for x in (-0.65, 0.0, 0.65):
+        pts = [Vector((x, -L / 2 + i * L / 6, arc(-L / 2 + i * L / 6) - 0.12)) for i in range(7)]
+        for i in range(6):
+            hv.beam(col, pts[i], pts[i + 1], 0.12, M["beam"], seed + 50 + i)
+    # posts and railings
+    for sx in (-1, 1):
+        x = sx * (W / 2 + 0.02)
+        ys = [-L / 2 + 0.15, -L / 4, 0.0, L / 4, L / 2 - 0.15]
+        for y in ys:
+            hv.beam(col, (x, y, arc(y) - 0.15), (x, y, arc(y) + 0.8), 0.09, M["beam"], seed + int(y * 10) + 100)
+        for i in range(len(ys) - 1):
+            a0, a1 = ys[i], ys[i + 1]
+            hv.beam(col, (x, a0, arc(a0) + 0.76), (x, a1, arc(a1) + 0.76), 0.07, M["log"], seed + 200 + i)
+            hv.beam(col, (x, a0, arc(a0) + 0.4), (x, a1, arc(a1) + 0.4), 0.05, M["log"], seed + 210 + i)
+    # bank stones at both ends
+    for sy in (-1, 1):
+        for k in range(5):
+            hv.blob(col, (-0.9 + k * 0.45, sy * (L / 2 - 0.05), 0.0), 0.2, M["stone"], 2, 0.6, 0.3, seed + 300 + k + (5 if sy > 0 else 0)).scale = (1.3, 1.0, 1.0)
+    return W + 0.4, L
+
 if __name__ == "__main__":
     only = [a for a in sys.argv[2:] if a != "preview"]
     jobs = [("woodcutter", woodcutter, 2.9, 2.9), ("storehouse", storehouse, 3.6, 3.0),
             ("quarry", quarry, None, None),
             ("deposit_0", lambda c: deposit(c, 0), None, None), ("deposit_1", lambda c: deposit(c, 1), None, None),
-            ("site_0", lambda c: site(c, 0), None, None), ("site_1", lambda c: site(c, 1), None, None)]
+            ("site_0", lambda c: site(c, 0), None, None), ("site_1", lambda c: site(c, 1), None, None),
+            ("bridge", bridge, None, None)]
     for name, fn, fit_w, fit_d in jobs:
         if only and name not in only: continue
         bpy.ops.wm.read_factory_settings(use_empty=True)

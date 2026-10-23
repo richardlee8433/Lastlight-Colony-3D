@@ -114,6 +114,7 @@ func _grow_chunk(key: Vector2i) -> void:
 				var m := _flower_noise.get_noise_2d(x, z)
 				if m < 0.12 or rng.randf() > (m - 0.12) * 2.4: continue
 			if _nav and _nav.scenery_at(Vector2(x, z)) and not outside: continue
+			if Water.sample(Vector2(x, z)).y > 0.35: continue                   # no grass in the water or on wet banks
 			var y: float = _nav.height_at(clampf(x, -map_half + 0.1, map_half - 0.1), clampf(z, -map_half + 0.1, map_half - 0.1)) if _nav else 0.0
 			var lush := Meadow.sample(x, z)
 			var s := rng.randf_range(cfg["scale"].x, cfg["scale"].y)

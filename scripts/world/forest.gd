@@ -123,6 +123,7 @@ func _seed_from_map() -> void:
 	if nav == null: return
 	var id := 1
 	for row in nav.tree_data:
+		if Water.sample(Vector2(row[0], row[1])).y > 0.3: continue        # no trees in the stream or pond
 		var kind: int = int(row[3]) if row.size() > 3 else 0
 		Game.trees.append({"id": id, "pos": Vector2(row[0], row[1]), "kind": kind,
 			"var": id % MODELS[kind].size(), "h": float(row[4]) if row.size() > 4 else BASE_H,
@@ -453,6 +454,7 @@ func _build_border() -> void:
 	var rng := RandomNumberGenerator.new(); rng.seed = 4711
 	for i in nav.border_data.size():
 		var r: Array = nav.border_data[i]
+		if Water.sample(Vector2(r[0], r[1])).y > 0.3: continue
 		var kind: int = int(r[2])
 		var path: String = MODELS[kind][i % MODELS[kind].size()]
 		var s: float = float(r[3]) / BASE_H

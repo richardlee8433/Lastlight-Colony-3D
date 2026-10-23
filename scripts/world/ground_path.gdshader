@@ -23,13 +23,31 @@ uniform float forest_strength = 0.35;
 uniform vec3 forest_color : source_color = vec3(0.55, 0.92, 0.45);                          // 1 while painting a field
 uniform vec3 soil_light : source_color = vec3(0.43, 0.31, 0.19);
 uniform vec3 soil_dark : source_color = vec3(0.24, 0.16, 0.09);
+uniform sampler2D water_tex : filter_linear, repeat_disable;   // Water carve: R = lowered (0..1), G = bank
+uniform vec4 water_rect;
+uniform float bed_depth = 0.0;
+uniform vec3 mud : source_color = vec3(0.34, 0.29, 0.2);
 uniform vec3 dirt_light : source_color = vec3(0.56, 0.45, 0.31);
 uniform vec3 dirt_dark : source_color = vec3(0.38, 0.29, 0.19);
 
 varying vec3 wpos;
 
+float carve_at(vec2 xz) {
+	return textureLod(water_tex, (xz - water_rect.xy) / water_rect.zw, 0.0).r;
+}
+
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	if (bed_depth > 0.0) {
+		// stream bed and pond: the same profile lowers the walk-grid heights (Water.apply_to_nav)
+		float c = carve_at(wpos.xz);
+		VERTEX.y -= c * bed_depth;
+		float e = 0.3;
+		float hx = (carve_at(wpos.xz + vec2(e, 0.0)) - carve_at(wpos.xz - vec2(e, 0.0))) * -bed_depth / (2.0 * e);
+		float hz = (carve_at(wpos.xz + vec2(0.0, e)) - carve_at(wpos.xz - vec2(0.0, e))) * -bed_depth / (2.0 * e);
+		NORMAL = normalize(NORMAL + vec3(-hx, 0.0, -hz));
+		wpos.y -= c * bed_depth;
+	}
 }
 
 void fragment() {
@@ -58,6 +76,13 @@ void fragment() {
 			float mine = smoothstep(0.88, 0.97, fm);
 			base = mix(base, vec3(1.0, 0.82, 0.4), fe * 0.7 + mine * 0.12);
 		}
+	}
+	// stream banks: wet mud, darker towards the water
+	if (bed_depth > 0.0) {
+		vec2 wt = texture(water_tex, (wpos.xz - water_rect.xy) / water_rect.zw).rg;
+		float mn = texture(noise_tex, wpos.xz * 0.7).r;
+		base = mix(base, mud * (0.8 + 0.35 * mn), wt.g * 0.85);
+		base *= 1.0 - 0.45 * smoothstep(0.35, 0.95, wt.r);
 	}
 	vec2 wuv = (wpos.xz - wear_rect.xy) / wear_rect.zw;
 	float w = texture(wear_tex, wuv).r;
