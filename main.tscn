@@ -16,6 +16,7 @@
 [ext_resource type="Script" path="res://scripts/world/deposits.gd" id="16_deposits"]
 [ext_resource type="Script" path="res://scripts/world/clutter.gd" id="17_clutter"]
 [ext_resource type="Script" path="res://scripts/world/water.gd" id="18_water"]
+[ext_resource type="Script" path="res://scripts/world/fishing.gd" id="19_fishing"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.26, 0.47, 0.8, 1)
@@ -113,6 +114,9 @@ script = ExtResource("17_clutter")
 
 [node name="Water" type="Node3D" parent="."]
 script = ExtResource("18_water")
+
+[node name="Fishing" type="Node" parent="."]
+script = ExtResource("19_fishing")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("9_hud")

@@ -6,6 +6,8 @@ var _frame := 0
 var _fails := 0
 var _done := false
 
+var WaterS
+
 func _initialize() -> void:
 	change_scene_to_file("res://main.tscn")
 
@@ -38,10 +40,11 @@ func find_spot(ctl, type: String, near: Vector2, ang := 0.0) -> Vector2:
 func dry_tree_count(nav) -> int:
 	var n := 0
 	for row in nav.tree_data:
-		if Water.sample(Vector2(row[0], row[1])).y <= 0.3: n += 1
+		if WaterS.sample(Vector2(row[0], row[1])).y <= 0.3: n += 1
 	return n
 
 func _run() -> void:
+	WaterS = load("res://scripts/world/water.gd")
 	var game = root.get_node("Game")
 	var s = current_scene
 	var forest = s.get_node("Forest")

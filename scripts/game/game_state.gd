@@ -31,6 +31,8 @@ var zones := PackedByteArray()
 ## every tree inside the map (Forest owns the visuals): {"id", "pos": Vector2, "kind", "var", "h", "r",
 ## "growth" 0..1, "chops" left, "stump" seconds left (0 = not a stump), "wild" (one of the map's own trees)}
 var trees: Array[Dictionary] = []
+## fish stock per water body ("0" = the pond, "1".. = stretches of the stream), 0..1; missing = full
+var fish := {}
 
 var _next_id := 1
 var fresh_start := false         # true right after new_game (settlers walk in)
@@ -362,6 +364,7 @@ func save_game() -> void:
 		"today": _today, "yesterday": _yesterday,
 		"zones": _zone_list(),
 		"trees": _tree_list(),
+		"fish": fish,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
@@ -402,6 +405,8 @@ func load_game() -> bool:
 	for i in data.get("zones", []):
 		set_zone(int(i), true)
 	zones_changed.emit()
+	fish = {}
+	for k in data.get("fish", {}): fish[str(k)] = float(data["fish"][k])
 	trees.clear()           # empty = the map's own trees (Forest seeds them)
 	for r in data.get("trees", []):
 		trees.append({"id": int(r[0]), "pos": Vector2(r[1], r[2]), "kind": int(r[3]), "var": int(r[4]),

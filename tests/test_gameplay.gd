@@ -119,7 +119,7 @@ func _run() -> void:
 
 	# --- UI ---
 	var hud := current_scene.get_node("HUD")
-	check(hud._build_buttons.size() == 5, "5 build buttons")
+	check(hud._build_buttons.size() == Defs.BUILD_ORDER.size(), "%d build buttons" % Defs.BUILD_ORDER.size())
 	ctl.begin_place("house")
 	check(ctl.placing == "house" and ctl._ghost != null, "ghost preview")
 	ctl._rotate_ghost(1)

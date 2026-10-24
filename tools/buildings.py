@@ -362,13 +362,75 @@ def bridge(col):
             hv.blob(col, (-0.9 + k * 0.45, sy * (L / 2 - 0.05), 0.0), 0.2, M["stone"], 2, 0.6, 0.3, seed + 300 + k + (5 if sy > 0 else 0)).scale = (1.3, 1.0, 1.0)
     return W + 0.4, L
 
+def fishery(col):
+    """Fishing hut for the shore: a small thatched shed (back), a fish-drying rack, a net hung on
+    poles, a barrel, and a little jetty reaching forward (+front = -Y, towards the water)."""
+    seed = 91; rnd = random.Random(seed)
+    M = mats(seed, "weathered", 2, 2)
+    fish = hv.mat_wood("fish", (0.35, 0.38, 0.40), (0.62, 0.66, 0.66), (12, 12, 12))
+    net = hv.mat_flat("net", (0.55, 0.50, 0.38), 0.95)
+    t = 0.11; kk = [0]
+    def B(p0, p1, tt=t, m=None):
+        kk[0] += 1; return hv.beam(col, p0, p1, tt, m or M["beam"], seed * 100 + kk[0])
+    # shed at the back
+    W, D, H = 2.0, 1.3, 1.45
+    cy = 1.05; BASE = 0.12
+    hv.cube(col, (W + 0.1, D + 0.1, BASE), (0, cy, BASE / 2), M["plank"], bevel=0.02)
+    hv.cube(col, (W, 0.1, H), (0, cy + D / 2, BASE + H / 2), M["plaster"], bevel=0.02, wobble=0.015, seed=seed)
+    for sx in (-1, 1):
+        hv.cube(col, (0.1, D, H), (sx * W / 2, cy, BASE + H / 2), M["plaster"], bevel=0.02, wobble=0.015, seed=seed + sx)
+        for sy in (-1, 1):
+            B((sx * W / 2, cy + sy * D / 2, BASE), (sx * W / 2, cy + sy * D / 2, BASE + H + 0.05))
+    for sy in (-1, 1):
+        B((-W / 2 - 0.15, cy + sy * D / 2, BASE + H), (W / 2 + 0.15, cy + sy * D / 2, BASE + H), t * 1.1)
+    rp = hv.thatch_roof(col, M, -W / 2, W / 2, D, BASE + H - 0.25, 0.95, 0.3, 0.32, True, seed, sag=0.05)
+    for sx in (-1, 1):
+        x = sx * (W / 2 - 0.02); zt = rp(-1, W / 2 - 0.02, 1.0).z
+        import bmesh
+        bm = bmesh.new()
+        a_ = bm.verts.new((x, cy - D / 2, BASE + H)); b_ = bm.verts.new((x, cy + D / 2, BASE + H)); c_ = bm.verts.new((x, cy, zt))
+        bm.faces.new((a_, b_, c_))
+        g = hv.mesh_obj("gable", bm, M["plaster"], col); g.modifiers.new("s", "SOLIDIFY").thickness = 0.1
+    # inside: crates and a coiled rope
+    for k in range(2):
+        hv.cube(col, (0.4, 0.38, 0.36), (-0.5 + k * 0.5, cy + 0.2, BASE + 0.18), M["plank"], rot=(0, 0, rnd.uniform(-0.15, 0.15)), bevel=0.02)
+    # drying rack with fish (left front)
+    for x in (-1.05, -0.25):
+        B((x, -0.6, 0), (x, -0.6, 1.25), 0.06)
+    B((-1.12, -0.6, 1.2), (-0.18, -0.6, 1.2), 0.05)
+    for k in range(5):
+        x = -0.98 + k * 0.17
+        B((x, -0.6, 1.2), (x, -0.6, 1.05), 0.012, net)
+        o = hv.blob(col, (x, -0.6, 0.92), 0.06, fish, 2, 2.4, 0.15, seed + 40 + k)
+        o.scale = (0.45, 0.25, 1.0)
+    # net hung between two poles (right)
+    for x in (0.55, 1.15):
+        B((x, -0.6, 0), (x, -0.6, 1.2), 0.06)
+    nb = hv.cube(col, (0.62, 0.02, 0.75), (0.85, -0.6, 0.72), net, bevel=0.0, wobble=0.03, seed=seed + 60)
+    # barrel and a basket of fish
+    bpy.ops.mesh.primitive_cylinder_add(vertices=14, radius=0.22, depth=0.55, location=(1.25, 0.4, 0.28))
+    o = bpy.context.object; o.data.materials.append(M["plank"]); bpy.context.scene.collection.objects.unlink(o); col.objects.link(o)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=0.2, depth=0.18, location=(0.2, -0.2, 0.09))
+    o = bpy.context.object; o.data.materials.append(hv.mat_thatch("golden")); bpy.context.scene.collection.objects.unlink(o); col.objects.link(o)
+    for k in range(4):
+        o = hv.blob(col, (0.12 + k * 0.05, -0.2 + (k % 2) * 0.06, 0.2), 0.05, fish, 1, 2.0, 0.15, seed + 80 + k)
+        o.scale = (0.4, 1.0, 0.3)
+    # jetty: planks on posts reaching forward over the bank
+    for k in range(9):
+        y = -0.95 - k * 0.2
+        hv.cube(col, (0.62, 0.18, 0.05), (0.0, y, 0.2), M["plank"], rot=(0, 0, rnd.uniform(-0.04, 0.04)), bevel=0.008)
+    for y in (-1.0, -1.85):
+        for x in (-0.28, 0.28):
+            B((x, y, -0.5), (x, y, 0.22), 0.07)
+    return 2.6, 3.6
+
 if __name__ == "__main__":
     only = [a for a in sys.argv[2:] if a != "preview"]
     jobs = [("woodcutter", woodcutter, 2.9, 2.9), ("storehouse", storehouse, 3.6, 3.0),
             ("quarry", quarry, None, None),
             ("deposit_0", lambda c: deposit(c, 0), None, None), ("deposit_1", lambda c: deposit(c, 1), None, None),
             ("site_0", lambda c: site(c, 0), None, None), ("site_1", lambda c: site(c, 1), None, None),
-            ("bridge", bridge, None, None)]
+            ("bridge", bridge, None, None), ("fishery", fishery, None, None)]
     for name, fn, fit_w, fit_d in jobs:
         if only and name not in only: continue
         bpy.ops.wm.read_factory_settings(use_empty=True)

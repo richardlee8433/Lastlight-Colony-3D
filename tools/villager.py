@@ -269,11 +269,18 @@ obj("PickHead", pick_head, "metal", pick)
 hoe = obj("Hoe", cyl(0.013, 0.013, -0.55, 0.12, 8), "wood", arms[-1], GRIP)
 obj("HoeHead", box((0.11, 0.09, 0.012), (0, 0.045, -0.555), 0.004), "metal", hoe)
 
+rod = obj("Rod", cyl(0.012, 0.006, -0.95, 0.10, 8), "wood", arms[-1], GRIP)
+obj("RodLine", cyl(0.0025, 0.0025, -0.95, -0.35, 4, "Z", (0, 0.0, 0.0)), "white", rod)
+
 # carried goods (held in front with both arms)
 carry = empty("Carry", torso, (0, 0.20, 0.20))
 obj("CarryLog", merge(cyl(0.065, 0.06, -0.28, 0.28, 10, "X"),
                       cyl(0.045, 0.045, -0.20, 0.20, 9, "X", (0, 0.0, 0.10))), "log", carry)
 obj("CarryStone", box((0.20, 0.17, 0.15), (0, 0, 0.02), 0.025), "stone", carry)
+basket = merge(lathe([(-0.06, 0.10), (0.04, 0.13), (0.06, 0.135)], 14, sy=0.8),
+               sphere(0.035, (0.04, 0.0, 0.07), (2.2, 0.8, 0.7), 8, 6),
+               sphere(0.035, (-0.04, 0.02, 0.075), (2.2, 0.8, 0.7), 8, 6))
+obj("CarryFish", basket, "straw", carry)
 sack = sphere(0.12, (0, 0, 0.03), (1.05, 0.85, 1.0), 14, 9)
 for v in sack.verts:
     if v.co.z > 0.1: v.co.x *= 0.55; v.co.y *= 0.55

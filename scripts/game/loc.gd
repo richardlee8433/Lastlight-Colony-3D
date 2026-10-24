@@ -27,6 +27,15 @@ static func save_settings() -> void:
 
 ## Zh-TW text keyed by the English text used in the code (and in Defs).
 const ZH := {
+	"Fishing hut": "漁夫小屋",
+	"Built on the shore. The fisher catches fish from the bank and carries them to storage; fish grow scarce if the water is fished too hard": "蓋在水邊。漁夫在岸邊釣魚，把魚帶回倉庫；捕撈太多魚會變少",
+	"must face the water": "要面向水邊",
+	"this water already has enough fishing huts": "這片水域的漁夫小屋已經夠多了",
+	"Fishing": "釣魚中",
+	"Point near the pond or the stream and left-click to build; the hut turns to face the water · right-click / Esc to cancel": "指向池塘或小溪附近，左鍵建造，小屋會自動面向水面 · 右鍵 / Esc 取消",
+	"Fish in this water: %d%%": "這片水域的魚量：%d%%",
+	"Per trip: about %d food (fewer fish = smaller catches)": "每趟約 %d 食物（魚越少收穫越少）",
+	"Fish are scarce, waiting for them to come back": "魚太少了，等魚群恢復",
 	"Crop: freshly tilled": "作物：剛整好地",
 	"Crop: growing %d%%": "作物：生長中 %d%%",
 	"Crop: ripe, harvesting (%d trips left)": "作物：成熟了，收成中（還有 %d 趟）",

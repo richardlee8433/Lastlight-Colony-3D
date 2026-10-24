@@ -153,6 +153,7 @@ static func _bridge_at(p: Vector2) -> Dictionary:
 # ---------------- node: surfaces, bridges, ground hook ----------------
 
 func _ready() -> void:
+	_fish_rng.seed = 2024
 	call_deferred("_build")
 
 func _build() -> void:
@@ -216,6 +217,7 @@ func _build() -> void:
 	pond_mi.material_override = pm
 	pond_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(pond_mi)
+	_life()
 	# bridges
 	for b in bridges:
 		var node: Node3D
@@ -228,6 +230,178 @@ func _build() -> void:
 		node.rotation.y = atan2(d.x, d.y)                 # model length runs along local +Z
 		node.scale = Vector3(1, 1, b["half_len"] * 2.0 / 6.0)
 		add_child(node)
+
+# ---------------- pond life: reeds, lily pads, jumping fish ----------------
+
+var _jump_timer := 2.0
+var _fish_rng := RandomNumberGenerator.new()
+
+static func _reed_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new(); rng.seed = 3
+	for k in 9:
+		var a := rng.randf() * TAU; var r := rng.randf_range(0.0, 0.12)
+		var base := Vector3(cos(a) * r, 0, sin(a) * r)
+		var h := rng.randf_range(0.7, 1.25)
+		var lean := Vector3(rng.randf_range(-0.12, 0.12), 0, rng.randf_range(-0.12, 0.12))
+		var side := Vector3(-sin(a), 0, cos(a)) * 0.022
+		var lo := Color(0.30, 0.42, 0.16); var hi := Color(0.58, 0.66, 0.30)
+		for tri in [[base - side, base + side, base + lean + Vector3(0, h, 0)]]:
+			st.set_color(lo); st.add_vertex(tri[0])
+			st.set_color(lo); st.add_vertex(tri[1])
+			st.set_color(hi); st.add_vertex(tri[2])
+		if k % 3 == 0:
+			# a cattail head on some stems
+			var top := base + lean * 0.8 + Vector3(0, h * 0.8, 0)
+			var brown := Color(0.36, 0.22, 0.12)
+			for j in 6:
+				var a0 := j / 6.0 * TAU; var a1 := (j + 1) / 6.0 * TAU
+				var p0 := top + Vector3(cos(a0), 0, sin(a0)) * 0.03; var p1 := top + Vector3(cos(a1), 0, sin(a1)) * 0.03
+				var q0 := p0 + Vector3(0, 0.14, 0); var q1 := p1 + Vector3(0, 0.14, 0)
+				for v in [p0, p1, q1, p0, q1, q0]:
+					st.set_color(brown); st.add_vertex(v)
+	st.generate_normals()
+	return st.commit()
+
+static func _lily_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var g := Color(0.26, 0.45, 0.16)
+	for k in 14:
+		var a0 := 0.35 + k / 14.0 * (TAU - 0.35); var a1 := 0.35 + (k + 1) / 14.0 * (TAU - 0.35)
+		st.set_color(g.lightened(0.15)); st.add_vertex(Vector3.ZERO)
+		st.set_color(g); st.add_vertex(Vector3(cos(a1), 0, sin(a1)) * 0.22)
+		st.set_color(g); st.add_vertex(Vector3(cos(a0), 0, sin(a0)) * 0.22)
+	st.generate_normals()
+	return st.commit()
+
+static func _flower_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for k in 6:
+		var a := k / 6.0 * TAU
+		var tip := Vector3(cos(a) * 0.07, 0.05, sin(a) * 0.07)
+		var l := Vector3(cos(a - 0.4) * 0.025, 0.01, sin(a - 0.4) * 0.025)
+		var r := Vector3(cos(a + 0.4) * 0.025, 0.01, sin(a + 0.4) * 0.025)
+		for v in [Vector3(0, 0.02, 0), r, tip, Vector3(0, 0.02, 0), tip, l]:
+			st.set_color(Color(0.98, 0.86, 0.9)); st.add_vertex(v)
+	st.generate_normals()
+	return st.commit()
+
+func _life() -> void:
+	var nav := get_node_or_null(nav_path)
+	if nav == null: return
+	var rng := RandomNumberGenerator.new(); rng.seed = 808
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true; mat.roughness = 0.8
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# reeds along the banks: dense around the pond, in clumps along the stream
+	var reeds: Array[Transform3D] = []
+	var pond: Dictionary = Defs.WATER["pond"]
+	var pc: Vector2 = pond["pos"]; var pr: float = pond["radius"]
+	for k in 70:
+		var a := rng.randf() * TAU
+		var p := pc + Vector2(cos(a), sin(a)) * (pr + rng.randf_range(-0.2, 0.7))
+		if rng.randf() < 0.3: continue        # gaps where the shore is open
+		reeds.append(_ground_xf(nav, p, rng, rng.randf_range(0.8, 1.2)))
+	var pts := river_samples()
+	for i in range(0, pts.size(), 2):
+		if rng.randf() > 0.35: continue
+		var tangent := (pts[mini(i + 1, pts.size() - 1)] - pts[maxi(i - 1, 0)]).normalized()
+		var across := Vector2(-tangent.y, tangent.x) * (1.0 if rng.randf() < 0.5 else -1.0)
+		var base := pts[i] + across * (float(Defs.WATER["river_width"]) + rng.randf_range(-0.1, 0.5))
+		if not _bridge_at(base).is_empty() or absf(base.x) > 33 or absf(base.y) > 33: continue
+		for j in rng.randi_range(2, 5):
+			reeds.append(_ground_xf(nav, base + Vector2(rng.randf_range(-0.6, 0.6), rng.randf_range(-0.6, 0.6)), rng, rng.randf_range(0.7, 1.1)))
+	_multimesh("Reeds", _reed_mesh(), reeds, mat, true)
+	# lily pads and a few flowers on the pond
+	var pads: Array[Transform3D] = []; var flowers: Array[Transform3D] = []
+	for k in 26:
+		var a := rng.randf() * TAU; var r := sqrt(rng.randf()) * (pr - 0.5)
+		var p := pc + Vector2(cos(a), sin(a)) * r
+		var s := rng.randf_range(0.7, 1.4)
+		var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, 1, s)), Vector3(p.x, _pond_level + 0.012, p.y))
+		pads.append(xf)
+		if rng.randf() < 0.25: flowers.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU), xf.origin + Vector3(0, 0.005, 0)))
+	_multimesh("LilyPads", _lily_mesh(), pads, mat, false)
+	var fmat := mat.duplicate()
+	_multimesh("Lilies", _flower_mesh(), flowers, fmat, false)
+
+func _ground_xf(nav, p: Vector2, rng: RandomNumberGenerator, s: float) -> Transform3D:
+	var y: float = nav.height_at(clampf(p.x, -33.9, 33.9), clampf(p.y, -33.9, 33.9))
+	return Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s, s)), Vector3(p.x, y - 0.05, p.y))
+
+func _multimesh(name_: String, mesh: Mesh, xfs: Array[Transform3D], mat: Material, sway: bool) -> void:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh
+	mm.instance_count = xfs.size()
+	for i in xfs.size(): mm.set_instance_transform(i, xfs[i])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = name_
+	mmi.multimesh = mm
+	if sway:
+		var wm := Wheat.material().duplicate() as ShaderMaterial    # wind sway; growth 1 keeps the vertex colours
+		wm.set_shader_parameter("growth", 1.0)
+		mmi.material_override = wm
+	else:
+		mmi.material_override = mat
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mmi)
+
+func _process(delta: float) -> void:
+	if Game.speed <= 0.0 or _levels.is_empty(): return
+	_jump_timer -= delta * Game.speed
+	if _jump_timer > 0.0: return
+	_jump_timer = _fish_rng.randf_range(2.5, 6.0)
+	# a fish jumps somewhere in the pond or the stream
+	var p: Vector2; var y: float
+	if _fish_rng.randf() < 0.5:
+		var pond: Dictionary = Defs.WATER["pond"]
+		var a := _fish_rng.randf() * TAU
+		p = (pond["pos"] as Vector2) + Vector2(cos(a), sin(a)) * _fish_rng.randf() * (float(pond["radius"]) - 0.8)
+		y = _pond_level
+	else:
+		var pts := river_samples()
+		var i := _fish_rng.randi_range(4, pts.size() - 5)
+		p = pts[i]; y = _levels[i]
+		if absf(p.x) > 33 or absf(p.y) > 33: return
+	jump_fish(Vector3(p.x, y, p.y), _fish_rng.randf() * TAU)
+
+## A small fish arcs out of the water with a splash ring where it leaves and lands.
+func jump_fish(at: Vector3, heading: float) -> void:
+	var fish := MeshInstance3D.new()
+	var sm := SphereMesh.new(); sm.radius = 0.06; sm.height = 0.12
+	fish.mesh = sm
+	fish.scale = Vector3(0.6, 0.7, 2.0)
+	var fm := StandardMaterial3D.new(); fm.albedo_color = Color(0.72, 0.76, 0.78); fm.metallic = 0.6; fm.roughness = 0.3
+	fish.material_override = fm
+	add_child(fish)
+	var dir := Vector3(sin(heading), 0, cos(heading))
+	var len := 0.7
+	_splash(at)
+	var tw := fish.create_tween()
+	tw.tween_method(func(t: float):
+		fish.position = at + dir * (t * len) + Vector3(0, sin(t * PI) * 0.35, 0)
+		fish.basis = Basis.looking_at(dir + Vector3(0, cos(t * PI) * 0.9, 0), Vector3.UP).scaled(Vector3(0.6, 0.7, 2.0)), 0.0, 1.0, 0.55)
+	tw.tween_callback(func(): _splash(at + dir * len); fish.queue_free())
+
+func _splash(at: Vector3) -> void:
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new(); tm.inner_radius = 0.08; tm.outer_radius = 0.11; tm.rings = 24; tm.ring_segments = 4
+	ring.mesh = tm
+	var m := StandardMaterial3D.new()
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color(1, 1, 1, 0.75)
+	ring.material_override = m
+	ring.position = at + Vector3(0, 0.02, 0)
+	ring.scale = Vector3(1, 0.2, 1)
+	add_child(ring)
+	var tw := ring.create_tween().set_parallel(true)
+	tw.tween_property(ring, "scale", Vector3(4.5, 0.2, 4.5), 1.1)
+	tw.tween_property(m, "albedo_color:a", 0.0, 1.1)
+	tw.chain().tween_callback(ring.queue_free)
 
 func _across(i: int) -> Vector2:
 	var pts := river_samples()

@@ -75,6 +75,7 @@ static func create(type: String, seed_val: int, stage := 2) -> Node3D:
 		"farm": _farm(root, rng)
 		"storehouse": _storehouse(root, rng)
 		"cart": _cart(root, rng)
+		"fishery": _fishery(root, rng)
 	return root
 
 const SITE_MODELS := ["res://models/site_0.glb", "res://models/site_1.glb"]
@@ -157,6 +158,11 @@ static func _quarry_simple(r: Node3D, rng: RandomNumberGenerator) -> void:
 	cyl(r, 0.01, 0.75, Vector3(-0.15, 1.85, 0.9), wood_dark())
 
 const FARMHOUSE_SCENE := "res://models/farmhouse.glb"
+
+static func _fishery(r: Node3D, _rng: RandomNumberGenerator) -> void:
+	# baked fishing hut (tools/buildings.py); a plain shed as fallback
+	if not _baked(r, "res://models/fishery.glb"):
+		box(r, Vector3(2.0, 1.5, 1.3), Vector3(0, 0.75, -1.0), wood())
 
 static func _baked(r: Node3D, path: String) -> bool:
 	if not ResourceLoader.exists(path): return false

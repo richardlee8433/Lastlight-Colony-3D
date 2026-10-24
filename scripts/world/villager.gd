@@ -18,7 +18,7 @@ const KERCHIEFS := [Color(0.72, 0.26, 0.22), Color(0.86, 0.78, 0.55), Color(0.38
 ## every optional piece of the model (shown per look / job)
 const OPTIONAL := ["Hair0", "Hair1", "Hair2", "Hair3", "Hair4", "Hair5", "Hair6", "Beard0", "Beard1",
 	"Hem", "HemTrim", "Skirt", "SkirtTrim", "Apron", "Vest", "Satchel", "Kerchief",
-	"HatStraw", "HatCap", "Hood", "Axe", "Pick", "Hoe", "CarryLog", "CarryStone", "CarrySack"]
+	"HatStraw", "HatCap", "Hood", "Axe", "Pick", "Hoe", "Rod", "CarryLog", "CarryStone", "CarrySack", "CarryFish"]
 const NAMES_EN := ["Alfie", "Mae", "Hugo", "Rose", "Tom", "Lily", "Ned", "Ivy", "Walt", "Tess", "Finn", "Nell",
 	"Otto", "Ada", "Bram", "Elsie", "Cole", "Wren", "Abe", "June"]
 const NAMES_ZH := ["阿福", "小梅", "大山", "阿蘭", "石頭", "小雨", "阿明", "春花", "老李", "小虎", "阿秀", "木生",
@@ -170,7 +170,7 @@ func _tint(names: Array, c: Color, cloth := false) -> void:
 # ---------------- outfit ----------------
 
 func set_outfit(job: Dictionary) -> void:
-	for n in ["HatStraw", "HatCap", "Hood", "Axe", "Pick", "Hoe"]:
+	for n in ["HatStraw", "HatCap", "Hood", "Axe", "Pick", "Hoe", "Rod"]:
 		_toggles[n].visible = false
 	var hat: String = job.get("hat", "")
 	if _toggles.get("_hair"): (_toggles["_hair"] as Node3D).visible = hat != "Hood"
@@ -180,12 +180,12 @@ func set_outfit(job: Dictionary) -> void:
 
 func _show_tool(on: bool) -> void:
 	var job: Dictionary = manager.job_of(self) if manager else {}
-	for n in ["Axe", "Pick", "Hoe"]:
+	for n in ["Axe", "Pick", "Hoe", "Rod"]:
 		_toggles[n].visible = on and job.get("tool", "") == n
 
 func _set_carry(item: String) -> void:
 	carrying = item
-	for n in ["CarryLog", "CarryStone", "CarrySack"]:
+	for n in ["CarryLog", "CarryStone", "CarrySack", "CarryFish"]:
 		_toggles[n].visible = (n == item)
 
 # ---------------- commands from the manager ----------------
@@ -374,6 +374,13 @@ func _start_work_trip() -> void:
 func _start_wander(delay: float) -> void:
 	if delay > 0.0:
 		state = S.IDLE; _timer = delay; _anim = "idle"; return
+	if _rng.randf() < 0.18:
+		# now and then a stroll down to the water to look at it for a while
+		var spot := Fishing.shore_near(nav, home, 16.0, _rng)
+		if not spot.is_empty():
+			_look = nav.on_ground(spot["look"])
+			_go(nav.on_ground(spot["pos"]), S.WANDER)
+			return
 	var center := home if _rng.randf() < 0.7 else Game.center()
 	var p := center + Vector2(_rng.randf_range(-4.5, 4.5), _rng.randf_range(-4.5, 4.5))
 	var bb: Rect2 = Defs.BUILD_BOUNDS
@@ -431,6 +438,19 @@ func _animate(dt: float) -> void:
 			head_x = 0.2
 			k = clampf(dt * 24.0, 0.0, 1.0)
 			if _look != Vector3.ZERO: _face_point(_look, dt)
+		"fish":
+			# rod held out over the water; now and then a tug and a little lift
+			var u := fmod(_t + float(vid) * 0.7, 5.0)
+			var tug := 0.0
+			if u > 4.2: tug = sin((u - 4.2) / 0.8 * PI)
+			ra = 0.95 + 0.04 * sin(_t * 1.3) + tug * 0.45
+			la = 0.75 + tug * 0.35
+			lz = -0.18; rz = 0.12
+			lean = 0.05 - tug * 0.08
+			head_x = 0.25
+			bob = 0.004 * sin(_t * 2.0)
+			k = clampf(dt * 10.0, 0.0, 1.0)
+			if _look != Vector3.ZERO: _face_point(_look, dt)
 		"drop":
 			lean = 0.45; la = 0.9; ra = 0.9; lz = -0.2; rz = 0.2; head_x = 0.3
 			if _look != Vector3.ZERO: _face_point(_look, dt)
@@ -442,7 +462,7 @@ func _animate(dt: float) -> void:
 			if _head_timer <= 0.0:
 				_head_timer = _rng.randf_range(1.5, 4.0)
 				_head_yaw_target = _rng.randf_range(-0.7, 0.7)
-			if _look != Vector3.ZERO and state == S.REST: _face_point(_look, dt)
+			if _look != Vector3.ZERO and (state == S.REST or state == S.IDLE): _face_point(_look, dt)
 	if _skirt: ll *= 0.75; rl *= 0.75                 # shorter steps in a long skirt
 	# blink now and then
 	_blink -= dt
@@ -472,6 +492,7 @@ func status_text() -> String:
 				"chop": return Loc.t("Chopping")
 				"mine": return Loc.t("Quarrying")
 				"hoe": return Loc.t("Tending the field")
+				"fish": return Loc.t("Fishing")
 			return Loc.t("Working")
 		S.TO_DROP, S.DROP: return Loc.t("Hauling")
 		S.TO_HOME, S.REST: return Loc.t("Resting at home")
