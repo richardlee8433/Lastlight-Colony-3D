@@ -11,6 +11,14 @@ const TUNIC := [Color(0.62, 0.30, 0.24), Color(0.33, 0.43, 0.58), Color(0.44, 0.
 const PANTS := [Color(0.32, 0.25, 0.19), Color(0.27, 0.27, 0.30), Color(0.40, 0.34, 0.24), Color(0.22, 0.18, 0.15)]
 const HAIR := [Color(0.20, 0.12, 0.06), Color(0.36, 0.22, 0.10), Color(0.09, 0.07, 0.06), Color(0.66, 0.50, 0.25), Color(0.55, 0.24, 0.10)]
 const HOODS := [Color(0.30, 0.36, 0.22), Color(0.42, 0.32, 0.22), Color(0.36, 0.30, 0.26)]
+const SKIRTS := [Color(0.36, 0.26, 0.32), Color(0.30, 0.34, 0.46), Color(0.46, 0.34, 0.22), Color(0.30, 0.38, 0.28), Color(0.55, 0.26, 0.22)]
+const APRONS := [Color(0.86, 0.82, 0.70), Color(0.78, 0.74, 0.62), Color(0.70, 0.62, 0.48)]
+const VESTS := [Color(0.34, 0.22, 0.13), Color(0.24, 0.28, 0.18), Color(0.30, 0.24, 0.30), Color(0.20, 0.17, 0.14)]
+const KERCHIEFS := [Color(0.72, 0.26, 0.22), Color(0.86, 0.78, 0.55), Color(0.38, 0.48, 0.66), Color(0.55, 0.62, 0.36)]
+## every optional piece of the model (shown per look / job)
+const OPTIONAL := ["Hair0", "Hair1", "Hair2", "Hair3", "Hair4", "Hair5", "Hair6", "Beard0", "Beard1",
+	"Hem", "HemTrim", "Skirt", "SkirtTrim", "Apron", "Vest", "Satchel", "Kerchief",
+	"HatStraw", "HatCap", "Hood", "Axe", "Pick", "Hoe", "CarryLog", "CarryStone", "CarrySack"]
 const NAMES_EN := ["Alfie", "Mae", "Hugo", "Rose", "Tom", "Lily", "Ned", "Ivy", "Walt", "Tess", "Finn", "Nell",
 	"Otto", "Ada", "Bram", "Elsie", "Cole", "Wren", "Abe", "June"]
 const NAMES_ZH := ["阿福", "小梅", "大山", "阿蘭", "石頭", "小雨", "阿明", "春花", "老李", "小虎", "阿秀", "木生",
@@ -55,6 +63,10 @@ var _arm_r: Node3D
 var _leg_l: Node3D
 var _leg_r: Node3D
 var _toggles := {}                # name -> Node3D (tools, hats, hair, carry items)
+var _eyes: Array[Node3D] = []
+var _blink := 0.0                 # seconds until the next blink
+var _skirt := false
+var _kerchief := false
 
 func setup(id: int, mgr: Node, nav_grid: NavGrid, path_wear: PathWear) -> void:
 	vid = id; manager = mgr; nav = nav_grid; wear = path_wear
@@ -71,34 +83,85 @@ func _build_model() -> void:
 	_arm_r = _model.find_child("ArmR", true, false)
 	_leg_l = _model.find_child("LegL", true, false)
 	_leg_r = _model.find_child("LegR", true, false)
-	for n in ["Hair0", "Hair1", "Hair2", "HatStraw", "HatCap", "Hood", "Axe", "Pick", "Hoe", "CarryLog", "CarryStone", "CarrySack"]:
+	for n in OPTIONAL:
 		var node := _model.find_child(n, true, false)
 		if node:
 			_toggles[n] = node
 			node.visible = false
-	var hair := "Hair%d" % _rng.randi_range(0, 2)
-	_toggles[hair].visible = true
-	_toggles["_hair"] = _toggles[hair]
+	for n in ["EyeL", "EyeR"]:
+		var e := _model.find_child(n, true, false)
+		if e: _eyes.append(e)
+	_blink = _rng.randf_range(0.5, 4.0)
+	_pick_look()
+
+## A look per villager: hair, beard, skirt or tunic, apron / vest / satchel, kerchief, colours, build.
+func _pick_look() -> void:
+	var hair_i := _rng.randi_range(0, 6)
+	var hair := "Hair%d" % hair_i
+	_show(hair); _toggles["_hair"] = _toggles.get(hair)
+	var long_hair := hair_i in [1, 2, 3, 4]
+	# beards for some short-haired villagers
+	if not long_hair and _rng.randf() < 0.45: _show("Beard0" if _rng.randf() < 0.55 else "Beard1")
+	_skirt = long_hair and _rng.randf() < 0.65
+	if _skirt: _show("Skirt"); _show("SkirtTrim")
+	else: _show("Hem"); _show("HemTrim")
+	var layer := _rng.randf()
+	if layer < 0.32: _show("Apron")
+	elif layer < 0.58: _show("Vest")
+	if _rng.randf() < 0.22: _show("Satchel")
+	_kerchief = _rng.randf() < (0.4 if long_hair else 0.12)
+	if _kerchief: _show("Kerchief")
 	var skin: Color = SKIN[_rng.randi() % SKIN.size()]
 	var tunic: Color = TUNIC[_rng.randi() % TUNIC.size()]
 	var pants: Color = PANTS[_rng.randi() % PANTS.size()]
 	var hair_c: Color = HAIR[_rng.randi() % HAIR.size()]
+	if hair_i == 6 or _rng.randf() < 0.1: hair_c = Color(0.62, 0.60, 0.57)        # some grey-haired elders
 	var hood_c: Color = HOODS[_rng.randi() % HOODS.size()]
-	_tint(["Head", "Nose", "EarL", "EarR", "HandL", "HandR"], skin)
-	_tint(["Torso", "ArmL", "ArmR"], tunic)
-	_tint(["LegL", "LegR"], pants)
-	_tint(["Hair0", "Hair1", "Hair2"], hair_c)
-	_tint(["Hood", "HatCap"], hood_c)
-	var s := _rng.randf_range(0.92, 1.06)
-	_model.scale = Vector3(s, s, s)
+	var trim: Color = tunic.darkened(0.42) if _rng.randf() < 0.6 else TUNIC[_rng.randi() % TUNIC.size()].darkened(0.25)
+	_tint(["Head", "Neck", "Nose", "EarL", "EarR", "HandL", "HandR"], skin)
+	_tint(["Torso", "ArmL", "ArmR", "Hem"], tunic, true)
+	_tint(["HemTrim", "SkirtTrim", "Collar", "CuffL", "CuffR"], trim, true)
+	_tint(["LegL", "LegR"], pants, true)
+	_tint(["Hair0", "Hair1", "Hair2", "Hair3", "Hair4", "Hair5", "Hair6", "Beard0", "Beard1", "BrowL", "BrowR"], hair_c)
+	_tint(["Hood", "HatCap"], hood_c, true)
+	_tint(["Skirt"], SKIRTS[_rng.randi() % SKIRTS.size()], true)
+	_tint(["Apron"], APRONS[_rng.randi() % APRONS.size()], true)
+	_tint(["Vest"], VESTS[_rng.randi() % VESTS.size()], true)
+	_tint(["Kerchief"], KERCHIEFS[_rng.randi() % KERCHIEFS.size()], true)
+	_tint(["CheekL", "CheekR"], skin.lerp(Color(0.95, 0.45, 0.42), 0.55))
+	# build: a little taller or shorter, slimmer or stockier
+	var h := _rng.randf_range(0.92, 1.07)
+	var w := h * _rng.randf_range(0.92, 1.1)
+	_model.scale = Vector3(w, h, w)
+
+func _show(n: String) -> void:
+	if _toggles.has(n): (_toggles[n] as Node3D).visible = true
 
 static var _mat_cache := {}
-func _tint(names: Array, c: Color) -> void:
-	var key := c.to_html()
+static var _fabric: Texture2D
+## a soft woven-cloth texture shared by all clothing (triplanar, so no UVs needed)
+static func fabric() -> Texture2D:
+	if _fabric == null:
+		var n := FastNoiseLite.new()
+		n.noise_type = FastNoiseLite.TYPE_CELLULAR
+		n.frequency = 0.09; n.seed = 5
+		var g := Gradient.new()
+		g.set_color(0, Color(0.88, 0.88, 0.88)); g.set_color(1, Color(1, 1, 1))
+		var t := NoiseTexture2D.new()
+		t.noise = n; t.color_ramp = g; t.seamless = true; t.width = 128; t.height = 128
+		_fabric = t
+	return _fabric
+
+func _tint(names: Array, c: Color, cloth := false) -> void:
+	var key := c.to_html() + ("c" if cloth else "")
 	if not _mat_cache.has(key):
 		var m := StandardMaterial3D.new()
 		m.albedo_color = c
-		m.roughness = 0.85
+		m.roughness = 0.9 if cloth else 0.7
+		if cloth:
+			m.albedo_texture = fabric()
+			m.uv1_triplanar = true
+			m.uv1_scale = Vector3(9, 9, 9)
 		_mat_cache[key] = m
 	for n in names:
 		var mi := _model.find_child(n, true, false) as MeshInstance3D
@@ -110,7 +173,9 @@ func set_outfit(job: Dictionary) -> void:
 	for n in ["HatStraw", "HatCap", "Hood", "Axe", "Pick", "Hoe"]:
 		_toggles[n].visible = false
 	var hat: String = job.get("hat", "")
-	(_toggles["_hair"] as Node3D).visible = hat != "Hood"
+	if _toggles.get("_hair"): (_toggles["_hair"] as Node3D).visible = hat != "Hood"
+	# a work hat replaces the kerchief
+	if _toggles.has("Kerchief"): (_toggles["Kerchief"] as Node3D).visible = _kerchief and hat == ""
 	if hat != "": _toggles[hat].visible = true
 
 func _show_tool(on: bool) -> void:
@@ -378,6 +443,14 @@ func _animate(dt: float) -> void:
 				_head_timer = _rng.randf_range(1.5, 4.0)
 				_head_yaw_target = _rng.randf_range(-0.7, 0.7)
 			if _look != Vector3.ZERO and state == S.REST: _face_point(_look, dt)
+	if _skirt: ll *= 0.75; rl *= 0.75                 # shorter steps in a long skirt
+	# blink now and then
+	_blink -= dt
+	var lid := 1.0
+	if _blink < 0.0:
+		lid = 0.12
+		if _blink < -0.11: _blink = _rng.randf_range(2.0, 5.5)
+	for e in _eyes: e.scale.y = lerpf(e.scale.y, lid, clampf(dt * 40.0, 0.0, 1.0))
 	_arm_l.rotation.x = lerpf(_arm_l.rotation.x, la, k)
 	_arm_r.rotation.x = lerpf(_arm_r.rotation.x, ra, k)
 	_arm_l.rotation.z = lerpf(_arm_l.rotation.z, lz, k)
