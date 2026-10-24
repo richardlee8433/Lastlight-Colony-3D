@@ -76,12 +76,12 @@ func place_problem(type: String, pos: Vector2, angle: float) -> String:
 	var dep := -1
 	if on_deposit:
 		dep = Deposits.index_at(pos)
-		if dep < 0: return Loc.t("must be built on a stone deposit")
-		if Deposits.quarry_on(dep) >= 0: return Loc.t("this deposit already has a quarry")
+		if dep < 0: return Loc.t("must be built on an ore deposit")
+		if Deposits.quarry_on(dep) >= 0: return Loc.t("this deposit already has a mining rig")
 	for r in Defs.NO_BUILD:
 		var rr: Rect2 = r
 		var rq := PackedVector2Array([rr.position, Vector2(rr.end.x, rr.position.y), rr.end, Vector2(rr.position.x, rr.end.y)])
-		if Defs.quads_overlap(quad, rq): return Loc.t("too close to the village centre")
+		if Defs.quads_overlap(quad, rq): return Loc.t("too close to the landing site")
 	var grown := Defs.footprint_corners(type, pos, angle, Defs.BUILD_GAP)
 	for b in Game.buildings:
 		if Defs.quads_overlap(grown, Defs.footprint_corners(b["type"], b["pos"], b["angle"])):
@@ -96,14 +96,14 @@ func place_problem(type: String, pos: Vector2, angle: float) -> String:
 					spots.append(rr.position + rr.size * Vector2(i / 2.0, j / 2.0))
 		for l in spots:
 			if l.length() <= Defs.DEPOSIT["radius"] + 0.5: continue          # its own rock
-			if _nav.scenery_at(pos + Defs.rot2(l, angle)): return Loc.t("trees or obstacles in the way")
+			if _nav.scenery_at(pos + Defs.rot2(l, angle)): return Loc.t("plants or obstacles in the way")
 	elif _nav:
 		var h := Defs.half_extents(type)
 		var nx := maxi(2, ceili(h.x * 2 / 0.4)); var nz := maxi(2, ceili(h.y * 2 / 0.4))
 		for i in nx + 1:
 			for j in nz + 1:
 				var l := Vector2(-h.x + 2 * h.x * i / nx, -h.y + 2 * h.y * j / nz)
-				if _nav.scenery_at(pos + Defs.rot2(l, angle)): return Loc.t("trees or obstacles in the way")
+				if _nav.scenery_at(pos + Defs.rot2(l, angle)): return Loc.t("plants or obstacles in the way")
 	var f := _fields()
 	if f:
 		var h := Defs.half_extents(type)
@@ -111,7 +111,7 @@ func place_problem(type: String, pos: Vector2, angle: float) -> String:
 		for i in nx + 1:
 			for j in nz + 1:
 				var l := Vector2(-h.x + 2 * h.x * i / nx, -h.y + 2 * h.y * j / nz) * 0.9
-				if f.is_field(pos + Defs.rot2(l, angle)): return Loc.t("that's a farm field")
+				if f.is_field(pos + Defs.rot2(l, angle)): return Loc.t("that's a crop field")
 	var fo := _forest()
 	if fo:
 		var h := Defs.half_extents(type)
@@ -119,7 +119,7 @@ func place_problem(type: String, pos: Vector2, angle: float) -> String:
 		for i in nx + 1:
 			for j in nz + 1:
 				var l := Vector2(-h.x + 2 * h.x * i / nx, -h.y + 2 * h.y * j / nz) * 0.9
-				if fo.is_area(pos + Defs.rot2(l, angle)): return Loc.t("that's a forest area")
+				if fo.is_area(pos + Defs.rot2(l, angle)): return Loc.t("that's a harvest area")
 	return ""
 
 func can_place(type: String, pos: Vector2, angle := 0.0) -> bool:
@@ -167,7 +167,7 @@ func begin_place(type: String) -> void:
 		var dn := get_node_or_null(deposits_path)
 		if dn: dn.set_highlight(true)
 		if Deposits.free_count() == 0:
-			Game.toast.emit(Loc.t("Every stone deposit already has a quarry"))
+			Game.toast.emit(Loc.t("Every ore deposit already has a mining rig"))
 	_ghost = BuildingVisuals.create(type, 1)
 	BuildingVisuals.override_all(_ghost, _ghost_mat)
 	add_child(_ghost)
@@ -281,7 +281,7 @@ func clear_brush_area() -> void:
 		Game.toast.emit(Loc.t("Area cleared"))
 	elif placing == "zone":
 		Game._clear_zones()
-		Game.toast.emit(Loc.t("All housing zones cleared (built houses stay)"))
+		Game.toast.emit(Loc.t("All habitat zones cleared (built habs stay)"))
 
 func _update_brush(mouse: Vector2) -> void:
 	if _brush == null: return
@@ -378,9 +378,9 @@ func _unhandled_input(event: InputEvent) -> void:
 						begin_forest(id)
 						var fo := _forest()
 						if fo and fo.counts(id)["ready"] == 0:
-							Game.toast.emit(Loc.t("No trees here yet. Saplings will sprout in the area, or paint it over a forest"))
+							Game.toast.emit(Loc.t("No plants here yet. Shoots will sprout in the area, or paint it over a grove"))
 						else:
-							Game.toast.emit(Loc.t("A forest area is ready. Drag to grow it; X or Shift to erase"))
+							Game.toast.emit(Loc.t("A harvest area is ready. Drag to grow it; X or Shift to erase"))
 					else:
 						_update_ghost(event.position)
 						if not Game.can_afford(Defs.BUILDINGS[placing]["cost"]):

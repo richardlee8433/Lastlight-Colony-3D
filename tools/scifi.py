@@ -54,6 +54,20 @@ def mat_stripes(name, a, c, scale=8.0):
     nt.links.new(r.outputs["Color"], b.inputs["Base Color"]); b.inputs["Roughness"].default_value = 0.6
     return m
 
+def mat_solar():
+    """Photovoltaic cells: dark blue squares with thin silver gaps, smooth (no fabric-like bump)."""
+    m, nt, b = hv.new_mat("solar_cells")
+    br = nt.nodes.new("ShaderNodeTexBrick")
+    br.inputs["Mortar Size"].default_value = 0.04; br.inputs["Scale"].default_value = 1.0
+    br.inputs["Color1"].default_value = (0.03, 0.06, 0.16, 1); br.inputs["Color2"].default_value = (0.04, 0.075, 0.19, 1)
+    br.inputs["Mortar"].default_value = (0.55, 0.58, 0.62, 1)
+    br.offset = 0.0; br.squash = 1.0
+    br.inputs["Brick Width"].default_value = 1.0; br.inputs["Row Height"].default_value = 1.0
+    nt.links.new(hv.mapping(nt, (8, 8, 8)), br.inputs["Vector"])
+    nt.links.new(br.outputs["Color"], b.inputs["Base Color"])
+    b.inputs["Roughness"].default_value = 0.2; b.inputs["Metallic"].default_value = 0.2
+    return m
+
 def mats():
     return {
         "hull": mat_panels("hull", (0.74, 0.74, 0.72), (0.18, 0.18, 0.19), 0.35, 1.1),
@@ -65,7 +79,7 @@ def mats():
         "dark": hv.mat_flat("darkmetal", (0.06, 0.065, 0.07), 0.5),
         "crate": mat_panels("crate", (0.30, 0.36, 0.42), (0.08, 0.09, 0.10), 0.25, 5.0),
         "hazard": mat_stripes("hazard", (0.9, 0.68, 0.08), (0.05, 0.05, 0.05)),
-        "solar": mat_panels("solar", (0.05, 0.09, 0.22), (0.55, 0.58, 0.62), 0.05, 7.0),
+        "solar": mat_solar(),
         "foil": hv.mat_flat("foil", (0.85, 0.66, 0.25), 0.25),
         "foil2": hv.mat_flat("foil2", (0.75, 0.76, 0.78), 0.25),
         "regolith": hv.mat_wood("regolith", (0.22, 0.13, 0.08), (0.42, 0.27, 0.17), (5, 5, 5)),

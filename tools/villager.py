@@ -27,13 +27,19 @@ M = {
     "skin": mat("skin", (0.80, 0.55, 0.40)),
     "tunic": mat("tunic", (0.42, 0.20, 0.14)),
     "pants": mat("pants", (0.20, 0.15, 0.10)),
-    "shoe": mat("shoe", (0.10, 0.06, 0.035)),
-    "belt": mat("belt", (0.12, 0.07, 0.035)),
+    "shoe": mat("shoe", (0.16, 0.16, 0.17)),
+    "belt": mat("belt", (0.10, 0.10, 0.11)),
     "hair": mat("hair", (0.18, 0.09, 0.04)),
     "eye": mat("eye", (0.02, 0.015, 0.012), 0.4),
-    "straw": mat("straw", (0.75, 0.58, 0.28)),
+    "straw": mat("straw", (0.82, 0.80, 0.74)),
     "cloth": mat("cloth", (0.30, 0.34, 0.20)),
-    "wood": mat("wood", (0.32, 0.20, 0.10)),
+    "wood": mat("wood", (0.10, 0.10, 0.11)),
+    "orange": mat("orange", (0.90, 0.40, 0.08), 0.5),
+    "visor": mat("visor", (0.05, 0.12, 0.16), 0.08),
+    "fibre": mat("fibre", (0.16, 0.40, 0.38)),
+    "ore": mat("ore", (0.18, 0.15, 0.17), 0.6),
+    "oregreen": mat("oregreen", (0.15, 0.55, 0.45), 0.3),
+    "case": mat("case", (0.85, 0.86, 0.84), 0.5),
     "metal": mat("metal", (0.35, 0.36, 0.38), 0.45),
     "log": mat("log", (0.36, 0.24, 0.13)),
     "stone": mat("stone", (0.45, 0.44, 0.41)),
@@ -143,8 +149,8 @@ torso = obj("Torso", lathe([(-0.10, 0.160), (-0.03, 0.150), (0.06, 0.133), (0.16
                             (0.32, 0.142), (0.36, 0.128), (0.395, 0.098), (0.42, 0.058)], 20, sy=0.76), "tunic",
             root, (0, 0, HIP))
 # tunic skirt below the belt, flaring a little (legs swing inside it)
-obj("Hem", lathe([(-0.19, 0.180), (-0.14, 0.170), (-0.10, 0.161)], 20, sy=0.80), "tunic", torso)
-obj("HemTrim", ring(0.182, -0.185, 0.80, 0.013, 20), "trim", torso)
+obj("Hem", lathe([(-0.13, 0.158), (-0.10, 0.160)], 20, sy=0.78), "tunic", torso)
+obj("HemTrim", ring(0.16, -0.125, 0.78, 0.012, 20), "trim", torso)
 belt = bmesh.new()
 bmesh.ops.create_cone(belt, cap_ends=False, segments=20, radius1=0.136, radius2=0.132, depth=0.04)
 for v in belt.verts: v.co.y *= 0.79
@@ -153,8 +159,8 @@ obj("Buckle", box((0.045, 0.012, 0.035), (0, 0.107, 0.07), 0.004), "metal", tors
 obj("Collar", merge(ring(0.070, 0.418, 0.85, 0.016, 16), box((0.03, 0.012, 0.07), (0, 0.105, 0.36), 0.005)), "trim", torso)
 # optional layers
 # apron: a front panel following the body from the chest down past the hem
-apron = lathe([(-0.215, 0.192), (-0.14, 0.181), (-0.10, 0.171), (0.0, 0.160), (0.10, 0.146), (0.21, 0.150)], 28, sy=0.82)
-delete_verts(apron, lambda c: c.y < 0.06)
+apron = merge(box((0.17, 0.035, 0.15), (0, 0.118, 0.24), 0.012), box((0.05, 0.03, 0.05), (0.05, 0.13, 0.26), 0.008),
+              box((0.04, 0.03, 0.03), (-0.05, 0.13, 0.28), 0.006))
 obj("Apron", apron, "apron", torso)
 vest = lathe([(0.02, 0.150), (0.16, 0.148), (0.30, 0.152), (0.36, 0.136), (0.385, 0.105)], 20, sy=0.79)
 delete_verts(vest, lambda c: c.y > 0.07 and abs(c.x) < 0.05)
@@ -162,13 +168,10 @@ obj("Vest", vest, "vest", torso)
 skirt = lathe([(-0.32, 0.232), (-0.22, 0.210), (-0.10, 0.180), (0.02, 0.152)], 22, sy=0.82)
 obj("Skirt", skirt, "skirt", torso)
 obj("SkirtTrim", ring(0.234, -0.315, 0.82, 0.015, 22), "trim", torso)
-sat = merge(box((0.12, 0.05, 0.10), (-0.17, 0.01, -0.06), 0.02),
-            cyl(0.008, 0.008, -0.04, 0.46, 6, "Z"))
-for v in sat.verts:
-    if v.co.z > -0.035 and abs(v.co.x) < 0.02:          # the strap: diagonal over the chest
-        t = (v.co.z + 0.04) / 0.5
-        v.co.x += -0.17 + t * 0.30; v.co.y += 0.115 * math.sin(t * math.pi) + 0.02
-obj("Satchel", sat, "belt", torso)
+sat = merge(box((0.21, 0.09, 0.24), (0, -0.15, 0.24), 0.03),
+            cyl(0.035, 0.035, 0.13, 0.36, 10, "Z", (0.065, -0.205, 0)), cyl(0.035, 0.035, 0.13, 0.36, 10, "Z", (-0.065, -0.205, 0)))
+satchel = obj("Satchel", sat, "case", torso)
+obj("SatchelLight", box((0.04, 0.012, 0.02), (0.06, -0.196, 0.30), 0.004), "orange", satchel)
 
 # head (pivot at the neck): face with brows, cheeks, a small smile
 neck = obj("Neck", cyl(0.045, 0.042, 0.39, 0.45, 10), "skin", torso)
@@ -232,17 +235,26 @@ obj("Beard1", merge(sphere(0.03, (0.022, 0.142, 0.085), (1.3, 0.6, 0.6), 8, 6),
                     sphere(0.03, (-0.022, 0.142, 0.085), (1.3, 0.6, 0.6), 8, 6)), "hair", head)     # moustache
 
 # headwear (jobs) and a kerchief (personal)
-straw = merge(cyl(0.265, 0.255, 0.0, 0.012, 24), cyl(0.125, 0.075, 0.0, 0.115, 18), ring(0.123, 0.025, 1.0, 0.013, 18))
+straw = merge(cyl(0.24, 0.23, 0.0, 0.012, 24), delete_verts(sphere(0.14, (0, 0, 0.0), (1, 1, 0.8), 18, 10), lambda c: c.z < 0.0),
+              ring(0.142, 0.02, 1.0, 0.014, 18))
 obj("HatStraw", straw, "straw", head, (0, -0.005, 0.222))
-cap = merge(delete_verts(sphere(0.163, (0, 0, 0.0), (1, 1, 0.75), 18, 10), lambda c: c.z < 0.0),
-            box((0.17, 0.10, 0.012), (0, 0.155, 0.005)))
-obj("HatCap", cap, "cloth", head, (0, -0.01, 0.18))
-hood = delete_verts(sphere(0.18, (0, -0.02, 0.14), (1, 1.05, 1.05), 20, 14),
-                    lambda c: c.y > 0.09 and c.z < 0.25 and c.z > 0.0)
-hood = merge(hood, lathe([(-0.06, 0.165), (0.0, 0.125)], 18, sy=0.85))
-obj("Hood", hood, "cloth", head, (0, 0, 0.0))
-kerchief = delete_verts(sphere(0.162, (0, -0.012, 0.15), (1, 1, 1), 18, 12), lambda c: c.z < 0.13 or c.y > 0.06)
-kerchief = merge(kerchief, sphere(0.04, (0, -0.15, 0.13), (1.2, 0.8, 0.8), 8, 6))
+cap = merge(delete_verts(sphere(0.17, (0, 0, 0.0), (1, 1, 0.8), 18, 10), lambda c: c.z < 0.0),
+            cyl(0.185, 0.185, -0.005, 0.012, 20), box((0.03, 0.2, 0.03), (0, 0.0, 0.135), 0.008))
+hatcap = obj("HatCap", cap, "cloth", head, (0, -0.01, 0.18))
+obj("CapLamp", cyl(0.03, 0.03, 0.0, 0.03, 10, "Y", (0, 0.18, 0.055)), "white", hatcap)
+hood = delete_verts(sphere(0.185, (0, -0.01, 0.14), (1, 1.05, 1.05), 20, 14),
+                    lambda c: c.y > 0.08 and c.z < 0.21 and c.z > 0.04)
+hood = merge(hood, lathe([(-0.06, 0.165), (0.0, 0.13)], 18, sy=0.85))
+visor = delete_verts(sphere(0.19, (0, 0.0, 0.135), (0.95, 1.05, 0.9), 20, 14), lambda c: c.y < 0.07 or c.z > 0.23 or c.z < 0.03)
+hood_o = obj("Hood", hood, "cloth", head, (0, 0, 0.0))
+obj("HoodVisor", visor, "visor", hood_o)
+kerchief = merge(cyl(0.035, 0.035, -0.02, 0.02, 12, "X", (0.15, 0.0, 0.13)), cyl(0.035, 0.035, -0.02, 0.02, 12, "X", (-0.15, 0.0, 0.13)),
+                 box((0.012, 0.09, 0.012), (0.155, 0.06, 0.09), 0.004), sphere(0.012, (0.15, 0.11, 0.075), (1, 1, 1), 6, 5))
+band = ring(0.158, 0.0, 1.0, 0.01, 18)
+bmesh.ops.rotate(band, verts=band.verts, cent=(0, 0, 0), matrix=Matrix.Rotation(math.pi / 2, 3, "Y"))
+bmesh.ops.translate(band, verts=band.verts, vec=Vector((0, -0.005, 0.15)))
+delete_verts(band, lambda c: c.z < 0.17)
+kerchief = merge(kerchief, band)
 obj("Kerchief", kerchief, "kerchief", head)
 
 # arms (pivot at the shoulder): sleeve with a cuff, hand with a thumb
@@ -259,32 +271,34 @@ for side, name in ((1, "ArmL"), (-1, "ArmR")):
 # tools in the right hand (pivot at the grip, pointing along the arm)
 GRIP = (0, 0.0, -0.30)
 axe = obj("Axe", cyl(0.014, 0.014, -0.40, 0.06, 8), "wood", arms[-1], GRIP)
-obj("AxeHead", merge(box((0.03, 0.12, 0.08), (0, 0.06, -0.37), 0.008),
-                     box((0.012, 0.03, 0.12), (0, 0.13, -0.37))), "metal", axe)
+obj("AxeHead", merge(box((0.05, 0.14, 0.09), (0, 0.05, -0.36), 0.012),
+                     box((0.012, 0.05, 0.14), (0, 0.14, -0.37))), "orange", axe)
 pick = obj("Pick", cyl(0.014, 0.014, -0.42, 0.06, 8), "wood", arms[-1], GRIP)
 pick_head = bmesh.new()
 pts = [(-0.16, 0.035), (-0.05, 0.055), (0.0, 0.06), (0.05, 0.055), (0.16, 0.035)]
 pick_head = merge(*[box((0.026, 0.07, 0.03), (0, y, -0.41 + dz * 0.6)) for y, dz in pts])
-obj("PickHead", pick_head, "metal", pick)
+obj("PickHead", merge(box((0.07, 0.07, 0.12), (0, 0.0, -0.38), 0.012), cyl(0.012, 0.004, -0.62, -0.44, 8)), "orange", pick)
 hoe = obj("Hoe", cyl(0.013, 0.013, -0.55, 0.12, 8), "wood", arms[-1], GRIP)
-obj("HoeHead", box((0.11, 0.09, 0.012), (0, 0.045, -0.555), 0.004), "metal", hoe)
+obj("HoeHead", merge(box((0.12, 0.03, 0.03), (0, 0.0, -0.55), 0.006), box((0.05, 0.04, 0.05), (0, 0.0, -0.5), 0.008)), "orange", hoe)
 
-rod = obj("Rod", cyl(0.012, 0.006, -0.95, 0.10, 8), "wood", arms[-1], GRIP)
+rod = obj("Rod", cyl(0.012, 0.006, -0.95, 0.10, 8), "metal", arms[-1], GRIP)
 obj("RodLine", cyl(0.0025, 0.0025, -0.95, -0.35, 4, "Z", (0, 0.0, 0.0)), "white", rod)
 
 # carried goods (held in front with both arms)
 carry = empty("Carry", torso, (0, 0.20, 0.20))
-obj("CarryLog", merge(cyl(0.065, 0.06, -0.28, 0.28, 10, "X"),
-                      cyl(0.045, 0.045, -0.20, 0.20, 9, "X", (0, 0.0, 0.10))), "log", carry)
-obj("CarryStone", box((0.20, 0.17, 0.15), (0, 0, 0.02), 0.025), "stone", carry)
+clog = obj("CarryLog", merge(box((0.36, 0.16, 0.16), (0, 0, 0.02), 0.03)), "fibre", carry)
+obj("CarryLogStrap", merge(box((0.02, 0.17, 0.17), (0.1, 0, 0.02)), box((0.02, 0.17, 0.17), (-0.1, 0, 0.02))), "belt", clog)
+stone = sphere(0.1, (0, 0, 0.03), (1.1, 0.9, 0.8), 10, 7)
+cst = obj("CarryStone", stone, "ore", carry)
+obj("CarryStoneVein", merge(sphere(0.035, (0.05, 0.06, 0.06), (1, 1, 1), 6, 5), sphere(0.03, (-0.06, 0.05, 0.0), (1, 1, 1), 6, 5)), "oregreen", cst)
 basket = merge(lathe([(-0.06, 0.10), (0.04, 0.13), (0.06, 0.135)], 14, sy=0.8),
                sphere(0.035, (0.04, 0.0, 0.07), (2.2, 0.8, 0.7), 8, 6),
                sphere(0.035, (-0.04, 0.02, 0.075), (2.2, 0.8, 0.7), 8, 6))
-obj("CarryFish", basket, "straw", carry)
+obj("CarryFish", merge(cyl(0.1, 0.1, -0.06, 0.08, 16), cyl(0.105, 0.105, 0.08, 0.1, 16)), "case", carry)
 sack = sphere(0.12, (0, 0, 0.03), (1.05, 0.85, 1.0), 14, 9)
 for v in sack.verts:
     if v.co.z > 0.1: v.co.x *= 0.55; v.co.y *= 0.55
-obj("CarrySack", sack, "sack", carry)
+obj("CarrySack", merge(box((0.26, 0.18, 0.16), (0, 0, 0.02), 0.02), box((0.27, 0.19, 0.03), (0, 0, 0.07))), "case", carry)
 
 # ---------------- export ----------------
 bpy.ops.object.select_all(action="SELECT")
@@ -294,8 +308,8 @@ print("exported", glb)
 
 if PREVIEW:
     # lineup of variants for a quick look (posed copies)
-    hide = {"Hair1", "Hair2", "Hair3", "Hair4", "Hair5", "Hair6", "Beard0", "Skirt", "SkirtTrim", "Vest", "Satchel", "Kerchief",
-            "HatStraw", "HatCap", "Hood", "Axe", "Pick", "Hoe", "CarryLog", "CarryStone", "CarrySack"}
+    hide = {"Hair1", "Hair2", "Hair3", "Hair4", "Hair5", "Hair6", "Beard0", "Skirt", "SkirtTrim", "Vest", "Hair0",
+            "HatStraw", "Hood", "Axe", "Pick", "Hoe", "CarryLog", "CarryStone", "CarrySack"}
     for o in scene.objects:
         p = o
         while p is not None:

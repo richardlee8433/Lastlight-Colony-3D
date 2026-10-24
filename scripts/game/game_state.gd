@@ -275,11 +275,11 @@ func _end_of_day() -> void:
 		starving = false
 		if population < housing() and resources["food"] >= Defs.GROWTH_FOOD_MIN:
 			population += 1
-			toast.emit(Loc.t("A new villager moved in!"))
+			toast.emit(Loc.t("A new colonist arrived!"))
 	else:
 		resources["food"] = 0
 		if not starving:
-			toast.emit(Loc.t("Out of food! Only farmers keep working"))
+			toast.emit(Loc.t("Out of food! Only agronomists keep working"))
 		starving = true
 	_assign_workers()
 	day_passed.emit(day)

@@ -6,9 +6,9 @@ render_mode cull_disabled;
 uniform float wind_strength = 0.07;
 uniform float wind_speed = 1.2;
 uniform vec2 wind_dir = vec2(1.0, 0.35);
-// crop growth 0..1: young plants are short and green, ripen to the vertex colours (gold) near 1
+// crop growth 0..1: young plants are short and teal, ripen to the vertex colours (pale grain) near 1
 uniform float growth = 1.0;
-uniform vec3 young_color : source_color = vec3(0.30, 0.52, 0.16);
+uniform vec3 young_color : source_color = vec3(0.16, 0.42, 0.40);   // teal shoots
 
 varying vec3 tint;
 

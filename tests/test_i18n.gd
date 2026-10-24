@@ -87,15 +87,15 @@ func _run() -> void:
 
 	# --- switching ---
 	game.set_language("en")
-	check(Defs.label("farm") == "Farmhouse" and Defs.res_name("wood") == "Wood", "English names")
+	check(Defs.label("farm") == "Agri station" and Defs.res_name("wood") == "Fibre", "English names")
 	var hud = current_scene.get_node("HUD")
 	var lang_btn = hud.find_child("Language", true, false)
 	check(lang_btn != null and lang_btn.text == "中文", "language button offers Chinese")
 	game.set_language("zh")
-	check(Defs.label("farm") == "農舍" and Defs.cost_text({"wood": 20}) == "木材 20", "Chinese names")
+	check(Defs.label("farm") == "農業站" and Defs.cost_text({"wood": 20}) == "纖維 20", "Chinese names")
 	lang_btn = hud.find_child("Language", true, false)
 	check(lang_btn != null and lang_btn.text == "English", "HUD rebuilt in Chinese")
-	check(hud._build_buttons["farm"].text.contains("農舍"), "build menu translated")
+	check(hud._build_buttons["farm"].text.contains("農業站"), "build menu translated")
 	var vm = current_scene.get_node("Villagers")
 	vm._sync()
 	check(vm.villagers.size() > 0 and load("res://scripts/world/villager.gd").NAMES_ZH.has(vm.villagers[0].vname), "villager names follow the language")

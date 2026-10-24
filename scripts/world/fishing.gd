@@ -96,7 +96,7 @@ static func shore_problem(type: String, pos: Vector2, angle: float) -> String:
 	if not Water.is_water(front) and not Water.is_water(pos + Defs.rot2(Vector2(0, h.y + 0.7), angle)):
 		return Loc.t("must face the water")
 	var body := body_at(front)
-	if huts_on(body) >= int(Defs.FISHING["huts_per_body"]): return Loc.t("this water already has enough fishing huts")
+	if huts_on(body) >= int(Defs.FISHING["huts_per_body"]): return Loc.t("this water already has enough aqua harvesters")
 	return ""
 
 # ---------------- bank spots ----------------

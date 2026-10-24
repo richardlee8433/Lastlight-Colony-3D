@@ -2,8 +2,8 @@ class_name Defs
 ## Static game data: resources, buildings, quests, tuning. Tweak balance here.
 
 const RESOURCES := {
-	"wood": {"name": "Wood", "color": Color(0.80, 0.58, 0.32)},
-	"stone": {"name": "Stone", "color": Color(0.72, 0.74, 0.78)},
+	"wood": {"name": "Fibre", "color": Color(0.42, 0.82, 0.74)},
+	"stone": {"name": "Ore", "color": Color(0.74, 0.70, 0.86)},
 	"food": {"name": "Food", "color": Color(0.92, 0.42, 0.36)},
 }
 
@@ -31,21 +31,21 @@ const GROWTH_FOOD_MIN := 10
 ##   door       where residents rest (houses)     drop   where goods are delivered (storehouses)
 const BUILDINGS := {
 	"woodcutter": {
-		"name": "Woodcutter", "desc": "Paint a forest area after building it. The woodcutter fells the grown trees inside and carries the logs to storage; stumps regrow and saplings sprout",
+		"name": "Fibre harvester", "desc": "Paint a harvest area after building it. The harvester cuts the grown fibre plants inside and carries the bales to storage; stumps regrow and shoots sprout",
 		"cost": {"wood": 15}, "size": 3, "build_time": 16,
 		"workers": 1, "yield": {"wood": 8},
 		"nav_block": [Rect2(-1.05, -0.75, 2.1, 1.5), Rect2(-0.55, -1.3, 1.25, 0.45), Rect2(0.8, -1.25, 0.5, 0.5)],
 		"job": {"anim": "chop", "tool": "Axe", "carry": "CarryLog", "hat": "Hood", "target": "tree"},
 	},
 	"farm": {
-		"name": "Farmhouse", "desc": "After building it, paint its field. The farmer tends the wheat and carries the harvest to storage; bigger fields give more per trip",
+		"name": "Agri station", "desc": "After building it, paint its field. The agronomist tends the engineered grain and carries the harvest to storage; bigger fields give more per trip",
 		"cost": {"wood": 20, "stone": 5}, "size": 3, "build_time": 16,
 		"workers": 1, "yield": {"food": 5},        # real per-trip yield comes from the field size (Fields)
-		"nav_block": [Rect2(-1.2, -0.95, 2.4, 1.7)],
+		"nav_block": [Rect2(-1.2, -0.95, 2.4, 1.75), Rect2(-0.6, 0.75, 0.7, 0.35)],
 		"job": {"anim": "hoe", "tool": "Hoe", "carry": "CarrySack", "hat": "HatStraw", "target": "field"},
 	},
 	"quarry": {
-		"name": "Quarry", "desc": "Built on a stone deposit. The mason breaks off stone and hauls it to storage",
+		"name": "Mining rig", "desc": "Built on an ore deposit. The driller extracts ore and hauls it to storage",
 		"cost": {"wood": 25}, "size": 4, "build_time": 20, "on_deposit": true,
 		"workers": 1, "yield": {"stone": 6},
 		# the rock itself is the deposit (blocked in NavGrid); these are the crane, bench, block stack, sledge
@@ -54,7 +54,7 @@ const BUILDINGS := {
 		"job": {"anim": "mine", "tool": "Pick", "carry": "CarryStone", "hat": "HatCap", "target": "spot"},
 	},
 	"house": {
-		"name": "House", "desc": "Room for 4 villagers",
+		"name": "Hab", "desc": "Room for 4 colonists",
 		"cost": {"wood": 20, "stone": 15}, "size": 3, "build_time": 20,
 		"workers": 0, "housing": 4,
 		"nav_block": [Rect2(-1.35, -1.0, 2.7, 2.0)],
@@ -70,18 +70,18 @@ const BUILDINGS := {
 		"drop": Vector2(-0.8, 1.45), "door": Vector2(1.3, 1.75),
 	},
 	"fishery": {
-		"name": "Fishing hut", "desc": "Built on the shore. The fisher catches fish from the bank and carries them to storage; fish grow scarce if the water is fished too hard",
+		"name": "Aqua harvester", "desc": "Built on the shore. The harvester nets the lake's native swimmers from the bank and carries them to storage; stocks thin out if the water is fished too hard",
 		"cost": {"wood": 20}, "size": 3, "build_time": 16, "on_shore": true,
 		"workers": 1, "yield": {"food": 5},
 		# the shed at the back, the drying rack and the net; the jetty reaches out over the water
-		"nav_block": [Rect2(-1.1, -1.5, 2.2, 1.15), Rect2(-1.15, 0.45, 0.95, 0.25), Rect2(0.5, 0.45, 0.7, 0.25)],
+		"nav_block": [Rect2(-1.1, -1.5, 2.2, 1.15), Rect2(-1.15, 0.45, 0.95, 0.25), Rect2(0.5, 0.45, 0.7, 0.25), Rect2(0.05, -0.4, 0.5, 0.45)],
 		"job": {"anim": "fish", "tool": "Rod", "carry": "CarryFish", "hat": "HatCap", "target": "shore"},
 	},
 	"storehouse": {
-		"name": "Storehouse", "desc": "Villagers haul goods to the nearest storage. Build one near production to shorten trips",
+		"name": "Supply depot", "desc": "Colonists haul goods to the nearest storage. Build one near production to shorten trips",
 		"cost": {"wood": 30, "stone": 10}, "size": 3, "build_time": 24,
 		"workers": 0, "storage": true,
-		"nav_block": [Rect2(-1.35, -1.35, 2.7, 2.35)],
+		"nav_block": [Rect2(-1.35, -1.35, 2.7, 2.35), Rect2(-1.45, 1.0, 0.3, 0.25), Rect2(1.2, 1.05, 0.2, 0.2)],
 		"drop": Vector2(0.0, 1.55),
 	},
 }
@@ -158,7 +158,7 @@ static func quads_overlap(a: PackedVector2Array, b: PackedVector2Array) -> bool:
 ## build menu: building types plus the residential-zone brush ("zone")
 const BUILD_ORDER := ["woodcutter", "farm", "quarry", "zone", "storehouse", "fishery"]
 const TOOLS := {
-	"zone": {"name": "Housing zone", "desc": "Paint where people may live. When the village needs beds and can pay, villagers build houses there themselves (each: Wood 20, Stone 15)",
+	"zone": {"name": "Habitat zone", "desc": "Paint where colonists may live. When the colony needs beds and can pay, colonists assemble habs there themselves (each: Fibre 20, Ore 15)",
 		"label": "Paint area"},
 }
 
@@ -235,15 +235,15 @@ const ZONE := {
 }
 
 const QUESTS := [
-	{"text": "Build a woodcutter", "type": "build", "building": "woodcutter", "count": 1, "reward": {"food": 10}},
-	{"text": "Build a farmhouse and paint its field", "type": "build", "building": "farm", "count": 1, "reward": {"wood": 15}},
-	{"text": "Paint a housing zone and wait for a house", "type": "build", "building": "house", "count": 1, "reward": {"stone": 10}},
-	{"text": "Build a quarry on a stone deposit", "type": "build", "building": "quarry", "count": 1, "reward": {"wood": 20}},
-	{"text": "Build a storehouse near production", "type": "build", "building": "storehouse", "count": 1, "reward": {"food": 20}},
-	{"text": "Reach 10 villagers", "type": "population", "value": 10, "reward": {"food": 30}},
-	{"text": "Stockpile 100 wood", "type": "resource", "res": "wood", "value": 100, "reward": {"stone": 30}},
-	{"text": "Have 3 farmhouses", "type": "build", "building": "farm", "count": 3, "reward": {"wood": 40}},
-	{"text": "Reach 20 villagers", "type": "population", "value": 20, "reward": {}},
+	{"text": "Build a fibre harvester", "type": "build", "building": "woodcutter", "count": 1, "reward": {"food": 10}},
+	{"text": "Build an agri station and paint its field", "type": "build", "building": "farm", "count": 1, "reward": {"wood": 15}},
+	{"text": "Paint a habitat zone and wait for a hab", "type": "build", "building": "house", "count": 1, "reward": {"stone": 10}},
+	{"text": "Build a mining rig on an ore deposit", "type": "build", "building": "quarry", "count": 1, "reward": {"wood": 20}},
+	{"text": "Build a supply depot near production", "type": "build", "building": "storehouse", "count": 1, "reward": {"food": 20}},
+	{"text": "Reach 10 colonists", "type": "population", "value": 10, "reward": {"food": 30}},
+	{"text": "Stockpile 100 fibre", "type": "resource", "res": "wood", "value": 100, "reward": {"stone": 30}},
+	{"text": "Have 3 agri stations", "type": "build", "building": "farm", "count": 3, "reward": {"wood": 40}},
+	{"text": "Reach 20 colonists", "type": "population", "value": 20, "reward": {}},
 ]
 
 ## display name of a building type or tool

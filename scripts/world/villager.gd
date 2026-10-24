@@ -6,23 +6,24 @@ extends Node3D
 const MODEL := preload("res://models/villager.glb")
 
 const SKIN := [Color(0.95, 0.78, 0.64), Color(0.88, 0.67, 0.52), Color(0.74, 0.54, 0.40), Color(0.56, 0.39, 0.28)]
-const TUNIC := [Color(0.62, 0.30, 0.24), Color(0.33, 0.43, 0.58), Color(0.44, 0.52, 0.32), Color(0.70, 0.56, 0.32),
-	Color(0.52, 0.44, 0.37), Color(0.42, 0.36, 0.52), Color(0.80, 0.74, 0.62), Color(0.56, 0.24, 0.30)]
-const PANTS := [Color(0.32, 0.25, 0.19), Color(0.27, 0.27, 0.30), Color(0.40, 0.34, 0.24), Color(0.22, 0.18, 0.15)]
+## colony jumpsuits: survey orange, hull white, slate, olive, ochre, teal (the legs match the suit)
+const TUNIC := [Color(0.86, 0.42, 0.14), Color(0.84, 0.84, 0.80), Color(0.30, 0.36, 0.46), Color(0.40, 0.44, 0.32),
+	Color(0.78, 0.62, 0.22), Color(0.20, 0.46, 0.48), Color(0.62, 0.64, 0.66), Color(0.56, 0.22, 0.20)]
+const PANTS := [Color(0.22, 0.23, 0.25), Color(0.30, 0.31, 0.33)]
 const HAIR := [Color(0.20, 0.12, 0.06), Color(0.36, 0.22, 0.10), Color(0.09, 0.07, 0.06), Color(0.66, 0.50, 0.25), Color(0.55, 0.24, 0.10)]
-const HOODS := [Color(0.30, 0.36, 0.22), Color(0.42, 0.32, 0.22), Color(0.36, 0.30, 0.26)]
+const HOODS := [Color(0.88, 0.88, 0.85), Color(0.90, 0.62, 0.12), Color(0.86, 0.40, 0.12)]
 const SKIRTS := [Color(0.36, 0.26, 0.32), Color(0.30, 0.34, 0.46), Color(0.46, 0.34, 0.22), Color(0.30, 0.38, 0.28), Color(0.55, 0.26, 0.22)]
-const APRONS := [Color(0.86, 0.82, 0.70), Color(0.78, 0.74, 0.62), Color(0.70, 0.62, 0.48)]
-const VESTS := [Color(0.34, 0.22, 0.13), Color(0.24, 0.28, 0.18), Color(0.30, 0.24, 0.30), Color(0.20, 0.17, 0.14)]
-const KERCHIEFS := [Color(0.72, 0.26, 0.22), Color(0.86, 0.78, 0.55), Color(0.38, 0.48, 0.66), Color(0.55, 0.62, 0.36)]
+const APRONS := [Color(0.20, 0.21, 0.23), Color(0.85, 0.85, 0.82), Color(0.30, 0.32, 0.34)]   # chest rigs
+const VESTS := [Color(0.22, 0.24, 0.27), Color(0.32, 0.34, 0.30), Color(0.18, 0.20, 0.24)]
+const KERCHIEFS := [Color(0.12, 0.12, 0.13), Color(0.22, 0.23, 0.25)]          # comm headsets
 ## every optional piece of the model (shown per look / job)
 const OPTIONAL := ["Hair0", "Hair1", "Hair2", "Hair3", "Hair4", "Hair5", "Hair6", "Beard0", "Beard1",
 	"Hem", "HemTrim", "Skirt", "SkirtTrim", "Apron", "Vest", "Satchel", "Kerchief",
 	"HatStraw", "HatCap", "Hood", "Axe", "Pick", "Hoe", "Rod", "CarryLog", "CarryStone", "CarrySack", "CarryFish"]
-const NAMES_EN := ["Alfie", "Mae", "Hugo", "Rose", "Tom", "Lily", "Ned", "Ivy", "Walt", "Tess", "Finn", "Nell",
-	"Otto", "Ada", "Bram", "Elsie", "Cole", "Wren", "Abe", "June"]
-const NAMES_ZH := ["阿福", "小梅", "大山", "阿蘭", "石頭", "小雨", "阿明", "春花", "老李", "小虎", "阿秀", "木生",
-	"小玉", "阿強", "秋月", "阿土", "小芳", "阿德", "冬梅", "阿旺"]
+const NAMES_EN := ["Ade", "Mira", "Kenji", "Sofia", "Ravi", "Lena", "Tomas", "Yara", "Idris", "Noor", "Felix", "Aiko",
+	"Mateo", "Zara", "Oskar", "Priya", "Jonah", "Hana", "Leif", "Amara"]
+const NAMES_ZH := ["艾德", "米拉", "健司", "蘇菲", "拉維", "莉娜", "托馬", "雅拉", "伊德", "努爾", "菲力", "愛子",
+	"馬提", "莎拉", "奧斯", "普莉", "約拿", "花子", "雷夫", "阿瑪"]
 
 enum S { IDLE, WANDER, ARRIVE, TO_WORK, WORK, TO_DROP, DROP, TO_HOME, REST, LEAVE }
 
@@ -102,24 +103,25 @@ func _pick_look() -> void:
 	var long_hair := hair_i in [1, 2, 3, 4]
 	# beards for some short-haired villagers
 	if not long_hair and _rng.randf() < 0.45: _show("Beard0" if _rng.randf() < 0.55 else "Beard1")
-	_skirt = long_hair and _rng.randf() < 0.65
+	_skirt = false                     # jumpsuits all round
 	if _skirt: _show("Skirt"); _show("SkirtTrim")
 	else: _show("Hem"); _show("HemTrim")
 	var layer := _rng.randf()
 	if layer < 0.32: _show("Apron")
 	elif layer < 0.58: _show("Vest")
-	if _rng.randf() < 0.22: _show("Satchel")
-	_kerchief = _rng.randf() < (0.4 if long_hair else 0.12)
+	if _rng.randf() < 0.7: _show("Satchel")          # life-support pack
+	_kerchief = _rng.randf() < 0.5                   # comm headset
 	if _kerchief: _show("Kerchief")
 	var skin: Color = SKIN[_rng.randi() % SKIN.size()]
 	var tunic: Color = TUNIC[_rng.randi() % TUNIC.size()]
-	var pants: Color = PANTS[_rng.randi() % PANTS.size()]
+	var pants: Color = tunic.darkened(0.12) if _rng.randf() < 0.7 else PANTS[_rng.randi() % PANTS.size()]
 	var hair_c: Color = HAIR[_rng.randi() % HAIR.size()]
 	if hair_i == 6 or _rng.randf() < 0.1: hair_c = Color(0.62, 0.60, 0.57)        # some grey-haired elders
 	var hood_c: Color = HOODS[_rng.randi() % HOODS.size()]
-	var trim: Color = tunic.darkened(0.42) if _rng.randf() < 0.6 else TUNIC[_rng.randi() % TUNIC.size()].darkened(0.25)
+	var trim: Color = Color(0.16, 0.17, 0.19) if _rng.randf() < 0.6 else tunic.darkened(0.45)
 	_tint(["Head", "Neck", "Nose", "EarL", "EarR", "HandL", "HandR"], skin)
 	_tint(["Torso", "ArmL", "ArmR", "Hem"], tunic, true)
+	_tint(["Satchel"], Color(0.82, 0.83, 0.80))
 	_tint(["HemTrim", "SkirtTrim", "Collar", "CuffL", "CuffR"], trim, true)
 	_tint(["LegL", "LegR"], pants, true)
 	_tint(["Hair0", "Hair1", "Hair2", "Hair3", "Hair4", "Hair5", "Hair6", "Beard0", "Beard1", "BrowL", "BrowR"], hair_c)
@@ -489,13 +491,13 @@ func status_text() -> String:
 		S.TO_WORK: return Loc.t("Going to work")
 		S.WORK:
 			match _anim:
-				"chop": return Loc.t("Chopping")
-				"mine": return Loc.t("Quarrying")
-				"hoe": return Loc.t("Tending the field")
-				"fish": return Loc.t("Fishing")
+				"chop": return Loc.t("Cutting fibre")
+				"mine": return Loc.t("Drilling")
+				"hoe": return Loc.t("Tending crops")
+				"fish": return Loc.t("Netting")
 			return Loc.t("Working")
 		S.TO_DROP, S.DROP: return Loc.t("Hauling")
 		S.TO_HOME, S.REST: return Loc.t("Resting at home")
 		S.ARRIVE: return Loc.t("Just arrived")
-		S.LEAVE: return Loc.t("Leaving")
+		S.LEAVE: return Loc.t("Leaving the colony")
 	return Loc.t("Strolling")

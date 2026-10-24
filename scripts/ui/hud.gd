@@ -271,10 +271,10 @@ func _refresh_brush() -> void:
 		var fo := get_node_or_null(^"../Forest")
 		var n: int = fo.area_of(_ctl.area_owner).size() if fo else 0
 		var c: Dictionary = fo.counts(_ctl.area_owner) if fo else {"ready": 0, "growing": 0, "stumps": 0}
-		_brush_title.text = Loc.t("Forest area %.0f m²  %d trees") % [n * 0.25, c["ready"] + c["growing"] + c["stumps"]]
+		_brush_title.text = Loc.t("Harvest area %.0f m²  %d plants") % [n * 0.25, c["ready"] + c["growing"] + c["stumps"]]
 		_clear_button.text = Loc.t("Clear area")
 	else:
-		_brush_title.text = Loc.t("Housing zone %.0f m²") % (Game.zone_count() * 0.25)
+		_brush_title.text = Loc.t("Habitat zone %.0f m²") % (Game.zone_count() * 0.25)
 		_clear_button.text = Loc.t("Clear all")
 
 func _build_toasts() -> void:
@@ -326,7 +326,7 @@ func _refresh_quest() -> void:
 	var q := Game.current_quest()
 	if q.is_empty():
 		_quest_title.text = Loc.t("All quests done")
-		_quest_progress.text = Loc.t("Keep building your village")
+		_quest_progress.text = Loc.t("Keep building your colony")
 		_quest_reward.text = ""
 		return
 	_quest_title.text = Loc.t(q["text"])
@@ -342,15 +342,15 @@ func _on_mode(type: String) -> void:
 		_hint.text = Loc.t("Left-click select · 1-5 build · right-drag rotate camera · WASD / middle-drag pan · wheel zoom")
 	else:
 		if type == "zone":
-			_hint.text = Loc.t("Left-drag to paint a housing zone · X toggles erase (or hold Shift) · right-click / Esc to finish")
+			_hint.text = Loc.t("Left-drag to paint a habitat zone · X toggles erase (or hold Shift) · right-click / Esc to finish")
 		elif type == "forest":
-			_hint.text = Loc.t("Left-drag to paint the forest area (within %d m of the lodge) · X toggles erase (or hold Shift) · right-click / Esc to finish") % int(Defs.FOREST["range"])
+			_hint.text = Loc.t("Left-drag to paint the harvest area (within %d m of the harvester) · X toggles erase (or hold Shift) · right-click / Esc to finish") % int(Defs.FOREST["range"])
 		elif type == "field":
-			_hint.text = Loc.t("Left-drag to paint the field (within %d m of the farmhouse) · X toggles erase (or hold Shift) · right-click / Esc to finish") % int(Defs.FIELD["range"])
+			_hint.text = Loc.t("Left-drag to paint the field (within %d m of the agri station) · X toggles erase (or hold Shift) · right-click / Esc to finish") % int(Defs.FIELD["range"])
 		elif Defs.BUILDINGS.has(type) and Defs.BUILDINGS[type].get("on_shore", false):
-			_hint.text = Loc.t("Point near the pond or the stream and left-click to build; the hut turns to face the water · right-click / Esc to cancel")
+			_hint.text = Loc.t("Point near the lake or the stream and left-click to build; the station turns to face the water · right-click / Esc to cancel")
 		elif Defs.BUILDINGS.has(type) and Defs.BUILDINGS[type].get("on_deposit", false):
-			_hint.text = Loc.t("Point at a highlighted stone deposit and left-click to build · R / Shift+R or Shift+wheel to rotate · right-click / Esc to cancel")
+			_hint.text = Loc.t("Point at a highlighted ore deposit and left-click to build · R / Shift+R or Shift+wheel to rotate · right-click / Esc to cancel")
 		else:
 			_hint.text = Loc.t("Left-click to place %s · R / Shift+R or Shift+wheel to rotate · right-click / Esc to cancel") % Defs.label(type)
 	_refresh_quest()
@@ -372,9 +372,9 @@ func _fill_info(id: int) -> void:
 	var lines: Array[String] = [Defs.desc(b["type"])]
 	if not Game.is_built(b):
 		lines.append(Loc.t("Under construction: %d%%") % int(Game.build_progress(b) * 100.0))
-		lines.append(Loc.t("Builder: working") if b["staffed"] else Loc.t("Waiting for a builder (all villagers are busy)"))
+		lines.append(Loc.t("Builder: working") if b["staffed"] else Loc.t("Waiting for a builder (all colonists are busy)"))
 	_field_button.visible = b["type"] == "farm" or b["type"] == "woodcutter"
-	_field_button.text = Loc.t("Edit forest area") if b["type"] == "woodcutter" else Loc.t("Edit field")
+	_field_button.text = Loc.t("Edit harvest area") if b["type"] == "woodcutter" else Loc.t("Edit field")
 	var f := get_node_or_null(^"../Fields")
 	var fo := get_node_or_null(^"../Forest")
 	var waiting := false
@@ -393,14 +393,14 @@ func _fill_info(id: int) -> void:
 			lines.append(Loc.t("Field too small: needs at least %.0f m² to produce") % (Defs.FIELD["min_cells"] * 0.25))
 	elif b["type"] == "fishery":
 		var st := Fishing.stock(Fishing.body_of(b))
-		lines.append(Loc.t("Fish in this water: %d%%") % int(st * 100.0))
-		lines.append(Loc.t("Per trip: about %d food (fewer fish = smaller catches)") % maxi(1, roundi(Defs.FISHING["catch"] * st)))
+		lines.append(Loc.t("Aquatic stock here: %d%%") % int(st * 100.0))
+		lines.append(Loc.t("Per trip: about %d food (smaller stock = smaller catches)") % maxi(1, roundi(Defs.FISHING["catch"] * st)))
 		waiting = st < Defs.FISHING["scarce"]
 	elif b["type"] == "woodcutter" and fo:
 		var n: int = fo.area_of(id).size()
 		var c: Dictionary = fo.counts(id)
-		lines.append(Loc.t("Forest area: %.0f m² (max %.0f m²)") % [n * 0.25, Defs.FOREST["max_cells"] * 0.25])
-		lines.append(Loc.t("Trees: %d ready to fell, %d growing, %d stumps") % [c["ready"], c["growing"], c["stumps"]])
+		lines.append(Loc.t("Harvest area: %.0f m² (max %.0f m²)") % [n * 0.25, Defs.FOREST["max_cells"] * 0.25])
+		lines.append(Loc.t("Fibre plants: %d ready to cut, %d growing, %d stumps") % [c["ready"], c["growing"], c["stumps"]])
 		for r in d["yield"]:
 			lines.append(Loc.t("Per trip: %d %s (closer storage = more trips)") % [d["yield"][r], Defs.res_name(r)])
 		if n < Defs.FOREST["min_cells"]:
@@ -411,10 +411,10 @@ func _fill_info(id: int) -> void:
 			lines.append(Loc.t("Per trip: %d %s (closer storage = more trips)") % [d["yield"][r], Defs.res_name(r)])
 	if d.has("yield"):
 		var state := Loc.t("Working")
-		if not b["staffed"]: state = Loc.t("No worker (needs more villagers)")
+		if not b["staffed"]: state = Loc.t("No worker (needs more colonists)")
 		elif not Game.is_active(b): state = Loc.t("Hungry, stopped")
-		elif waiting and b["type"] == "fishery": state = Loc.t("Fish are scarce, waiting for them to come back")
-		elif waiting: state = Loc.t("Waiting for trees to grow")
+		elif waiting and b["type"] == "fishery": state = Loc.t("Stock is low, waiting for it to recover")
+		elif waiting: state = Loc.t("Waiting for plants to grow")
 		lines.append(Loc.t("Status: ") + state)
 	if d.get("storage", false):
 		lines.append(Loc.t("Nearby workers bring their goods here"))
@@ -455,7 +455,7 @@ func _confirm_restart() -> void:
 	dlg.confirmed.connect(func():
 		_ctl.cancel_place(); _ctl.select(-1)
 		Game.delete_save(); Game.new_game()
-		show_toast(Loc.t("A new village begins")))
+		show_toast(Loc.t("Day one on Lastlight")))
 	dlg.canceled.connect(dlg.queue_free)
 	_root.add_child(dlg)
 	dlg.popup_centered()

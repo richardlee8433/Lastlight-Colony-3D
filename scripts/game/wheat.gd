@@ -4,11 +4,11 @@ class_name Wheat
 
 const WIND_SHADER := preload("res://scripts/game/wheat_wind.gdshader")
 
-const STEM_LO := Color(0.50, 0.50, 0.18)
-const STEM_HI := Color(0.90, 0.72, 0.30)
-const EAR := Color(0.98, 0.74, 0.26)
-const EAR_TIP := Color(1.0, 0.86, 0.46)
-const LEAF := Color(0.46, 0.50, 0.18)
+const STEM_LO := Color(0.20, 0.44, 0.40)
+const STEM_HI := Color(0.50, 0.74, 0.62)
+const EAR := Color(0.88, 0.90, 0.58)
+const EAR_TIP := Color(0.97, 0.98, 0.80)
+const LEAF := Color(0.18, 0.42, 0.40)
 
 static var _mesh: ArrayMesh
 static var _mat: ShaderMaterial

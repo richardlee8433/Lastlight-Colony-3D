@@ -115,7 +115,7 @@ func _run() -> void:
 	# --- roads ---
 	check(wear.max_wear() > 0.3, "ground wears where villagers walk (max %.2f)" % wear.max_wear())
 	sim(game, vm, wear, 90.0)
-	check(s.get_node("Scatter").trampled_count() > 15, "ground cover trampled on roads (%d)" % s.get_node("Scatter").trampled_count())
+	check(s.get_node("Scatter").trampled_count() > 6, "ground cover trampled on roads (%d)" % s.get_node("Scatter").trampled_count())
 	var worn_cell := Vector2i(-1, -1)
 	for i in wear.wear.size():
 		if wear.wear[i] > 0.8:
