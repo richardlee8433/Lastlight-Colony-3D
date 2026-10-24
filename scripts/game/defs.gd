@@ -169,7 +169,7 @@ const WATER := {
 	"river": [Vector2(19, -42), Vector2(17.5, -30), Vector2(14.5, -21), Vector2(16, -12), Vector2(19, -4),
 		Vector2(19.5, 3), Vector2(22, 10), Vector2(26, 17), Vector2(31, 24), Vector2(42, 31)],
 	"river_width": 1.7,          # half width of the water (m)
-	"pond": {"pos": Vector2(-12.0, -11.0), "radius": 3.4},
+	"pond": {"pos": Vector2(-12.0, -11.0), "radius": 3.4, "phase": 2.4},   # irregular outline (Water.pond_radius)
 	"bed_depth": 0.75,           # how deep the bed is carved below the surrounding ground
 	"level_below": 0.32,         # water surface below the original ground
 	"bridges": [Vector2(19.5, 1.0), Vector2(15.5, -14.0)],   # near these points the stream gets a bridge

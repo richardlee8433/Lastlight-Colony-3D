@@ -21,7 +21,7 @@ func _process(_d: float) -> bool:
 	if f == 12:
 		root.get_viewport().get_texture().get_image().save_png("res://_water_bridge.png")
 		var pc: Vector2 = Defs.WATER["pond"]["pos"]
-		cam.target = Vector3(pc.x, 0.0, pc.y); cam._dist = 12.0; cam._pitch = 1.15; cam._yaw = -2.4; cam._apply()
+		cam.target = Vector3(pc.x, 0.0, pc.y); cam._dist = 16.0; cam._pitch = 1.0; cam._yaw = -2.4; cam._apply()
 	if f == 22:
 		root.get_viewport().get_texture().get_image().save_png("res://_water_pond.png")
 		game.delete_save()

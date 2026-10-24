@@ -26,8 +26,7 @@ func tick(dt: float) -> void:
 # ---------------- water bodies ----------------
 
 static func body_at(p: Vector2) -> int:
-	var pond: Dictionary = Defs.WATER["pond"]
-	if p.distance_to(pond["pos"]) < float(pond["radius"]) + 3.0: return 0
+	if Water.pond_distance(p) < 3.0: return 0
 	var pts := Water.river_samples()
 	var bi := 0; var bd := INF
 	for i in pts.size():

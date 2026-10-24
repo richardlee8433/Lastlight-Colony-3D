@@ -35,6 +35,19 @@ static func river_samples() -> PackedVector2Array:
 	_samples.append(cp[cp.size() - 1])
 	return _samples
 
+## The pond's outline: radius by direction, a few lobes so it reads as a natural pond (2.4 - 4.4 m).
+static func pond_radius(a: float) -> float:
+	var pond: Dictionary = Defs.WATER["pond"]
+	var r: float = pond["radius"]; var ph: float = pond.get("phase", 0.0)
+	return r * (1.0 + 0.15 * cos(a - 0.5 + ph) + 0.17 * cos(2.0 * a + 1.1 + ph * 2.0)
+		+ 0.08 * cos(3.0 * a - 0.7 + ph * 3.0) + 0.04 * sin(5.0 * a + 0.3))
+
+## signed distance to the pond's edge (negative inside)
+static func pond_distance(p: Vector2) -> float:
+	var pc: Vector2 = Defs.WATER["pond"]["pos"]
+	var d := p - pc
+	return d.length() - pond_radius(atan2(d.y, d.x))
+
 ## Carve profile from the signed distance to the water edge (negative = in the water):
 ## x = how far the ground is lowered (0..1 of bed_depth), y = bank (wet sand / mud) 0..1
 static func profile(s: float) -> Vector2:
@@ -60,12 +73,12 @@ static func image() -> Image:
 				var j := py * SIZE + px
 				if d < best[j]: best[j] = d
 	var pond: Dictionary = Defs.WATER["pond"]
-	var pc: Vector2 = pond["pos"]; var pr: float = pond["radius"]
+	var pc: Vector2 = pond["pos"]; var pr: float = float(pond["radius"]) * 1.45
 	for py in range(floori((pc.y - pr - 2.5 - ORIGIN.y) / RES), ceili((pc.y + pr + 2.5 - ORIGIN.y) / RES)):
 		for px in range(floori((pc.x - pr - 2.5 - ORIGIN.x) / RES), ceili((pc.x + pr + 2.5 - ORIGIN.x) / RES)):
 			if px < 0 or py < 0 or px >= SIZE or py >= SIZE: continue
 			var p := ORIGIN + Vector2(px + 0.5, py + 0.5) * RES
-			var d := p.distance_to(pc) - pr
+			var d := pond_distance(p)
 			var j := py * SIZE + px
 			if d < best[j]: best[j] = d
 	for j in SIZE * SIZE:
@@ -207,14 +220,14 @@ func _build() -> void:
 	add_child(river)
 	# pond: a disc
 	var pond: Dictionary = Defs.WATER["pond"]
-	var pc: Vector2 = pond["pos"]; var pr: float = pond["radius"] + 0.5
+	var pc: Vector2 = pond["pos"]
 	var sp := SurfaceTool.new()
 	sp.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for k in 48:
-		var a0 := k / 48.0 * TAU; var a1 := (k + 1) / 48.0 * TAU
-		for q in [Vector2.ZERO, Vector2(cos(a1), sin(a1)), Vector2(cos(a0), sin(a0))]:
-			sp.set_uv(q * 0.5 + Vector2(0.5, 0.5)); sp.set_normal(Vector3.UP)
-			sp.add_vertex(Vector3(pc.x + q.x * pr, _pond_level, pc.y + q.y * pr))
+	for k in 72:
+		var a0 := k / 72.0 * TAU; var a1 := (k + 1) / 72.0 * TAU
+		for q in [Vector2.ZERO, Vector2(cos(a1), sin(a1)) * (pond_radius(a1) + 0.5), Vector2(cos(a0), sin(a0)) * (pond_radius(a0) + 0.5)]:
+			sp.set_uv(q * 0.1 + Vector2(0.5, 0.5)); sp.set_normal(Vector3.UP)
+			sp.add_vertex(Vector3(pc.x + q.x, _pond_level, pc.y + q.y))
 	var pond_mi := MeshInstance3D.new()
 	pond_mi.name = "Pond"
 	pond_mi.mesh = sp.commit()
@@ -306,10 +319,10 @@ func _life() -> void:
 	# reeds along the banks: dense around the pond, in clumps along the stream
 	var reeds: Array[Transform3D] = []
 	var pond: Dictionary = Defs.WATER["pond"]
-	var pc: Vector2 = pond["pos"]; var pr: float = pond["radius"]
-	for k in 70:
+	var pc: Vector2 = pond["pos"]
+	for k in 90:
 		var a := rng.randf() * TAU
-		var p := pc + Vector2(cos(a), sin(a)) * (pr + rng.randf_range(-0.2, 0.7))
+		var p := pc + Vector2(cos(a), sin(a)) * (pond_radius(a) + rng.randf_range(-0.2, 0.7))
 		if rng.randf() < 0.3: continue        # gaps where the shore is open
 		reeds.append(_ground_xf(nav, p, rng, rng.randf_range(0.8, 1.2)))
 	var pts := river_samples()
@@ -325,7 +338,7 @@ func _life() -> void:
 	# lily pads and a few flowers on the pond
 	var pads: Array[Transform3D] = []; var flowers: Array[Transform3D] = []
 	for k in 26:
-		var a := rng.randf() * TAU; var r := sqrt(rng.randf()) * (pr - 0.5)
+		var a := rng.randf() * TAU; var r := sqrt(rng.randf()) * (pond_radius(a) - 0.6)
 		var p := pc + Vector2(cos(a), sin(a)) * r
 		var s := rng.randf_range(0.7, 1.4)
 		var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, 1, s)), Vector3(p.x, _pond_level + 0.012, p.y))
@@ -386,7 +399,7 @@ func _process(delta: float) -> void:
 	if _fish_rng.randf() < 0.5:
 		var pond: Dictionary = Defs.WATER["pond"]
 		var a := _fish_rng.randf() * TAU
-		p = (pond["pos"] as Vector2) + Vector2(cos(a), sin(a)) * _fish_rng.randf() * (float(pond["radius"]) - 0.8)
+		p = (pond["pos"] as Vector2) + Vector2(cos(a), sin(a)) * _fish_rng.randf() * (pond_radius(a) - 0.8)
 		y = _pond_level
 	else:
 		var pts := river_samples()
