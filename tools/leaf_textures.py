@@ -42,8 +42,8 @@ def broad():
         if math.hypot(x - cx, y - cy) > 215: continue
         shade = k / 150.0
         g = int(120 + 90 * shade + rnd.uniform(-15, 15))
-        fill = (int(g * 0.62), g, int(g * 0.36), 255)
-        vein = (int(g * 0.5), int(g * 0.82), int(g * 0.3), 255)
+        fill = (int(g * 0.92), g, int(g * 0.95), 255)          # near neutral: the game tints each tree
+        vein = (int(g * 0.72), int(g * 0.78), int(g * 0.76), 255)
         leaf(d, x, y, rnd.uniform(52, 80), rnd.uniform(28, 42), a + rnd.uniform(-0.9, 0.9), fill, vein)
     img = img.filter(ImageFilter.SMOOTH)
     img.save(os.path.join(OUT, "leaf_broad.png"))
@@ -66,7 +66,7 @@ def pine():
                 g = int(rnd.uniform(140, 215) * (1.0 - 0.18 * t))
                 ex = px + side * math.sin(ang) * ln
                 ey = py + math.cos(ang) * ln * 0.75
-                d.line([(px, py), (ex, ey)], fill=(int(g * 0.5), g, int(g * 0.42), 255), width=5)
+                d.line([(px, py), (ex, ey)], fill=(int(g * 0.9), g, int(g * 0.96), 255), width=5)
     img = img.filter(ImageFilter.SMOOTH)
     img.save(os.path.join(OUT, "leaf_pine.png"))
 

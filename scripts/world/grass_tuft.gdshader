@@ -24,7 +24,7 @@ void vertex() {
 void fragment() {
 	vec3 col = tint * mix(0.8, 1.3, hgt);
 	// sun-bleached tips
-	col = mix(col, col * vec3(1.15, 1.1, 0.8), smoothstep(0.75, 1.0, hgt) * 0.5);
+	col = mix(col, col * vec3(1.08, 1.0, 1.12), smoothstep(0.75, 1.0, hgt) * 0.5);   // pale lilac tips
 	ALBEDO = col;
 	ROUGHNESS = 0.9;
 }

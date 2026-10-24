@@ -56,11 +56,13 @@ static func _find_mesh_static(n: Node) -> Mesh:
 ## A gentle colour variation per tree (greener, yellower, darker).
 static func tree_tint(id: int, kind: int) -> Color:
 	var r := RandomNumberGenerator.new(); r.seed = id * 7919 + 13
+	# alien flora: teal, violet and amber crowns; conifers in deep blue-teal
 	if kind == 1:
-		return Color(r.randf_range(0.9, 1.05), r.randf_range(0.98, 1.1), r.randf_range(0.88, 1.0))
-	var fresh := Color(0.88, 1.02, 0.72); var warm := Color(1.06, 0.98, 0.62); var deep := Color(0.74, 0.86, 0.66)
-	var a := r.randf()
-	return fresh.lerp(warm, a * 0.8) if r.randf() < 0.6 else fresh.lerp(deep, a)
+		return Color(0.42, 0.62, 0.74).lerp(Color(0.36, 0.52, 0.66), r.randf())
+	var teal := Color(0.40, 0.82, 0.76); var violet := Color(0.68, 0.48, 0.88); var amber := Color(0.98, 0.70, 0.40)
+	var pick := r.randf()
+	var base := teal if pick < 0.5 else (violet if pick < 0.82 else amber)
+	return base.darkened(r.randf_range(0.0, 0.18)).lerp(Color(1, 1, 1), r.randf_range(0.0, 0.08))
 
 var owner_map := PackedInt32Array()       # cell -> woodcutter id (0 = none)
 var editing := -1                         # woodcutter whose area is being painted

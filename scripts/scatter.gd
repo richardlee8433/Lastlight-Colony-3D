@@ -5,9 +5,9 @@ extends Node3D
 ## Instances are hidden under buildings / fields and flattened where villagers wear a road.
 
 const KINDS := {
-	"tuft": {"model": "res://models/tuft.glb", "tint": true, "per_m2": 40.0, "scale": Vector2(0.5, 1.15)},
-	"flower_petal_v": {"model": "res://models/flower_petal_v.glb", "tint": false, "per_m2": 3.2, "scale": Vector2(0.8, 1.4)},
-	"flower_petal_w": {"model": "res://models/flower_petal_w.glb", "tint": false, "per_m2": 1.6, "scale": Vector2(0.8, 1.3)},
+	"tuft": {"model": "res://models/tuft.glb", "tint": true, "per_m2": 16.0, "scale": Vector2(0.5, 1.15)},
+	"flower_petal_v": {"model": "res://models/crystal_a.glb", "tint": false, "per_m2": 1.6, "scale": Vector2(0.7, 1.5)},
+	"flower_petal_w": {"model": "res://models/crystal_b.glb", "tint": false, "per_m2": 1.0, "scale": Vector2(0.7, 1.4)},
 }
 const TUFT_SHADER := preload("res://scripts/world/grass_tuft.gdshader")
 const CHUNK := 8.0                       # metres
@@ -46,6 +46,7 @@ func _ready() -> void:
 
 func _start() -> void:
 	_nav = get_node_or_null(nav_path)
+	_alienize(get_node_or_null(^"../Nature"))
 	# grow the village area right away; the rest follows a few chunks per frame
 	grow_around(Defs.CART_SPOT, 22.0)
 
@@ -68,6 +69,15 @@ func _process(_d: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	while not _queue.is_empty() and (Time.get_ticks_usec() - t0) < BUILD_BUDGET_MS * 1000.0:
 		_grow_chunk(_queue.pop_front())
+
+## Baked Earth-coloured scenery (bushes, mossy rocks) gets the alien palette.
+func _alienize(n: Node) -> void:
+	if n == null: return
+	if n is MeshInstance3D:
+		var m := ShaderMaterial.new()
+		m.shader = preload("res://scripts/world/alien_tint.gdshader")
+		(n as MeshInstance3D).material_override = m
+	for c in n.get_children(): _alienize(c)
 
 ## Grow every chunk within `radius` of p now (startup, tests).
 func grow_around(p: Vector2, radius: float) -> void:

@@ -1,0 +1,62 @@
+shader_type sky;
+// Alien sky for a thin atmosphere: dusty butterscotch horizon, deep slate zenith, a few stars
+// that show through even by day, a sharp small sun, and a banded gas giant with a ring.
+
+uniform vec3 zenith : source_color = vec3(0.10, 0.15, 0.27);
+uniform vec3 horizon : source_color = vec3(0.86, 0.66, 0.50);
+uniform vec3 ground_col : source_color = vec3(0.22, 0.16, 0.13);
+uniform vec3 sun_col : source_color = vec3(1.0, 0.96, 0.9);
+uniform vec3 planet_dir = vec3(-0.55, 0.2, -0.75);
+uniform float planet_size = 0.2;           // angular radius-ish (cos-space)
+uniform vec3 planet_a : source_color = vec3(0.78, 0.62, 0.48);
+uniform vec3 planet_b : source_color = vec3(0.55, 0.38, 0.32);
+uniform vec3 planet_c : source_color = vec3(0.86, 0.80, 0.70);
+
+float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+
+void sky() {
+	vec3 d = normalize(EYEDIR);
+	float up = d.y;
+	// gradient: wide dusty band near the horizon
+	vec3 col = mix(horizon, zenith, smoothstep(-0.02, 0.55, up));
+	col = mix(col, ground_col, smoothstep(0.0, -0.25, up));
+	// haze brightens around the sun
+	vec3 sd = LIGHT0_DIRECTION;
+	float sdot = max(dot(d, sd), 0.0);
+	col += sun_col * (pow(sdot, 8.0) * 0.25 + pow(sdot, 64.0) * 0.4) * LIGHT0_ENERGY * 0.4;
+	// stars, faint near the horizon and in the sun's glare
+	vec3 sp = floor(d * 280.0);
+	float st = step(0.9975, hash(sp)) * smoothstep(0.08, 0.5, up) * (1.0 - pow(sdot, 3.0));
+	col += vec3(st) * 0.55;
+	// gas giant: a lit disc with bands, terminator shading and a thin ring
+	vec3 pd = normalize(planet_dir);
+	float pc = dot(d, pd);
+	float disc = 1.0 - planet_size * 0.1;           // cos of the angular radius
+	vec3 right = normalize(cross(pd, vec3(0.0, 1.0, 0.0)));
+	vec3 pup = normalize(cross(right, pd));
+	vec2 pl = vec2(dot(d, right), dot(d, pup)) / sqrt(1.0 - disc * disc);   // -1..1 across the disc
+	// tilted ring (an ellipse around the disc)
+	vec2 rl = vec2(pl.x * cos(0.35) - pl.y * sin(0.35), pl.x * sin(0.35) + pl.y * cos(0.35));
+	float rr = length(vec2(rl.x, rl.y * 4.2));
+	float ring = smoothstep(1.55, 1.6, rr) * (1.0 - smoothstep(1.95, 2.05, rr)) * (0.6 + 0.4 * sin(rr * 40.0));
+	if (pc > disc) {
+		float lat = pl.y * 0.9 + pl.x * 0.12;
+		float bands = sin(lat * 11.0) * 0.5 + sin(lat * 27.0 + 1.3) * 0.25 + sin(lat * 5.0 - 0.6) * 0.25;
+		vec3 pcol = mix(planet_b, planet_a, smoothstep(-0.6, 0.6, bands));
+		pcol = mix(pcol, planet_c, smoothstep(0.7, 0.95, sin(lat * 7.0 + 2.0)) * 0.6);
+		// lit from the sun's side; limb darkening
+		vec3 n = normalize(-pd * sqrt(max(0.0, 1.0 - dot(pl, pl))) + right * pl.x + pup * pl.y);
+		float lit = clamp(dot(n, sd) * 0.55 + 0.7, 0.25, 1.2);
+		float limb = sqrt(max(0.0, 1.0 - dot(pl, pl)));
+		pcol *= lit * (0.55 + 0.45 * limb);
+		// the near half of the ring passes in front of the planet
+		if (rl.y < 0.0) pcol = mix(pcol, vec3(0.85, 0.78, 0.68) * 0.9, ring * 0.8);
+		// soak into the haze a little
+		col = mix(col, pcol, smoothstep(disc, disc + 0.002, pc) * 0.92);
+	} else {
+		col = mix(col, vec3(0.85, 0.78, 0.68), ring * 0.55 * smoothstep(disc - 0.05, disc, pc + 0.04));
+	}
+	// sun disc
+	col = mix(col, sun_col * 6.0, smoothstep(0.9993, 0.9997, sdot));
+	COLOR = col;
+}

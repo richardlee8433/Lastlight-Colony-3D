@@ -153,7 +153,7 @@ class CardMesh:
         o = bpy.data.objects.new(name, me); scene.collection.objects.link(o)
         return o
 
-BARK = (0.26, 0.18, 0.11)
+BARK = (0.20, 0.16, 0.20)          # violet-grey alien bark
 
 def card_broadleaf(seed, h=BASE_H):
     rnd = random.Random(seed)

@@ -7,9 +7,10 @@ render_mode cull_disabled, depth_draw_always;
 // * foam where anything breaks the surface (banks, rocks, bridge posts), streaked along the flow
 // * a custom light() for a sharp sun highlight and sparkling glints on the ripples
 
-uniform vec3 shallow : source_color = vec3(0.55, 0.78, 0.70);
-uniform vec3 deep : source_color = vec3(0.08, 0.27, 0.30);
-uniform vec3 sky_tint : source_color = vec3(0.62, 0.76, 0.9);
+// mineral-rich alien water: milky turquoise shallows, deep teal
+uniform vec3 shallow : source_color = vec3(0.50, 0.86, 0.82);
+uniform vec3 deep : source_color = vec3(0.04, 0.26, 0.30);
+uniform vec3 sky_tint : source_color = vec3(0.78, 0.66, 0.58);
 uniform vec3 foam_color : source_color = vec3(0.93, 0.96, 0.94);
 uniform float flow = 0.35;                       // 0 for the pond
 uniform float ripple_strength = 0.18;

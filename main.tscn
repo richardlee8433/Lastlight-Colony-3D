@@ -17,13 +17,10 @@
 [ext_resource type="Script" path="res://scripts/world/clutter.gd" id="17_clutter"]
 [ext_resource type="Script" path="res://scripts/world/water.gd" id="18_water"]
 [ext_resource type="Script" path="res://scripts/world/fishing.gd" id="19_fishing"]
+[ext_resource type="Shader" path="res://scripts/world/alien_sky.gdshader" id="20_sky"]
 
-[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
-sky_top_color = Color(0.26, 0.47, 0.8, 1)
-sky_horizon_color = Color(0.7, 0.79, 0.86, 1)
-ground_bottom_color = Color(0.2, 0.22, 0.15, 1)
-ground_horizon_color = Color(0.72, 0.78, 0.82, 1)
-sun_angle_max = 10.0
+[sub_resource type="ShaderMaterial" id="sky_mat"]
+shader = ExtResource("20_sky")
 
 [sub_resource type="Sky" id="sky"]
 sky_material = SubResource("sky_mat")
@@ -32,7 +29,7 @@ sky_material = SubResource("sky_mat")
 background_mode = 2
 sky = SubResource("sky")
 ambient_light_source = 3
-ambient_light_energy = 0.7
+ambient_light_energy = 0.55
 reflected_light_source = 2
 tonemap_mode = 4
 tonemap_exposure = 1.08
@@ -48,13 +45,13 @@ glow_strength = 0.9
 glow_bloom = 0.06
 glow_hdr_threshold = 0.9
 fog_enabled = true
-fog_light_color = Color(0.68, 0.78, 0.9, 1)
-fog_density = 0.0019
+fog_light_color = Color(0.82, 0.64, 0.52, 1)
+fog_density = 0.0024
 fog_aerial_perspective = 0.35
 fog_sky_affect = 0.08
 adjustment_enabled = true
-adjustment_contrast = 1.06
-adjustment_saturation = 1.18
+adjustment_contrast = 1.1
+adjustment_saturation = 1.05
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -63,8 +60,8 @@ script = ExtResource("1_main")
 environment = SubResource("env")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
-light_color = Color(1, 0.87, 0.68, 1)
-light_energy = 1.85
+light_color = Color(1, 0.95, 0.88, 1)
+light_energy = 2.1
 light_angular_distance = 1.5
 shadow_enabled = true
 shadow_blur = 1.2

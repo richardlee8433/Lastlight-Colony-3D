@@ -61,11 +61,13 @@ const BUILDINGS := {
 		"door": Vector2(0.0, 1.45),
 	},
 	"cart": {
-		"name": "Supply cart", "desc": "The settlers' supply cart: temporary storage, with 4 bedrolls by the campfire",
-		"cost": {}, "size": 3, "permanent": true,
+		"name": "Escape pod", "desc": "The crashed escape pod: temporary storage, with 4 thermal blankets around the heater",
+		"cost": {}, "size": 4, "permanent": true,
 		"workers": 0, "storage": true, "housing": 4,
-		"nav_block": [Rect2(-1.45, -0.62, 2.4, 1.24), Rect2(1.02, 0.72, 0.56, 0.56)],
-		"drop": Vector2(-0.5, 1.05), "door": Vector2(1.3, 1.75),
+		# capsule, crates, antenna mast, solar array, heater
+		"nav_block": [Rect2(-1.6, -0.95, 2.85, 1.5), Rect2(0.95, -1.25, 1.1, 0.7), Rect2(-1.8, -1.2, 0.3, 0.3),
+			Rect2(-2.2, 0.6, 0.6, 0.7), Rect2(1.1, 0.8, 0.4, 0.4)],
+		"drop": Vector2(-0.8, 1.45), "door": Vector2(1.3, 1.75),
 	},
 	"fishery": {
 		"name": "Fishing hut", "desc": "Built on the shore. The fisher catches fish from the bank and carries them to storage; fish grow scarce if the water is fished too hard",

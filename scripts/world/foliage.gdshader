@@ -9,7 +9,7 @@ uniform float alpha_cut = 0.5;
 uniform float wind_strength = 0.14;
 uniform float wind_speed = 0.9;
 uniform vec2 wind_dir = vec2(1.0, 0.35);
-uniform vec3 backlight : source_color = vec3(0.22, 0.30, 0.06);
+uniform vec3 backlight : source_color = vec3(0.22, 0.24, 0.26);
 instance uniform vec4 tint : source_color = vec4(1.0);
 
 varying vec3 vcol;

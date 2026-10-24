@@ -246,6 +246,31 @@ static func _storehouse_simple(r: Node3D, rng: RandomNumberGenerator) -> void:
 	box(r, Vector3(0.5, 0.3, 0.05), Vector3(1.55, 1.0, 1.12), wood())
 
 static func _cart(r: Node3D, rng: RandomNumberGenerator) -> void:
+	# the crashed escape pod and the survivors' camp (tools/scifi.py); lights added here
+	if _baked(r, "res://models/pod.glb"):
+		# portable heater glow
+		var glow := SphereMesh.new(); glow.radius = 0.15; glow.height = 0.06
+		var gm := StandardMaterial3D.new(); gm.albedo_color = Color(1.0, 0.5, 0.15); gm.emission_enabled = true
+		gm.emission = Color(1.0, 0.45, 0.12); gm.emission_energy_multiplier = 3.0
+		_add(r, glow, gm, Vector3(1.3, 0.38, 1.0))
+		var heat := OmniLight3D.new(); heat.light_color = Color(1.0, 0.55, 0.25); heat.light_energy = 0.9; heat.omni_range = 3.0
+		heat.position = Vector3(1.3, 0.7, 1.0); r.add_child(heat)
+		# beacon on the antenna mast, blinking red
+		var bm := StandardMaterial3D.new(); bm.albedo_color = Color(1.0, 0.15, 0.1); bm.emission_enabled = true
+		bm.emission = Color(1.0, 0.1, 0.05); bm.emission_energy_multiplier = 4.0
+		var bulb := SphereMesh.new(); bulb.radius = 0.06; bulb.height = 0.12
+		var bulb_mi := _add(r, bulb, bm, Vector3(-1.65, 2.04, -1.05))
+		var blink := OmniLight3D.new(); blink.light_color = Color(1.0, 0.2, 0.1); blink.light_energy = 1.2; blink.omni_range = 2.5
+		blink.position = Vector3(-1.65, 2.05, -1.05); r.add_child(blink)
+		var tw := blink.create_tween().set_loops()
+		tw.tween_callback(func(): blink.visible = true; bulb_mi.visible = true)
+		tw.tween_interval(0.25)
+		tw.tween_callback(func(): blink.visible = false; bulb_mi.visible = false)
+		tw.tween_interval(1.4)
+		return
+	_cart_simple(r, rng)
+
+static func _cart_simple(r: Node3D, rng: RandomNumberGenerator) -> void:
 	# two-wheeled supply cart loaded with sacks, crates and barrels; a campfire with bedrolls beside it
 	var cx := -0.5
 	box(r, Vector3(1.7, 0.08, 1.0), Vector3(cx, 0.62, 0), wood())                     # bed

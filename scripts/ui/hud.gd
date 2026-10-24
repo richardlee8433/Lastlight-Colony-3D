@@ -419,7 +419,7 @@ func _fill_info(id: int) -> void:
 	if d.get("storage", false):
 		lines.append(Loc.t("Nearby workers bring their goods here"))
 	if b["type"] == "cart":
-		lines.append(Loc.t("%d bedrolls by the campfire. Paint a housing zone so villagers build homes") % d["housing"])
+		lines.append(Loc.t("%d thermal blankets by the heater. Paint a housing zone so colonists build homes") % d["housing"])
 	if d.has("housing"):
 		lines.append(Loc.t("Houses %d people") % d["housing"])
 	var vm := get_node_or_null(^"../Villagers")

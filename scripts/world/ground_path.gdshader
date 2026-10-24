@@ -7,9 +7,10 @@ uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform vec4 wear_rect;                                   // x0, z0, size_x, size_z (world)
 uniform sampler2D meadow_tex : filter_linear, repeat_disable;   // Meadow lushness 0 dry .. 1 lush
 uniform vec4 meadow_rect;
-uniform vec3 grass_dry : source_color = vec3(0.56, 0.56, 0.22);
-uniform vec3 grass_mid : source_color = vec3(0.31, 0.50, 0.13);
-uniform vec3 grass_lush : source_color = vec3(0.17, 0.38, 0.08);
+// alien regolith: pale ochre dust, rust, dark violet-grey basalt
+uniform vec3 grass_dry : source_color = vec3(0.68, 0.52, 0.38);
+uniform vec3 grass_mid : source_color = vec3(0.56, 0.34, 0.24);
+uniform vec3 grass_lush : source_color = vec3(0.30, 0.24, 0.27);
 uniform sampler2D zone_tex : filter_linear, repeat_disable;    // residential zones (1 = zoned)
 uniform vec4 zone_rect;
 uniform float zone_strength = 0.45;
@@ -26,9 +27,9 @@ uniform vec3 soil_dark : source_color = vec3(0.24, 0.16, 0.09);
 uniform sampler2D water_tex : filter_linear, repeat_disable;   // Water carve: R = lowered (0..1), G = bank
 uniform vec4 water_rect;
 uniform float bed_depth = 0.0;
-uniform vec3 mud : source_color = vec3(0.34, 0.29, 0.2);
-uniform vec3 dirt_light : source_color = vec3(0.56, 0.45, 0.31);
-uniform vec3 dirt_dark : source_color = vec3(0.38, 0.29, 0.19);
+uniform vec3 mud : source_color = vec3(0.22, 0.19, 0.2);
+uniform vec3 dirt_light : source_color = vec3(0.52, 0.46, 0.42);
+uniform vec3 dirt_dark : source_color = vec3(0.32, 0.28, 0.27);
 
 varying vec3 wpos;
 
