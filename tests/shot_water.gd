@@ -16,7 +16,7 @@ func _process(_d: float) -> bool:
 		game = root.get_node("Game"); cam = current_scene.get_node("Camera"); sc = current_scene.get_node("Scatter")
 		game._autosave = false; game.delete_save(); game.new_game(); game.speed = 0.0
 		sc.grow_around(Vector2(19, 1), 20.0); sc.grow_around(Defs.WATER["pond"]["pos"], 14.0)
-		var b: Dictionary = Water.bridges[0]
+		var b: Dictionary = load("res://scripts/world/water.gd").bridges[0]
 		cam.target = Vector3(b["pos"].x, 0.3, b["pos"].y); cam._dist = 13.0; cam._pitch = 0.62; cam._yaw = -0.9; cam._apply()
 	if f == 12:
 		root.get_viewport().get_texture().get_image().save_png("res://_water_bridge.png")

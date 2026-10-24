@@ -173,6 +173,12 @@ func _build() -> void:
 		nt.noise = n; nt.seamless = true; nt.as_normal_map = true; nt.bump_strength = 6.0
 		nt.width = 256; nt.height = 256; nt.generate_mipmaps = true
 		mat.set_shader_parameter(k, nt)
+	var fnz := FastNoiseLite.new()
+	fnz.seed = 9; fnz.noise_type = FastNoiseLite.TYPE_CELLULAR; fnz.frequency = 0.03
+	fnz.cellular_return_type = FastNoiseLite.RETURN_DISTANCE2_SUB
+	var ft := NoiseTexture2D.new()
+	ft.noise = fnz; ft.seamless = true; ft.width = 256; ft.height = 256; ft.generate_mipmaps = true
+	mat.set_shader_parameter("foam_noise", ft)
 	# stream: a strip along the centre line at the smoothed water level
 	var pts := river_samples()
 	var hw: float = Defs.WATER["river_width"] + 0.45
@@ -214,6 +220,7 @@ func _build() -> void:
 	pond_mi.mesh = sp.commit()
 	var pm := mat.duplicate()
 	pm.set_shader_parameter("flow", 0.0)
+	pm.set_shader_parameter("foam_amount", 0.45)
 	pond_mi.material_override = pm
 	pond_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(pond_mi)
@@ -327,6 +334,25 @@ func _life() -> void:
 	_multimesh("LilyPads", _lily_mesh(), pads, mat, false)
 	var fmat := mat.duplicate()
 	_multimesh("Lilies", _flower_mesh(), flowers, fmat, false)
+	# a few stones breaking the surface of the stream (the water foams around them)
+	var stone := StandardMaterial3D.new()
+	stone.albedo_color = Color(0.46, 0.45, 0.42); stone.roughness = 0.85
+	var rocks: Array[Transform3D] = []
+	var hw: float = Defs.WATER["river_width"]
+	for i in range(6, pts.size() - 6, 5):
+		if rng.randf() > 0.55: continue
+		var q := pts[i]
+		if absf(q.x) > 32 or absf(q.y) > 32 or not _bridge_at(q).is_empty(): continue
+		var tangent := (pts[i + 1] - pts[i - 1]).normalized()
+		var across := Vector2(-tangent.y, tangent.x)
+		for j in rng.randi_range(1, 3):
+			var rp := q + across * rng.randf_range(-hw * 0.75, hw * 0.75) + tangent * rng.randf_range(-0.6, 0.6)
+			var sz := rng.randf_range(0.18, 0.38)
+			var y: float = _levels[i] - sz * 0.35
+			rocks.append(Transform3D(Basis(Vector3(rng.randf(), rng.randf(), rng.randf()).normalized(), rng.randf() * TAU).scaled(Vector3(sz * 1.3, sz, sz * 1.1)), Vector3(rp.x, y, rp.y)))
+	var rock_mesh := SphereMesh.new()
+	rock_mesh.radius = 1.0; rock_mesh.height = 1.6; rock_mesh.radial_segments = 7; rock_mesh.rings = 4
+	_multimesh("StreamRocks", rock_mesh, rocks, stone, false)
 
 func _ground_xf(nav, p: Vector2, rng: RandomNumberGenerator, s: float) -> Transform3D:
 	var y: float = nav.height_at(clampf(p.x, -33.9, 33.9), clampf(p.y, -33.9, 33.9))
