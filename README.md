@@ -68,7 +68,7 @@ python3 tools/scifi_buildings.py models       # habs (models/houses/), depot, ha
                                               # aqua harvester, construction stages, ore deposits, truss bridge
 python3 tools/scifi_props.py models           # colony props → models/props/
 python3 tools/crystals.py models              # crystal clusters
-python3 tools/villager.py models              # colonist model (add "preview" for a preview image)
+python3 tools/colonist.py models              # colonist in a pressure suit → models/villager.glb (add "preview")
 python3 tools/flora.py models                 # alien flora → models/trees/ (add "preview" for preview images)
 ```
 Add `preview` to the Blender scripts to render a preview image of each model.
