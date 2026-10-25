@@ -29,7 +29,7 @@ sky_material = SubResource("sky_mat")
 background_mode = 2
 sky = SubResource("sky")
 ambient_light_source = 3
-ambient_light_energy = 0.55
+ambient_light_energy = 0.42
 reflected_light_source = 2
 tonemap_mode = 4
 tonemap_exposure = 1.08
@@ -40,7 +40,7 @@ ssao_intensity = 1.8
 ssao_light_affect = 0.15
 ssil_enabled = true
 glow_enabled = true
-glow_intensity = 0.55
+glow_intensity = 0.4
 glow_strength = 0.9
 glow_bloom = 0.06
 glow_hdr_threshold = 0.9
@@ -50,8 +50,8 @@ fog_density = 0.0019
 fog_aerial_perspective = 0.35
 fog_sky_affect = 0.08
 adjustment_enabled = true
-adjustment_contrast = 1.1
-adjustment_saturation = 1.05
+adjustment_contrast = 1.14
+adjustment_saturation = 0.88
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -61,10 +61,10 @@ environment = SubResource("env")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 light_color = Color(1, 0.95, 0.88, 1)
-light_energy = 2.1
-light_angular_distance = 1.5
+light_energy = 2.5
+light_angular_distance = 0.6
 shadow_enabled = true
-shadow_blur = 1.2
+shadow_blur = 0.6
 shadow_bias = 0.08
 shadow_normal_bias = 4.0
 directional_shadow_mode = 2

@@ -110,6 +110,27 @@ void fragment() {
 		float e = forest_strength;            // 0.35 normally, 1 while painting
 		col = mix(col, forest_color, clamp(fedge * (0.2 + 0.7 * e) + mine * 0.25 * e * e, 0.0, 0.9));
 	}
+	// --- regolith detail (realism pass): drifts of pale dust, dark basalt grit, scattered pebbles,
+	// and a small-scale height field that roughens the lighting ---
+	float big = texture(noise_tex, wpos.xz * 0.035).r;
+	float mid = texture(noise_tex, wpos.xz * 0.27 + vec2(3.1, 7.7)).r;
+	float fine = texture(noise_tex, wpos.xz * 2.3).r;
+	float grit = texture(noise_tex, wpos.xz * 7.9 + vec2(1.3, 0.4)).r;
+	float drift = smoothstep(0.55, 0.8, big * 0.7 + mid * 0.3);
+	float basalt = smoothstep(0.62, 0.85, 1.0 - (big * 0.5 + mid * 0.5));
+	float ground_only = (1.0 - dirt) * (1.0 - smoothstep(0.05, 0.3, texture(field_tex, fuv).r));
+	col = mix(col, col * vec3(1.18, 1.12, 1.05) + vec3(0.04, 0.03, 0.02), drift * 0.55 * ground_only);
+	col = mix(col, col * vec3(0.55, 0.52, 0.55), basalt * 0.6 * ground_only);
+	col *= 0.86 + 0.28 * fine;
+	float pebble = smoothstep(0.78, 0.86, grit);
+	col = mix(col, col * (0.45 + 0.9 * step(0.5, fract(grit * 37.0))), pebble * 0.55);
 	ALBEDO = col;
-	ROUGHNESS = 0.95;
+	ROUGHNESS = 0.97 - drift * 0.05;
+	// height-field normal from the noise (finite differences)
+	float e = 0.06;
+	float h0 = texture(noise_tex, wpos.xz * 2.3).r * 0.6 + texture(noise_tex, wpos.xz * 7.9 + vec2(1.3, 0.4)).r * 0.4;
+	float hx = texture(noise_tex, (wpos.xz + vec2(e, 0.0)) * 2.3).r * 0.6 + texture(noise_tex, (wpos.xz + vec2(e, 0.0)) * 7.9 + vec2(1.3, 0.4)).r * 0.4;
+	float hz = texture(noise_tex, (wpos.xz + vec2(0.0, e)) * 2.3).r * 0.6 + texture(noise_tex, (wpos.xz + vec2(0.0, e)) * 7.9 + vec2(1.3, 0.4)).r * 0.4;
+	vec3 dn = vec3(-(hx - h0) / e, 0.0, -(hz - h0) / e) * 0.035;
+	NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(dn, 0.0)).xyz);
 }

@@ -66,12 +66,12 @@ static func tree_tint(id: int, kind: int) -> Color:
 	var r := RandomNumberGenerator.new(); r.seed = id * 7919 + 13
 	# alien flora: teal, violet and amber crowns; conifers in deep blue-teal
 	if kind == 1:
-		return Color(0.42, 0.62, 0.74).lerp(Color(0.36, 0.52, 0.66), r.randf())
+		return Color(0.42, 0.52, 0.58).lerp(Color(0.36, 0.42, 0.48), r.randf())
 	var teal := Color(0.40, 0.82, 0.76); var violet := Color(0.68, 0.48, 0.88); var amber := Color(0.98, 0.70, 0.40)
 	var pick := r.randf()
 	var base := teal if pick < 0.5 else (violet if pick < 0.82 else amber)
 	# dusty and sun-bleached: pulled towards grey so the flora reads as hardy, not candy-coloured
-	return base.lerp(Color(0.56, 0.52, 0.54), 0.38).darkened(r.randf_range(0.0, 0.2))
+	return base.lerp(Color(0.50, 0.46, 0.45), 0.45).darkened(r.randf_range(0.3, 0.45))
 
 var owner_map := PackedInt32Array()       # cell -> woodcutter id (0 = none)
 var editing := -1                         # woodcutter whose area is being painted

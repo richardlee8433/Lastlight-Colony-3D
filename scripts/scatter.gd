@@ -5,9 +5,11 @@ extends Node3D
 ## Instances are hidden under buildings / fields and flattened where villagers wear a road.
 
 const KINDS := {
-	"tuft": {"model": "res://models/tuft.glb", "tint": true, "per_m2": 10.0, "scale": Vector2(0.5, 1.15)},
-	"flower_petal_v": {"model": "res://models/crystal_a.glb", "tint": false, "per_m2": 1.2, "scale": Vector2(0.7, 1.5)},
-	"flower_petal_w": {"model": "res://models/crystal_b.glb", "tint": false, "per_m2": 0.7, "scale": Vector2(0.7, 1.4)},
+	"tuft": {"model": "res://models/tuft.glb", "tint": true, "per_m2": 6.0, "scale": Vector2(0.35, 0.8)},
+	"flower_petal_v": {"model": "res://models/crystal_a.glb", "tint": false, "per_m2": 0.35, "scale": Vector2(0.5, 1.2)},
+	"flower_petal_w": {"model": "res://models/crystal_b.glb", "tint": false, "per_m2": 0.2, "scale": Vector2(0.5, 1.1)},
+	# loose stones and gravel all over the regolith (mesh made in code)
+	"pebble": {"proc": true, "tint": true, "rock": true, "per_m2": 4.0, "scale": Vector2(0.025, 0.11)},
 }
 const TUFT_SHADER := preload("res://scripts/world/grass_tuft.gdshader")
 const CHUNK := 8.0                       # metres
@@ -32,6 +34,9 @@ var _origin := Vector2.ZERO
 
 func _ready() -> void:
 	for kind in KINDS:
+		if KINDS[kind].get("proc", false):
+			_meshes[kind] = _pebble_mesh()
+			continue
 		var src: Node = (load(KINDS[kind]["model"]) as PackedScene).instantiate()
 		_meshes[kind] = _find_mesh(src)
 		src.queue_free()
@@ -49,6 +54,24 @@ func _start() -> void:
 	_alienize(get_node_or_null(^"../Nature"))
 	# grow the village area right away; the rest follows a few chunks per frame
 	grow_around(Defs.CART_SPOT, 22.0)
+
+## A low-poly stone: a dented ball (squashed and scaled per instance).
+static func _pebble_mesh() -> Mesh:
+	var sm := SphereMesh.new()
+	sm.radius = 1.0; sm.height = 2.0; sm.radial_segments = 7; sm.rings = 4
+	var arr := sm.get_mesh_arrays()
+	var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var n := FastNoiseLite.new(); n.seed = 9; n.frequency = 1.3
+	for i in v.size():
+		v[i] = v[i] * (1.0 + 0.28 * n.get_noise_3dv(v[i] * 1.7))
+	var out := []; out.resize(Mesh.ARRAY_MAX)
+	out[Mesh.ARRAY_VERTEX] = v
+	out[Mesh.ARRAY_INDEX] = arr[Mesh.ARRAY_INDEX]
+	var st := SurfaceTool.new()
+	st.create_from_arrays(out)
+	st.deindex()
+	st.generate_normals()
+	return st.commit()
 
 func _find_mesh(n: Node) -> Mesh:
 	if n is MeshInstance3D:
@@ -125,7 +148,8 @@ func _grow_chunk(key: Vector2i) -> void:
 				if m < 0.12 or rng.randf() > (m - 0.12) * 2.4: continue
 			if _nav and _nav.scenery_at(Vector2(x, z)) and not outside: continue
 			if Water.sample(Vector2(x, z)).y > 0.35: continue                   # no grass in the water or on wet banks
-			if not flower:
+			var rock: bool = cfg.get("rock", false)
+			if not flower and not rock:
 				# barren regolith: lichen only grows in patches, thickest where the ground is "lush"
 				var patch := Meadow.sample(x, z)
 				if rng.randf() > smoothstep(0.48, 0.85, patch): continue
@@ -134,7 +158,13 @@ func _grow_chunk(key: Vector2i) -> void:
 			var s := rng.randf_range(cfg["scale"].x, cfg["scale"].y)
 			var b := Basis(Vector3.UP, rng.randf() * TAU)
 			b = Basis(Vector3(rng.randf_range(-1, 1), 0, rng.randf_range(-1, 1)).normalized(), rng.randf_range(0.0, 0.08)) * b
-			if cfg["tint"]:
+			if rock:
+				var sq := rng.randf_range(0.45, 0.8)
+				b = Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s * rng.randf_range(0.8, 1.3), s * sq, s))
+				var rc := Color(0.20, 0.17, 0.17).lerp(Color(0.52, 0.40, 0.33), rng.randf())
+				cols.append(rc.lerp(Color(0.62, 0.50, 0.40), rng.randf_range(0.0, 0.3)))
+				y -= s * sq * 0.25
+			elif cfg["tint"]:
 				b = b.scaled(Vector3(s, s * lerpf(0.7, 1.45, lush), s))
 				var c := Meadow.grass_color(clampf(lush + rng.randf_range(-0.12, 0.12), 0.0, 1.0))
 				cols.append(c.darkened(rng.randf_range(0.0, 0.15)).lightened(rng.randf_range(0.0, 0.08)))
@@ -151,11 +181,15 @@ func _grow_chunk(key: Vector2i) -> void:
 		var mmi := MultiMeshInstance3D.new()
 		mmi.name = "%s_%d_%d" % [kind, key.x, key.y]
 		mmi.multimesh = mm
-		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if kind == "tuft" else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if kind in ["tuft", "pebble"] else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		mmi.visibility_range_end = VIEW_RANGE
 		mmi.visibility_range_end_margin = 10.0
 		mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
-		if cfg["tint"]:
+		if cfg.get("rock", false):
+			var rm := StandardMaterial3D.new()
+			rm.vertex_color_use_as_albedo = true; rm.vertex_color_is_srgb = true; rm.roughness = 0.92
+			mmi.material_override = rm
+		elif cfg["tint"]:
 			var mat := ShaderMaterial.new()
 			mat.shader = TUFT_SHADER
 			mmi.material_override = mat

@@ -87,6 +87,7 @@ func _build_model() -> void:
 	_arm_r = _model.find_child("ArmR", true, false)
 	_leg_l = _model.find_child("LegL", true, false)
 	_leg_r = _model.find_child("LegR", true, false)
+	_realistic_proportions()
 	for n in OPTIONAL:
 		var node := _model.find_child(n, true, false)
 		if node:
@@ -97,6 +98,21 @@ func _build_model() -> void:
 		if e: _eyes.append(e)
 	_blink = _rng.randf_range(0.5, 4.0)
 	_pick_look()
+
+## The model is built chibi (big head, short legs); colonists get adult proportions: a smaller head,
+## longer legs and arms, the body raised so the boots still touch the ground.
+const LEG_STRETCH := 1.45
+const HIP_Y := 0.40
+const LEG_LEN := 0.40
+func _realistic_proportions() -> void:
+	var lift := LEG_LEN * (LEG_STRETCH - 1.0)
+	for leg in [_leg_l, _leg_r]:
+		leg.scale = Vector3(1.0, LEG_STRETCH, 1.0)
+		leg.position.y += lift
+	_torso.position.y += lift
+	_head.scale = Vector3.ONE * 0.72
+	for arm in [_arm_l, _arm_r]:
+		arm.scale = Vector3(1.0, 1.18, 1.0)
 
 ## A look per villager: hair, beard, skirt or tunic, apron / vest / satchel, kerchief, colours, build.
 func _pick_look() -> void:
@@ -123,7 +139,7 @@ func _pick_look() -> void:
 	_tint(["Head", "Neck", "Nose", "EarL", "EarR"], skin)
 	_tint(["HandL", "HandR"], Color(0.30, 0.31, 0.33))               # gloves
 	_tint(["Helmet"], tunic.lerp(Color(0.95, 0.95, 0.93), 0.6))
-	_glass(["HelmetGlass"], Color(0.55, 0.75, 0.85, 0.16), 0.2)
+	_glass(["HelmetGlass"], Color(0.30, 0.40, 0.46, 0.42), 0.6)        # tinted, reflective visor
 	_glass(["Hood"], Color(0.85, 0.62, 0.22, 0.92), 0.9)              # gold sun visor (harvesters)
 	_tint(["Torso", "ArmL", "ArmR", "Hem"], tunic, true)
 	_tint(["Satchel"], Color(0.82, 0.83, 0.80))

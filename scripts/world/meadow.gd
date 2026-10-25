@@ -35,6 +35,6 @@ static func sample(x: float, z: float) -> float:
 static func grass_color(l: float) -> Color:
 	# alien lichen: dusty tan, teal-grey, violet
 	var dry := Color(0.42, 0.33, 0.27)
-	var mid := Color(0.20, 0.36, 0.36)
-	var lush := Color(0.30, 0.18, 0.38)
+	var mid := Color(0.28, 0.31, 0.29)
+	var lush := Color(0.30, 0.24, 0.30)
 	return dry.lerp(mid, clampf(l * 2.0, 0.0, 1.0)) if l < 0.5 else mid.lerp(lush, clampf((l - 0.5) * 2.0, 0.0, 1.0))

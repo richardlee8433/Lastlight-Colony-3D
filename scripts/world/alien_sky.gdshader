@@ -3,11 +3,11 @@ shader_type sky;
 // that show through even by day, a sharp small sun, and a banded gas giant with a ring.
 
 uniform vec3 zenith : source_color = vec3(0.025, 0.035, 0.08);
-uniform vec3 horizon : source_color = vec3(0.82, 0.56, 0.40);
+uniform vec3 horizon : source_color = vec3(0.74, 0.56, 0.44);
 uniform vec3 ground_col : source_color = vec3(0.22, 0.16, 0.13);
 uniform vec3 sun_col : source_color = vec3(1.0, 0.96, 0.9);
-uniform vec3 planet_dir = vec3(-0.55, 0.2, -0.75);
-uniform float planet_size = 0.2;           // angular radius-ish (cos-space)
+uniform vec3 planet_dir = vec3(-0.55, 0.26, -0.75);
+uniform float planet_size = 0.13;           // angular radius-ish (cos-space)
 uniform vec3 planet_a : source_color = vec3(0.78, 0.62, 0.48);
 uniform vec3 planet_b : source_color = vec3(0.55, 0.38, 0.32);
 uniform vec3 planet_c : source_color = vec3(0.86, 0.80, 0.70);
@@ -52,7 +52,7 @@ void sky() {
 		// the near half of the ring passes in front of the planet
 		if (rl.y < 0.0) pcol = mix(pcol, vec3(0.85, 0.78, 0.68) * 0.9, ring * 0.8);
 		// soak into the haze a little
-		col = mix(col, pcol, smoothstep(disc, disc + 0.002, pc) * 0.92);
+		col = mix(col, pcol, smoothstep(disc, disc + 0.002, pc) * mix(0.55, 0.85, smoothstep(0.1, 0.5, up)));   // seen through the dust
 	} else {
 		col = mix(col, vec3(0.85, 0.78, 0.68), ring * 0.55 * smoothstep(disc - 0.05, disc, pc + 0.04));
 	}
