@@ -27,15 +27,7 @@ static func save_settings() -> void:
 
 ## Zh-TW text keyed by the English text used in the code (and in Defs).
 const ZH := {
-	"Aqua harvester": "水產採集站",
-	"Built on the shore. The harvester nets the lake's native swimmers from the bank and carries them to storage; stocks thin out if the water is fished too hard": "蓋在水邊。採集員在岸邊撈捕湖裡的原生水生物，帶回倉庫；撈太多數量會變少",
-	"must face the water": "要面向水邊",
-	"this water already has enough aqua harvesters": "這片水域的採集站已經夠多了",
 	"Netting": "撈捕中",
-	"Point near the lake or the stream and left-click to build; the station turns to face the water · right-click / Esc to cancel": "指向湖泊或溪流附近，左鍵建造，採集站會自動面向水面 · 右鍵 / Esc 取消",
-	"Aquatic stock here: %d%%": "這片水域的水生物存量：%d%%",
-	"Per trip: about %d food (smaller stock = smaller catches)": "每趟約 %d 食物（存量越少收穫越少）",
-	"Stock is low, waiting for it to recover": "存量太低，等待恢復",
 	"Crop: freshly tilled": "作物：剛整好地",
 	"Crop: growing %d%%": "作物：生長中 %d%%",
 	"Crop: ripe, harvesting (%d trips left)": "作物：成熟了，收成中（還有 %d 趟）",

@@ -175,9 +175,6 @@ func yield_of(v: Villager) -> Dictionary:
 		# food only from a ripe field; while the wheat grows the farmer tends it
 		var n: int = fields.harvest(b["id"])
 		return {"food": n} if n > 0 else {}
-	if b["type"] == "fishery":
-		var n := Fishing.catch_fish(b)
-		return {"food": n} if n > 0 else {}
 	if b["type"] == "woodcutter" and forest:
 		# wood only if the tree this villager worked on was still standing
 		var tid: int = _chop.get(v.vid, -1)
@@ -215,12 +212,6 @@ func work_target(v: Villager) -> Dictionary:
 	var job: Dictionary = job_of(v)
 	var c := Defs.building_center(b)
 	match job.get("target", "spot"):
-		"shore":
-			# a spot on the bank near the hut, facing the water (same water body as the hut)
-			if Fishing.stock(Fishing.body_of(b)) < Defs.FISHING["scarce"]: return {}
-			var sp := Fishing.shore_near(nav, b["pos"], Defs.FISHING["range"], _rng, Fishing.body_of(b))
-			if sp.is_empty(): return {}
-			return {"pos": nav.on_ground(sp["pos"]), "look": nav.on_ground(sp["look"])}
 		"site":
 			# somewhere just outside the footprint, facing the middle
 			var h := Defs.half_extents(b["type"])

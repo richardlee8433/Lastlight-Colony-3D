@@ -76,5 +76,15 @@ func _run() -> void:
 	var zones = s.get_node("Zones")
 	check(zones.paint(pc, true, 1.0) == 0, "can't zone the pond")
 	check(water.get_node_or_null("Stream") != null and water.get_node_or_null("Pond") != null, "water surfaces built")
+	# lake life: alien reeds, float pads, gas bubbles; bank spots for idle colonists
+	check(water.get_node_or_null("Reeds") != null and water.get_node("Reeds").multimesh.instance_count > 30, "reeds along the banks")
+	check(water.get_node_or_null("LilyPads") != null, "float pads on the lake")
+	var n0: int = water.get_child_count()
+	water.vent_bubble(Vector3(pc.x, 0, pc.y))
+	check(water.get_child_count() > n0, "a gas bubble rises")
+	var ShoreS = load("res://scripts/world/shore.gd")
+	check(ShoreS.spots(nav).size() > 50, "bank spots for strolling colonists (%d)" % ShoreS.spots(nav).size())
+	# no fishing on Lastlight
+	check(not Defs.BUILDINGS.has("fishery") and not ("fishery" in Defs.BUILD_ORDER), "no aqua harvester to build")
 	game.delete_save()
 	_done = true

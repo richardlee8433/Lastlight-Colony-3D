@@ -69,9 +69,6 @@ func place_problem(type: String, pos: Vector2, angle: float) -> String:
 	var quad := Defs.footprint_corners(type, pos, angle)
 	for c in quad:
 		if not Defs.BUILD_BOUNDS.has_point(c): return Loc.t("out of bounds")
-	if Defs.BUILDINGS[type].get("on_shore", false):
-		var why := Fishing.shore_problem(type, pos, angle)
-		if why != "": return why
 	var on_deposit: bool = Defs.BUILDINGS[type].get("on_deposit", false)
 	var dep := -1
 	if on_deposit:
@@ -306,11 +303,6 @@ func _update_ghost(mouse: Vector2) -> void:
 	var p = _ground_point(mouse)
 	if p != null:
 		_ghost_pos = Vector2(p.x, p.z)
-		if Defs.BUILDINGS[placing].get("on_shore", false):
-			# fishing huts snap to the nearest water, facing it
-			var sn := Fishing.snap(placing, _ghost_pos)
-			if not sn.is_empty():
-				_ghost_pos = sn["pos"]; ghost_angle = sn["angle"]
 		if Defs.BUILDINGS[placing].get("on_deposit", false):
 			# quarries snap onto the nearest free stone deposit
 			var d := Deposits.free_near(_ghost_pos, Defs.DEPOSIT["snap"])

@@ -347,8 +347,6 @@ func _on_mode(type: String) -> void:
 			_hint.text = Loc.t("Left-drag to paint the harvest area (within %d m of the harvester) · X toggles erase (or hold Shift) · right-click / Esc to finish") % int(Defs.FOREST["range"])
 		elif type == "field":
 			_hint.text = Loc.t("Left-drag to paint the field (within %d m of the agri station) · X toggles erase (or hold Shift) · right-click / Esc to finish") % int(Defs.FIELD["range"])
-		elif Defs.BUILDINGS.has(type) and Defs.BUILDINGS[type].get("on_shore", false):
-			_hint.text = Loc.t("Point near the lake or the stream and left-click to build; the station turns to face the water · right-click / Esc to cancel")
 		elif Defs.BUILDINGS.has(type) and Defs.BUILDINGS[type].get("on_deposit", false):
 			_hint.text = Loc.t("Point at a highlighted ore deposit and left-click to build · R / Shift+R or Shift+wheel to rotate · right-click / Esc to cancel")
 		else:
@@ -391,11 +389,6 @@ func _fill_info(id: int) -> void:
 					"ripe": lines.append(Loc.t("Crop: ripe, harvesting (%d trips left)") % int(b.get("harvest", 0)))
 		else:
 			lines.append(Loc.t("Field too small: needs at least %.0f m² to produce") % (Defs.FIELD["min_cells"] * 0.25))
-	elif b["type"] == "fishery":
-		var st := Fishing.stock(Fishing.body_of(b))
-		lines.append(Loc.t("Aquatic stock here: %d%%") % int(st * 100.0))
-		lines.append(Loc.t("Per trip: about %d food (smaller stock = smaller catches)") % maxi(1, roundi(Defs.FISHING["catch"] * st)))
-		waiting = st < Defs.FISHING["scarce"]
 	elif b["type"] == "woodcutter" and fo:
 		var n: int = fo.area_of(id).size()
 		var c: Dictionary = fo.counts(id)
@@ -413,7 +406,6 @@ func _fill_info(id: int) -> void:
 		var state := Loc.t("Working")
 		if not b["staffed"]: state = Loc.t("No worker (needs more colonists)")
 		elif not Game.is_active(b): state = Loc.t("Hungry, stopped")
-		elif waiting and b["type"] == "fishery": state = Loc.t("Stock is low, waiting for it to recover")
 		elif waiting: state = Loc.t("Waiting for plants to grow")
 		lines.append(Loc.t("Status: ") + state)
 	if d.get("storage", false):

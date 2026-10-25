@@ -177,6 +177,78 @@ def pod(col):
     crate(col, M, (0.55, -0.95, 0), 0.4, 0.5)
     return 5.0, 4.6
 
+# ---------------- weathering ----------------
+CLEAN = ("glass", "window", "lamp", "solar_cells", "glassgreen", "interior", "fibre", "plant", "plant2",
+         "regolith", "scorch", "charred", "ore", "basalt", "palerock", "rubber")
+
+def weather(col, strength=1.0):
+    """Dust, rust streaks, edge scratches and grime in the creases, added to every material of the collection
+    before baking (the bake keeps them in the diffuse texture). Dust settles low and on upward faces; rust
+    runs down from seams in vertical streaks; worn edges show brighter bare metal."""
+    done = set()
+    for o in col.objects:
+        if o.type != "MESH": continue
+        for m in o.data.materials:
+            if m is None or m.name in done or not m.use_nodes: continue
+            done.add(m.name)
+            if m.name.split(".")[0] in CLEAN: continue
+            nt = m.node_tree; b = nt.nodes.get("Principled BSDF")
+            if b is None: continue
+            bc = b.inputs["Base Color"]
+            if bc.is_linked: src = bc.links[0].from_socket
+            else:
+                rgb = nt.nodes.new("ShaderNodeRGB"); rgb.outputs[0].default_value = bc.default_value; src = rgb.outputs[0]
+            geo = nt.nodes.new("ShaderNodeNewGeometry")
+            sep = nt.nodes.new("ShaderNodeSeparateXYZ"); nt.links.new(geo.outputs["Position"], sep.inputs[0])
+            sepn = nt.nodes.new("ShaderNodeSeparateXYZ"); nt.links.new(geo.outputs["Normal"], sepn.inputs[0])
+            def math_(op, a, b_=None, v=None):
+                n = nt.nodes.new("ShaderNodeMath"); n.operation = op; n.use_clamp = op in ("MULTIPLY", "ADD", "SUBTRACT")
+                for i, x in enumerate((a, b_)):
+                    if x is None: continue
+                    if isinstance(x, (int, float)): n.inputs[i].default_value = x
+                    else: nt.links.new(x, n.inputs[i])
+                return n.outputs[0]
+            def noise(scale, sc=(1, 1, 1), detail=6):
+                mp = nt.nodes.new("ShaderNodeMapping"); mp.inputs["Scale"].default_value = sc
+                nt.links.new(geo.outputs["Position"], mp.inputs["Vector"])
+                t = nt.nodes.new("ShaderNodeTexNoise"); t.inputs["Scale"].default_value = scale; t.inputs["Detail"].default_value = detail
+                t.inputs["Roughness"].default_value = 0.65
+                nt.links.new(mp.outputs["Vector"], t.inputs["Vector"]); return t.outputs["Fac"]
+            def ramp_(fac, a, c):
+                r = nt.nodes.new("ShaderNodeMapRange"); r.inputs["From Min"].default_value = a; r.inputs["From Max"].default_value = c
+                nt.links.new(fac, r.inputs["Value"]); return r.outputs["Result"]
+            def mix_(fac, a, c, mode="MIX"):
+                mx = nt.nodes.new("ShaderNodeMix"); mx.data_type = "RGBA"; mx.blend_type = mode; mx.clamp_result = True
+                if isinstance(fac, (int, float)): mx.inputs["Factor"].default_value = fac
+                else: nt.links.new(fac, mx.inputs["Factor"])
+                for sock, v in ((6, a), (7, c)):
+                    if isinstance(v, tuple): mx.inputs[sock].default_value = (*v, 1)
+                    else: nt.links.new(v, mx.inputs[sock])
+                return mx.outputs[2]
+            # grime in the creases (ambient occlusion)
+            ao = nt.nodes.new("ShaderNodeAmbientOcclusion"); ao.inputs["Distance"].default_value = 0.25
+            grime = math_("SUBTRACT", 1.0, ao.outputs["AO"])
+            c = mix_(math_("MULTIPLY", grime, 0.75 * strength), src, (0.10, 0.07, 0.05), "MULTIPLY")
+            # rust: vertical streaks running down, patchy
+            streak = ramp_(noise(9.0, (1.0, 1.0, 0.12), 4), 0.5, 0.68)
+            patch = ramp_(noise(2.5), 0.38, 0.62)
+            rust = math_("MULTIPLY", math_("MULTIPLY", streak, patch), 0.8 * strength)
+            rustc = mix_(noise(30.0), (0.30, 0.13, 0.05), (0.52, 0.26, 0.10))
+            c = mix_(rust, c, rustc)
+            # scratches and worn edges: brighter bare material
+            edge = ramp_(geo.outputs["Pointiness"], 0.52, 0.62)
+            scratch = ramp_(noise(60.0, (1.0, 6.0, 1.0), 2), 0.62, 0.7)
+            wear = math_("MULTIPLY", math_("ADD", math_("MULTIPLY", edge, noise(14.0)), math_("MULTIPLY", scratch, 0.5)), 0.6 * strength)
+            c = mix_(wear, c, mix_(0.5, c, (0.72, 0.70, 0.66), "SCREEN"))
+            # dust: settles near the ground and on upward faces, in drifts
+            low = ramp_(sep.outputs[2], 1.2, 0.0)
+            up = ramp_(sepn.outputs[2], 0.4, 0.95)
+            drift = ramp_(noise(3.5), 0.35, 0.75)
+            dust = math_("MULTIPLY", math_("ADD", math_("MULTIPLY", low, 0.8), math_("MULTIPLY", up, 0.55)), drift)
+            c = mix_(math_("MULTIPLY", dust, 0.75 * strength), c, (0.58, 0.40, 0.28))
+            c = mix_(0.12 * strength, c, (0.50, 0.38, 0.30))       # a film of fine dust over everything
+            nt.links.new(c, bc)
+
 JOBS = [("pod", pod)]
 
 if __name__ == "__main__":
@@ -185,6 +257,7 @@ if __name__ == "__main__":
         bpy.ops.wm.read_factory_settings(use_empty=True)
         col = bpy.data.collections.new(name); bpy.context.scene.collection.children.link(col)
         sx, sy = fn(col)
+        weather(col)
         hv.finish(col, name, sx, sy, fit_w=sx, fit_d=sy, out_dir=OUT_DIR)
         if PREVIEW:
             hv.render_preview(os.path.join(OUT_DIR, f"_{name}_preview.png"))

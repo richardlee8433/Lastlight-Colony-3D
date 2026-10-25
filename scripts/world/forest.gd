@@ -66,7 +66,7 @@ static func tree_tint(id: int, kind: int) -> Color:
 	var r := RandomNumberGenerator.new(); r.seed = id * 7919 + 13
 	# alien flora: teal, violet and amber crowns; conifers in deep blue-teal
 	if kind == 1:
-		return Color(0.42, 0.52, 0.58).lerp(Color(0.36, 0.42, 0.48), r.randf())
+		return Color(0.36, 0.36, 0.40).lerp(Color(0.30, 0.28, 0.30), r.randf())     # dark, dust-grey spires and disc stacks
 	var teal := Color(0.40, 0.82, 0.76); var violet := Color(0.68, 0.48, 0.88); var amber := Color(0.98, 0.70, 0.40)
 	var pick := r.randf()
 	var base := teal if pick < 0.5 else (violet if pick < 0.82 else amber)

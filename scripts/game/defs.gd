@@ -69,14 +69,6 @@ const BUILDINGS := {
 			Rect2(-2.2, 0.6, 0.6, 0.7), Rect2(1.1, 0.8, 0.4, 0.4)],
 		"drop": Vector2(-0.8, 1.45), "door": Vector2(1.3, 1.75),
 	},
-	"fishery": {
-		"name": "Aqua harvester", "desc": "Built on the shore. The harvester nets the lake's native swimmers from the bank and carries them to storage; stocks thin out if the water is fished too hard",
-		"cost": {"wood": 20}, "size": 3, "build_time": 16, "on_shore": true,
-		"workers": 1, "yield": {"food": 5},
-		# the shed at the back, the drying rack and the net; the jetty reaches out over the water
-		"nav_block": [Rect2(-1.1, -1.5, 2.2, 1.15), Rect2(-1.15, 0.45, 0.95, 0.25), Rect2(0.5, 0.45, 0.7, 0.25), Rect2(0.05, -0.4, 0.5, 0.45)],
-		"job": {"anim": "fish", "tool": "Rod", "carry": "CarryFish", "hat": "HatCap", "target": "shore"},
-	},
 	"storehouse": {
 		"name": "Supply depot", "desc": "Colonists haul goods to the nearest storage. Build one near production to shorten trips",
 		"cost": {"wood": 30, "stone": 10}, "size": 3, "build_time": 24,
@@ -156,7 +148,7 @@ static func quads_overlap(a: PackedVector2Array, b: PackedVector2Array) -> bool:
 	return true
 
 ## build menu: building types plus the residential-zone brush ("zone")
-const BUILD_ORDER := ["woodcutter", "farm", "quarry", "zone", "storehouse", "fishery"]
+const BUILD_ORDER := ["woodcutter", "farm", "quarry", "zone", "storehouse"]
 const TOOLS := {
 	"zone": {"name": "Habitat zone", "desc": "Paint where colonists may live. When the colony needs beds and can pay, colonists assemble habs there themselves (each: Fibre 20, Ore 15)",
 		"label": "Paint area"},
@@ -176,17 +168,6 @@ const WATER := {
 	"level_below": 0.32,         # water surface below the original ground
 	"bridges": [Vector2(19.5, 1.0), Vector2(15.5, -14.0)],   # near these points the stream gets a bridge
 	"bridge_width": 0.9,         # half width of the walkable deck
-}
-
-## fishing: each water body (the pond, stretches of the stream) has a fish stock 0..1
-const FISHING := {
-	"catch": 6,                  # food per trip with a full stock
-	"deplete": 0.06,             # stock used by one catch
-	"regen_per_day": 0.22,       # stock that comes back per day
-	"scarce": 0.2,               # below this the fisher catches nothing
-	"huts_per_body": 2,
-	"range": 9.0,                # how far from the hut the fisher looks for a spot on the bank
-	"snap": 7.0,                 # the ghost snaps to water this close to the mouse
 }
 
 ## stone deposits: quarries can only be built on one of these (one quarry each)

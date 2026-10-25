@@ -251,7 +251,7 @@ func _build() -> void:
 		node.scale = Vector3(1, 1, b["half_len"] * 2.0 / 6.0)
 		add_child(node)
 
-# ---------------- pond life: reeds, lily pads, jumping fish ----------------
+# ---------------- lake life: alien reeds, float pads, gas bubbles ----------------
 
 var _jump_timer := 2.0
 var _fish_rng := RandomNumberGenerator.new()
@@ -394,7 +394,7 @@ func _process(delta: float) -> void:
 	_jump_timer -= delta * Game.speed
 	if _jump_timer > 0.0: return
 	_jump_timer = _fish_rng.randf_range(2.5, 6.0)
-	# a fish jumps somewhere in the pond or the stream
+	# gas from the lake bed: a bubble swells on the surface and pops (thin air, cold water)
 	var p: Vector2; var y: float
 	if _fish_rng.randf() < 0.5:
 		var pond: Dictionary = Defs.WATER["pond"]
@@ -406,25 +406,24 @@ func _process(delta: float) -> void:
 		var i := _fish_rng.randi_range(4, pts.size() - 5)
 		p = pts[i]; y = _levels[i]
 		if absf(p.x) > 33 or absf(p.y) > 33: return
-	jump_fish(Vector3(p.x, y, p.y), _fish_rng.randf() * TAU)
+	vent_bubble(Vector3(p.x, y, p.y))
 
-## A small fish arcs out of the water with a splash ring where it leaves and lands.
-func jump_fish(at: Vector3, heading: float) -> void:
-	var fish := MeshInstance3D.new()
-	var sm := SphereMesh.new(); sm.radius = 0.06; sm.height = 0.12
-	fish.mesh = sm
-	fish.scale = Vector3(0.6, 0.7, 2.0)
-	var fm := StandardMaterial3D.new(); fm.albedo_color = Color(0.72, 0.76, 0.78); fm.metallic = 0.6; fm.roughness = 0.3
-	fish.material_override = fm
-	add_child(fish)
-	var dir := Vector3(sin(heading), 0, cos(heading))
-	var len := 0.7
-	_splash(at)
-	var tw := fish.create_tween()
-	tw.tween_method(func(t: float):
-		fish.position = at + dir * (t * len) + Vector3(0, sin(t * PI) * 0.35, 0)
-		fish.basis = Basis.looking_at(dir + Vector3(0, cos(t * PI) * 0.9, 0), Vector3.UP).scaled(Vector3(0.6, 0.7, 2.0)), 0.0, 1.0, 0.55)
-	tw.tween_callback(func(): _splash(at + dir * len); fish.queue_free())
+## A gas bubble swells on the water and pops, leaving a ripple ring.
+func vent_bubble(at: Vector3) -> void:
+	var b := MeshInstance3D.new()
+	var sm := SphereMesh.new(); sm.radius = 0.1; sm.height = 0.1; sm.is_hemisphere = true
+	b.mesh = sm
+	var bm := StandardMaterial3D.new()
+	bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bm.albedo_color = Color(0.75, 0.85, 0.85, 0.35); bm.metallic = 0.4; bm.roughness = 0.05
+	b.material_override = bm
+	b.position = at
+	b.scale = Vector3(0.1, 0.1, 0.1)
+	add_child(b)
+	var size := _fish_rng.randf_range(0.8, 1.8)
+	var tw := b.create_tween()
+	tw.tween_property(b, "scale", Vector3(size, size * 0.8, size), _fish_rng.randf_range(0.8, 1.6)).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func(): _splash(at); b.queue_free())
 
 func _splash(at: Vector3) -> void:
 	var ring := MeshInstance3D.new()

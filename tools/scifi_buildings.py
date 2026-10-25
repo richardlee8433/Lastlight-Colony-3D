@@ -1,7 +1,7 @@
 """Hard sci-fi buildings for Lastlight Colony, baked like tools/scifi.py (which holds the shared materials).
 
 Run: python3 tools/scifi_buildings.py <models_dir> [preview] [name ...]
-Names: hab_0..hab_5 (-> houses/house_<i>.glb), storehouse, woodcutter, farmhouse, quarry, fishery,
+Names: hab_0..hab_5 (-> houses/house_<i>.glb), storehouse, woodcutter, farmhouse, quarry,
 site_0, site_1, deposit_0, deposit_1, bridge.
 All are built at game scale (1 unit = 1 m), centred on the footprint, front = -Y (Godot +Z); the layouts
 match the nav_block / door / drop / work spots in scripts/game/defs.gd.
@@ -438,54 +438,6 @@ def rig(col):
         hv.beam(col, (bx + 0.3, by - 0.6, 0.03 + k * 0.02), (0.9, 0.0 + k * 0.1, 0.03), 0.03, M["rubber"], 18 + k)
     return 4.0, 4.0
 
-# ---------------- aqua harvester (fishery) ----------------
-def aqua(col):
-    """Shore station: a prefab module at the back with a pump, a sorting rack (left), a net winch (right),
-    a metal jetty reaching forward over the water with an intake pipe. Game scale."""
-    M = mats_all((0.16, 0.42, 0.62)); rnd = random.Random(91)
-    W, D, H = 2.0, 1.05, 1.35; cy = 0.95; z0 = 0.12
-    hv.cube(col, (W + 0.1, D + 0.1, z0), (0, cy, z0 / 2), M["concrete"], bevel=0.02)
-    hv.cube(col, (W, D, H), (0, cy, z0 + H / 2), M["hull"], bevel=0.06)
-    hv.cube(col, (W + 0.06, D + 0.06, 0.08), (0, cy, z0 + H + 0.02), M["hull_dark"], bevel=0.02)
-    hv.cube(col, (W + 0.02, D + 0.02, 0.1), (0, cy, z0 + 0.95), M["accent"], bevel=0.01)
-    hv.cube(col, (0.42, 0.04, 0.82), (-0.45, cy - D / 2 - 0.01, z0 + 0.42), M["dark"], bevel=0.02)
-    for x in (0.25, 0.65):
-        hv.cube(col, (0.26, 0.04, 0.2), (x, cy - D / 2 - 0.01, z0 + 0.75), M["window"], bevel=0.01)
-    hv.cube(col, (0.06, 0.06, 0.06), (-0.15, cy - D / 2 - 0.03, z0 + 0.9), M["light"], bevel=0.01)
-    # roof: tank and antenna
-    tube(col, 0.18, (-0.6, cy + 0.1, z0 + H + 0.25), (0.4, cy + 0.1, z0 + H + 0.25), M["foil2"], 16)
-    hv.beam(col, (0.75, cy + 0.2, z0 + H), (0.75, cy + 0.2, z0 + H + 0.9), 0.035, M["metal"], 19)
-    # sorting rack with catch trays (left): x [-1.15, -0.2], y [-0.7, -0.45]
-    for x in (-1.08, -0.27):
-        hv.beam(col, (x, -0.58, 0), (x, -0.58, 0.95), 0.05, M["metal"], 20)
-    for z in (0.3, 0.62):
-        hv.cube(col, (0.85, 0.24, 0.04), (-0.67, -0.58, z), M["grating"], bevel=0.005)
-        for i in range(3):
-            hv.cube(col, (0.24, 0.2, 0.1), (-0.95 + i * 0.28, -0.58, z + 0.07), M["crate"], bevel=0.01)
-    # net winch (right): x [0.5, 1.2], y [-0.7, -0.45]
-    for x in (0.55, 1.15):
-        hv.cube(col, (0.06, 0.2, 0.55), (x, -0.58, 0.28), M["hull_dark"], bevel=0.01)
-    tube(col, 0.18, (0.6, -0.58, 0.45), (1.1, -0.58, 0.45), M["strap"], 16)
-    tube(col, 0.19, (0.6, -0.58, 0.45), (0.65, -0.58, 0.45), M["accent"], 16)
-    tube(col, 0.19, (1.05, -0.58, 0.45), (1.1, -0.58, 0.45), M["accent"], 16)
-    # pump unit and intake pipe along the jetty
-    hv.cube(col, (0.45, 0.4, 0.45), (0.3, 0.15, 0.23), M["accent"], bevel=0.04)
-    tube(col, 0.07, (0.3, -0.05, 0.3), (0.3, -0.9, 0.3), M["metal"], 12)
-    tube(col, 0.07, (0.3, -0.9, 0.3), (0.3, -2.5, 0.28), M["metal"], 12)
-    tube(col, 0.07, (0.3, -2.5, 0.28), (0.3, -2.6, -0.4), M["metal"], 12)
-    tube(col, 0.07, (0.3, 0.32, 0.3), (0.3, 0.42, 0.6), M["metal"], 12)
-    # jetty: grating panels on posts
-    for k in range(4):
-        y = -1.15 - k * 0.42
-        hv.cube(col, (0.66, 0.4, 0.05), (0.0, y, 0.2), M["grating"], bevel=0.005)
-    for y in (-1.0, -1.85, -2.6):
-        for x in (-0.3, 0.3):
-            hv.beam(col, (x, y, -0.55), (x, y, 0.2), 0.06, M["metal"], 21)
-    for x in (-0.34, 0.34):
-        hv.beam(col, (x, -0.95, 0.22), (x, -2.75, 0.22), 0.04, M["accent"], 22)
-    hv.beam(col, (-0.34, -2.7, 0.2), (-0.34, -2.7, 0.75), 0.04, M["metal"], 23)
-    hv.cube(col, (0.08, 0.08, 0.08), (-0.34, -2.7, 0.78), M["light"], bevel=0.01)
-    return 2.6, 3.6
 
 # ---------------- construction sites ----------------
 def site(col, stage):
@@ -605,7 +557,7 @@ def bridge(col):
 
 JOBS = [(f"hab_{k}", (lambda kk: (lambda c: hab(c, kk)))(k), f"houses/house_{k}") for k in range(6)] + [
     ("storehouse", depot, "storehouse"), ("woodcutter", harvester, "woodcutter"), ("farmhouse", agri, "farmhouse"),
-    ("quarry", rig, "quarry"), ("fishery", aqua, "fishery"),
+    ("quarry", rig, "quarry"),
     ("site_0", lambda c: site(c, 0), "site_0"), ("site_1", lambda c: site(c, 1), "site_1"),
     ("deposit_0", lambda c: deposit(c, 0), "deposit_0"), ("deposit_1", lambda c: deposit(c, 1), "deposit_1"),
     ("bridge", bridge, "bridge"),
@@ -621,6 +573,7 @@ if __name__ == "__main__":
         base = os.path.basename(out)
         # fit = own size -> scale 1 (everything is modelled at game scale)
         big = 1000.0
+        sf.weather(col, 0.8 if name.startswith("site") else 1.0)
         hv.finish(col, base, big, big, fit_w=big, fit_d=big, out_dir=od)
         if PREVIEW:
             hv.render_preview(os.path.join(OUT_DIR, f"_{name}_preview.png"))

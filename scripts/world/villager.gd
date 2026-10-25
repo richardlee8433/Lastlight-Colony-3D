@@ -397,7 +397,7 @@ func _start_wander(delay: float) -> void:
 		state = S.IDLE; _timer = delay; _anim = "idle"; return
 	if _rng.randf() < 0.18:
 		# now and then a stroll down to the water to look at it for a while
-		var spot := Fishing.shore_near(nav, home, 16.0, _rng)
+		var spot := Shore.near(nav, home, 16.0, _rng)
 		if not spot.is_empty():
 			_look = nav.on_ground(spot["look"])
 			_go(nav.on_ground(spot["pos"]), S.WANDER)

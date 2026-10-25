@@ -16,7 +16,7 @@
 [ext_resource type="Script" path="res://scripts/world/deposits.gd" id="16_deposits"]
 [ext_resource type="Script" path="res://scripts/world/clutter.gd" id="17_clutter"]
 [ext_resource type="Script" path="res://scripts/world/water.gd" id="18_water"]
-[ext_resource type="Script" path="res://scripts/world/fishing.gd" id="19_fishing"]
+[ext_resource type="Script" path="res://scripts/world/shore.gd" id="19_fishing"]
 [ext_resource type="Shader" path="res://scripts/world/alien_sky.gdshader" id="20_sky"]
 
 [sub_resource type="ShaderMaterial" id="sky_mat"]
@@ -112,7 +112,7 @@ script = ExtResource("17_clutter")
 [node name="Water" type="Node3D" parent="."]
 script = ExtResource("18_water")
 
-[node name="Fishing" type="Node" parent="."]
+[node name="Shore" type="Node" parent="."]
 script = ExtResource("19_fishing")
 
 [node name="HUD" type="CanvasLayer" parent="."]

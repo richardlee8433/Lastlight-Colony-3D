@@ -120,4 +120,5 @@ for name in NAMES:
     M = sb.mats_all(sb.ACCENTS[NAMES.index(name) % len(sb.ACCENTS)])
     sx, sy = build(name, col, M)
     hv.TEX = 512
+    sf.weather(col, 0.9)
     hv.finish(col, name, sx, sy, fit_w=sx, fit_d=sy, out_dir=OUT_DIR)
