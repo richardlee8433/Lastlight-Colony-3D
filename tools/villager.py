@@ -234,27 +234,32 @@ obj("Beard0", beard, "hair", head)                                              
 obj("Beard1", merge(sphere(0.03, (0.022, 0.142, 0.085), (1.3, 0.6, 0.6), 8, 6),
                     sphere(0.03, (-0.022, 0.142, 0.085), (1.3, 0.6, 0.6), 8, 6)), "hair", head)     # moustache
 
-# headwear (jobs) and a kerchief (personal)
-straw = merge(cyl(0.24, 0.23, 0.0, 0.012, 24), delete_verts(sphere(0.14, (0, 0, 0.0), (1, 1, 0.8), 18, 10), lambda c: c.z < 0.0),
-              ring(0.142, 0.02, 1.0, 0.014, 18))
-obj("HatStraw", straw, "straw", head, (0, -0.005, 0.222))
-cap = merge(delete_verts(sphere(0.17, (0, 0, 0.0), (1, 1, 0.8), 18, 10), lambda c: c.z < 0.0),
-            cyl(0.185, 0.185, -0.005, 0.012, 20), box((0.03, 0.2, 0.03), (0, 0.0, 0.135), 0.008))
-hatcap = obj("HatCap", cap, "cloth", head, (0, -0.01, 0.18))
-obj("CapLamp", cyl(0.03, 0.03, 0.0, 0.03, 10, "Y", (0, 0.18, 0.055)), "white", hatcap)
-hood = delete_verts(sphere(0.185, (0, -0.01, 0.14), (1, 1.05, 1.05), 20, 14),
-                    lambda c: c.y > 0.08 and c.z < 0.21 and c.z > 0.04)
-hood = merge(hood, lathe([(-0.06, 0.165), (0.0, 0.13)], 18, sy=0.85))
-visor = delete_verts(sphere(0.19, (0, 0.0, 0.135), (0.95, 1.05, 0.9), 20, 14), lambda c: c.y < 0.07 or c.z > 0.23 or c.z < 0.03)
-hood_o = obj("Hood", hood, "cloth", head, (0, 0, 0.0))
-obj("HoodVisor", visor, "visor", hood_o)
-kerchief = merge(cyl(0.035, 0.035, -0.02, 0.02, 12, "X", (0.15, 0.0, 0.13)), cyl(0.035, 0.035, -0.02, 0.02, 12, "X", (-0.15, 0.0, 0.13)),
-                 box((0.012, 0.09, 0.012), (0.155, 0.06, 0.09), 0.004), sphere(0.012, (0.15, 0.11, 0.075), (1, 1, 1), 6, 5))
-band = ring(0.158, 0.0, 1.0, 0.01, 18)
-bmesh.ops.rotate(band, verts=band.verts, cent=(0, 0, 0), matrix=Matrix.Rotation(math.pi / 2, 3, "Y"))
-bmesh.ops.translate(band, verts=band.verts, vec=Vector((0, -0.005, 0.15)))
-delete_verts(band, lambda c: c.z < 0.17)
-kerchief = merge(kerchief, band)
+# space helmet (everyone): a hard shell with ear pods and a wide visor opening, a glass bubble over the face
+# (made transparent in Godot), and a neck ring on the suit. Head centre is (0, 0, 0.135) in head space.
+HC = (0, 0.0, 0.135)
+shell = sphere(0.205, (0, -0.012, 0.135), (1.0, 1.0, 1.02), 24, 16)
+delete_verts(shell, lambda c: c.y > 0.035 and 0.03 < c.z < 0.265 and abs(c.x) < 0.172)
+shell = merge(shell, cyl(0.055, 0.055, -0.035, 0.035, 14, "X", (0.2, -0.01, 0.15)), cyl(0.055, 0.055, -0.035, 0.035, 14, "X", (-0.2, -0.01, 0.15)),
+              ring(0.2, 0.025, 0.98, 0.022, 24))
+helmet = obj("Helmet", shell, "case", head)
+glass = sphere(0.198, HC, (0.98, 1.0, 1.0), 24, 16)
+delete_verts(glass, lambda c: c.y < 0.03 or c.z > 0.272 or c.z < 0.025)
+obj("HelmetGlass", glass, "visor", helmet)
+obj("HelmetRing", merge(ring(0.105, 0.43, 0.9, 0.03, 20), ring(0.118, 0.405, 0.9, 0.012, 20)), "metal", torso)
+# job attachments on the helmet
+straw = sphere(0.222, (0, -0.012, 0.135), (1.02, 1.08, 1.0), 22, 14)
+delete_verts(straw, lambda c: c.z < 0.255 or c.y < -0.06)
+straw = merge(straw, cyl(0.006, 0.004, 0.25, 0.55, 5, "Z", (-0.12, -0.08, 0.0)), sphere(0.014, (-0.12, -0.08, 0.55), (1, 1, 1), 6, 5))
+obj("HatStraw", straw, "straw", head)                                                               # sun-shade peak + whip antenna
+cap = merge(box((0.05, 0.07, 0.05), (0.15, 0.1, 0.27), 0.01), box((0.05, 0.07, 0.05), (-0.15, 0.1, 0.27), 0.01),
+            box((0.04, 0.3, 0.035), (0, -0.02, 0.345), 0.01))
+hatcap = obj("HatCap", cap, "cloth", head)                                                          # lamp housings + crest
+obj("CapLamp", merge(cyl(0.022, 0.022, 0.0, 0.012, 10, "Y", (0.15, 0.135, 0.27)), cyl(0.022, 0.022, 0.0, 0.012, 10, "Y", (-0.15, 0.135, 0.27))), "white", hatcap)
+hood = sphere(0.207, HC, (0.99, 1.01, 1.01), 24, 16)
+delete_verts(hood, lambda c: c.y < 0.03 or c.z > 0.275 or c.z < 0.08)
+obj("Hood", hood, "visor", head)                                                                    # gold sun visor pulled down
+# personal: a comm antenna on the helmet side
+kerchief = merge(box((0.03, 0.05, 0.04), (0.235, -0.04, 0.2), 0.008), cyl(0.005, 0.003, 0.2, 0.42, 5, "Z", (0.24, -0.05, 0.0)))
 obj("Kerchief", kerchief, "kerchief", head)
 
 # arms (pivot at the shoulder): sleeve with a cuff, hand with a thumb
@@ -309,7 +314,7 @@ print("exported", glb)
 if PREVIEW:
     # lineup of variants for a quick look (posed copies)
     hide = {"Hair1", "Hair2", "Hair3", "Hair4", "Hair5", "Hair6", "Beard0", "Skirt", "SkirtTrim", "Vest", "Hair0",
-            "HatStraw", "Hood", "Axe", "Pick", "Hoe", "CarryLog", "CarryStone", "CarrySack"}
+            "HatStraw", "Hood", "HatCap", "Axe", "Pick", "Hoe", "CarryLog", "CarryStone", "CarrySack"}
     for o in scene.objects:
         p = o
         while p is not None:

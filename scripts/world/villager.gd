@@ -7,8 +7,11 @@ const MODEL := preload("res://models/villager.glb")
 
 const SKIN := [Color(0.95, 0.78, 0.64), Color(0.88, 0.67, 0.52), Color(0.74, 0.54, 0.40), Color(0.56, 0.39, 0.28)]
 ## colony jumpsuits: survey orange, hull white, slate, olive, ochre, teal (the legs match the suit)
-const TUNIC := [Color(0.86, 0.42, 0.14), Color(0.84, 0.84, 0.80), Color(0.30, 0.36, 0.46), Color(0.40, 0.44, 0.32),
-	Color(0.78, 0.62, 0.22), Color(0.20, 0.46, 0.48), Color(0.62, 0.64, 0.66), Color(0.56, 0.22, 0.20)]
+## pressure suits: mostly white and pale grey, some in survey orange; the trims carry a crew colour
+const TUNIC := [Color(0.88, 0.88, 0.85), Color(0.92, 0.91, 0.88), Color(0.80, 0.81, 0.80), Color(0.72, 0.73, 0.74),
+	Color(0.88, 0.48, 0.18), Color(0.86, 0.86, 0.80)]
+const CREW := [Color(0.86, 0.42, 0.14), Color(0.20, 0.46, 0.60), Color(0.78, 0.62, 0.22), Color(0.20, 0.50, 0.46),
+	Color(0.62, 0.22, 0.22), Color(0.36, 0.30, 0.56)]
 const PANTS := [Color(0.22, 0.23, 0.25), Color(0.30, 0.31, 0.33)]
 const HAIR := [Color(0.20, 0.12, 0.06), Color(0.36, 0.22, 0.10), Color(0.09, 0.07, 0.06), Color(0.66, 0.50, 0.25), Color(0.55, 0.24, 0.10)]
 const HOODS := [Color(0.88, 0.88, 0.85), Color(0.90, 0.62, 0.12), Color(0.86, 0.40, 0.12)]
@@ -97,35 +100,37 @@ func _build_model() -> void:
 
 ## A look per villager: hair, beard, skirt or tunic, apron / vest / satchel, kerchief, colours, build.
 func _pick_look() -> void:
-	var hair_i := _rng.randi_range(0, 6)
+	var hair_i: int = [0, 0, 1, 5, 5, 6][_rng.randi() % 6]     # styles that fit inside the helmet
 	var hair := "Hair%d" % hair_i
 	_show(hair); _toggles["_hair"] = _toggles.get(hair)
-	var long_hair := hair_i in [1, 2, 3, 4]
-	# beards for some short-haired villagers
-	if not long_hair and _rng.randf() < 0.45: _show("Beard0" if _rng.randf() < 0.55 else "Beard1")
+	if hair_i != 1 and _rng.randf() < 0.3: _show("Beard1")    # moustaches only: full beards fill the visor
 	_skirt = false                     # jumpsuits all round
 	if _skirt: _show("Skirt"); _show("SkirtTrim")
 	else: _show("Hem"); _show("HemTrim")
 	var layer := _rng.randf()
 	if layer < 0.32: _show("Apron")
 	elif layer < 0.58: _show("Vest")
-	if _rng.randf() < 0.7: _show("Satchel")          # life-support pack
-	_kerchief = _rng.randf() < 0.5                   # comm headset
+	_show("Satchel")                                  # everyone carries a life-support pack
+	_kerchief = _rng.randf() < 0.5                   # comm antenna on the helmet
 	if _kerchief: _show("Kerchief")
 	var skin: Color = SKIN[_rng.randi() % SKIN.size()]
 	var tunic: Color = TUNIC[_rng.randi() % TUNIC.size()]
-	var pants: Color = tunic.darkened(0.12) if _rng.randf() < 0.7 else PANTS[_rng.randi() % PANTS.size()]
+	var pants: Color = tunic.darkened(0.08)
 	var hair_c: Color = HAIR[_rng.randi() % HAIR.size()]
 	if hair_i == 6 or _rng.randf() < 0.1: hair_c = Color(0.62, 0.60, 0.57)        # some grey-haired elders
 	var hood_c: Color = HOODS[_rng.randi() % HOODS.size()]
-	var trim: Color = Color(0.16, 0.17, 0.19) if _rng.randf() < 0.6 else tunic.darkened(0.45)
-	_tint(["Head", "Neck", "Nose", "EarL", "EarR", "HandL", "HandR"], skin)
+	var trim: Color = CREW[_rng.randi() % CREW.size()]
+	_tint(["Head", "Neck", "Nose", "EarL", "EarR"], skin)
+	_tint(["HandL", "HandR"], Color(0.30, 0.31, 0.33))               # gloves
+	_tint(["Helmet"], tunic.lerp(Color(0.95, 0.95, 0.93), 0.6))
+	_glass(["HelmetGlass"], Color(0.55, 0.75, 0.85, 0.16), 0.2)
+	_glass(["Hood"], Color(0.85, 0.62, 0.22, 0.92), 0.9)              # gold sun visor (harvesters)
 	_tint(["Torso", "ArmL", "ArmR", "Hem"], tunic, true)
 	_tint(["Satchel"], Color(0.82, 0.83, 0.80))
 	_tint(["HemTrim", "SkirtTrim", "Collar", "CuffL", "CuffR"], trim, true)
 	_tint(["LegL", "LegR"], pants, true)
 	_tint(["Hair0", "Hair1", "Hair2", "Hair3", "Hair4", "Hair5", "Hair6", "Beard0", "Beard1", "BrowL", "BrowR"], hair_c)
-	_tint(["Hood", "HatCap"], hood_c, true)
+	_tint(["HatCap"], hood_c, true)
 	_tint(["Skirt"], SKIRTS[_rng.randi() % SKIRTS.size()], true)
 	_tint(["Apron"], APRONS[_rng.randi() % APRONS.size()], true)
 	_tint(["Vest"], VESTS[_rng.randi() % VESTS.size()], true)
@@ -135,6 +140,22 @@ func _pick_look() -> void:
 	var h := _rng.randf_range(0.92, 1.07)
 	var w := h * _rng.randf_range(0.92, 1.1)
 	_model.scale = Vector3(w, h, w)
+
+## glossy see-through material for helmet glass / sun visors
+func _glass(names: Array, c: Color, metal: float) -> void:
+	var key := "glass" + c.to_html()
+	if not _mat_cache.has(key):
+		var m := StandardMaterial3D.new()
+		m.albedo_color = c
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.metallic = metal; m.roughness = 0.05; m.metallic_specular = 0.9
+		m.cull_mode = BaseMaterial3D.CULL_BACK
+		_mat_cache[key] = m
+	for n in names:
+		var mi := _model.find_child(n, true, false) as MeshInstance3D
+		if mi:
+			mi.material_override = _mat_cache[key]
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 func _show(n: String) -> void:
 	if _toggles.has(n): (_toggles[n] as Node3D).visible = true
@@ -175,9 +196,7 @@ func set_outfit(job: Dictionary) -> void:
 	for n in ["HatStraw", "HatCap", "Hood", "Axe", "Pick", "Hoe", "Rod"]:
 		_toggles[n].visible = false
 	var hat: String = job.get("hat", "")
-	if _toggles.get("_hair"): (_toggles["_hair"] as Node3D).visible = hat != "Hood"
-	# a work hat replaces the kerchief
-	if _toggles.has("Kerchief"): (_toggles["Kerchief"] as Node3D).visible = _kerchief and hat == ""
+	if _toggles.has("Kerchief"): (_toggles["Kerchief"] as Node3D).visible = _kerchief
 	if hat != "": _toggles[hat].visible = true
 
 func _show_tool(on: bool) -> void:

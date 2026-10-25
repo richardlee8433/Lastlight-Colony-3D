@@ -266,7 +266,7 @@ static func _reed_mesh() -> ArrayMesh:
 		var h := rng.randf_range(0.7, 1.25)
 		var lean := Vector3(rng.randf_range(-0.12, 0.12), 0, rng.randf_range(-0.12, 0.12))
 		var side := Vector3(-sin(a), 0, cos(a)) * 0.022
-		var lo := Color(0.30, 0.42, 0.16); var hi := Color(0.58, 0.66, 0.30)
+		var lo := Color(0.22, 0.20, 0.26); var hi := Color(0.62, 0.58, 0.70)      # pale alien stalks
 		for tri in [[base - side, base + side, base + lean + Vector3(0, h, 0)]]:
 			st.set_color(lo); st.add_vertex(tri[0])
 			st.set_color(lo); st.add_vertex(tri[1])
@@ -274,7 +274,7 @@ static func _reed_mesh() -> ArrayMesh:
 		if k % 3 == 0:
 			# a cattail head on some stems
 			var top := base + lean * 0.8 + Vector3(0, h * 0.8, 0)
-			var brown := Color(0.36, 0.22, 0.12)
+			var brown := Color(0.45, 0.95, 0.85)                  # glowing seed heads
 			for j in 6:
 				var a0 := j / 6.0 * TAU; var a1 := (j + 1) / 6.0 * TAU
 				var p0 := top + Vector3(cos(a0), 0, sin(a0)) * 0.03; var p1 := top + Vector3(cos(a1), 0, sin(a1)) * 0.03
@@ -287,7 +287,7 @@ static func _reed_mesh() -> ArrayMesh:
 static func _lily_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var g := Color(0.26, 0.45, 0.16)
+	var g := Color(0.16, 0.36, 0.40)                          # teal float pads
 	for k in 14:
 		var a0 := 0.35 + k / 14.0 * (TAU - 0.35); var a1 := 0.35 + (k + 1) / 14.0 * (TAU - 0.35)
 		st.set_color(g.lightened(0.15)); st.add_vertex(Vector3.ZERO)
@@ -305,7 +305,7 @@ static func _flower_mesh() -> ArrayMesh:
 		var l := Vector3(cos(a - 0.4) * 0.025, 0.01, sin(a - 0.4) * 0.025)
 		var r := Vector3(cos(a + 0.4) * 0.025, 0.01, sin(a + 0.4) * 0.025)
 		for v in [Vector3(0, 0.02, 0), r, tip, Vector3(0, 0.02, 0), tip, l]:
-			st.set_color(Color(0.98, 0.86, 0.9)); st.add_vertex(v)
+			st.set_color(Color(0.62, 1.0, 0.92)); st.add_vertex(v)
 	st.generate_normals()
 	return st.commit()
 

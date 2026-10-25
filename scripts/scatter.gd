@@ -5,9 +5,9 @@ extends Node3D
 ## Instances are hidden under buildings / fields and flattened where villagers wear a road.
 
 const KINDS := {
-	"tuft": {"model": "res://models/tuft.glb", "tint": true, "per_m2": 16.0, "scale": Vector2(0.5, 1.15)},
-	"flower_petal_v": {"model": "res://models/crystal_a.glb", "tint": false, "per_m2": 1.6, "scale": Vector2(0.7, 1.5)},
-	"flower_petal_w": {"model": "res://models/crystal_b.glb", "tint": false, "per_m2": 1.0, "scale": Vector2(0.7, 1.4)},
+	"tuft": {"model": "res://models/tuft.glb", "tint": true, "per_m2": 10.0, "scale": Vector2(0.5, 1.15)},
+	"flower_petal_v": {"model": "res://models/crystal_a.glb", "tint": false, "per_m2": 1.2, "scale": Vector2(0.7, 1.5)},
+	"flower_petal_w": {"model": "res://models/crystal_b.glb", "tint": false, "per_m2": 0.7, "scale": Vector2(0.7, 1.4)},
 }
 const TUFT_SHADER := preload("res://scripts/world/grass_tuft.gdshader")
 const CHUNK := 8.0                       # metres
@@ -125,6 +125,10 @@ func _grow_chunk(key: Vector2i) -> void:
 				if m < 0.12 or rng.randf() > (m - 0.12) * 2.4: continue
 			if _nav and _nav.scenery_at(Vector2(x, z)) and not outside: continue
 			if Water.sample(Vector2(x, z)).y > 0.35: continue                   # no grass in the water or on wet banks
+			if not flower:
+				# barren regolith: lichen only grows in patches, thickest where the ground is "lush"
+				var patch := Meadow.sample(x, z)
+				if rng.randf() > smoothstep(0.48, 0.85, patch): continue
 			var y: float = _nav.height_at(clampf(x, -map_half + 0.1, map_half - 0.1), clampf(z, -map_half + 0.1, map_half - 0.1)) if _nav else 0.0
 			var lush := Meadow.sample(x, z)
 			var s := rng.randf_range(cfg["scale"].x, cfg["scale"].y)

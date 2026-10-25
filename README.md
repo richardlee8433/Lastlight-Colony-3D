@@ -21,9 +21,9 @@ Open Godot, choose **Import**, and select `project.godot`. Wait for the first as
 | Language | English by default; "中文" / "English" in the top-right switches (remembered in `user://settings.cfg`) |
 
 ## Setting
-- **The world**: rust regolith with lilac lichen instead of grass, glowing cyan and violet crystal clusters, teal / violet / amber alien trees, a dusty butterscotch sky with daytime stars, and a banded gas giant with a ring hanging over the horizon (`scripts/world/alien_sky.gdshader`).
+- **The world**: barren rust regolith with lichen only in scattered patches, basalt boulders, glowing cyan and violet crystal clusters, and alien flora (`tools/flora.py`, `scripts/world/alien_flora.gdshader`): umbrella fungi with glowing spore bulbs, tube clusters, frond stalks, twisted spires and disc stacks. A thin, dark sky with daytime stars, a small cratered moon and a banded, ringed gas giant over the dusty horizon (`scripts/world/alien_sky.gdshader`).
 - **Opening**: three survivors stand by their **crashed escape pod** — scorched crater, parachute, supply cases, an antenna mast with a blinking beacon, a solar array, and a portable heater with four thermal blankets. The pod is temporary storage (Fibre 60, Ore 20, Food 40) and sleeps 4; it can't be demolished.
-- **Colonists**: jumpsuits in survey orange, hull white, slate, olive, ochre and teal; life-support packs, chest rigs, comm headsets. Job gear: helmet with visor + cutter (harvester), sun-visor hat + soil probe (agronomist), hard hat with lamp + drill (miner), hard hat + pole (aqua harvester).
+- **Colonists**: everyone wears a pressure suit — white, pale grey or survey orange with crew-colour trims, gloves, boots, a life-support pack and a helmet with a glass visor (some carry a comm antenna). Job gear: gold sun visor + cutter (harvester), sun-shade peak + soil probe (agronomist), helmet lamps + drill (miner), helmet lamps + pole (aqua harvester).
 
 ## Gameplay
 - **Resources**: fibre, ore, food. **Resources only count once a colonist carries them into storage.** After each work session the worker carries one load (fibre bale, ore chunk, food case) to the **nearest storage**, so distance matters. The resource bar shows yesterday's deliveries.
@@ -69,6 +69,6 @@ python3 tools/scifi_buildings.py models       # habs (models/houses/), depot, ha
 python3 tools/scifi_props.py models           # colony props → models/props/
 python3 tools/crystals.py models              # crystal clusters
 python3 tools/villager.py models              # colonist model (add "preview" for a preview image)
-python3 tools/leaf_textures.py models/trees && python3 tools/trees.py models   # alien trees
+python3 tools/flora.py models                 # alien flora → models/trees/ (add "preview" for preview images)
 ```
 Add `preview` to the Blender scripts to render a preview image of each model.

@@ -19,6 +19,8 @@ const MODELS := {
 }
 const STUMPS := {0: "res://models/trees/stump_broadleaf.glb", 1: "res://models/trees/stump_pine.glb"}
 const FOLIAGE_SHADER := preload("res://scripts/world/foliage.gdshader")
+const FLORA_SHADER := preload("res://scripts/world/alien_flora.gdshader")
+const BORDER_SKIP := 0.7                  # share of the border flora left out: barren land beyond the map
 const LEAF_TEX := {"leaves_broad": "res://models/trees/leaf_broad.png", "leaves_pine": "res://models/trees/leaf_pine.png"}
 
 static var _mesh_cache := {}              # model path -> Mesh with the foliage shader on its leaf cards
@@ -36,7 +38,13 @@ static func tree_mesh(path: String) -> Mesh:
 		var key := ""
 		for k in LEAF_TEX:
 			if m and m.resource_name.begins_with(k): key = k
-		if key != "":
+		if m and m.resource_name.begins_with("flora"):
+			# alien flora (tools/flora.py): tinted per plant, glowing parts on "flora_glow"
+			var fm := ShaderMaterial.new()
+			fm.shader = FLORA_SHADER
+			fm.set_shader_parameter("glow", 2.2 if m.resource_name.begins_with("flora_glow") else 0.0)
+			mesh.surface_set_material(i, fm)
+		elif key != "":
 			var sm := ShaderMaterial.new()
 			sm.shader = FOLIAGE_SHADER
 			sm.set_shader_parameter("leaf_tex", load(LEAF_TEX[key]))
@@ -62,7 +70,8 @@ static func tree_tint(id: int, kind: int) -> Color:
 	var teal := Color(0.40, 0.82, 0.76); var violet := Color(0.68, 0.48, 0.88); var amber := Color(0.98, 0.70, 0.40)
 	var pick := r.randf()
 	var base := teal if pick < 0.5 else (violet if pick < 0.82 else amber)
-	return base.darkened(r.randf_range(0.0, 0.18)).lerp(Color(1, 1, 1), r.randf_range(0.0, 0.08))
+	# dusty and sun-bleached: pulled towards grey so the flora reads as hardy, not candy-coloured
+	return base.lerp(Color(0.56, 0.52, 0.54), 0.38).darkened(r.randf_range(0.0, 0.2))
 
 var owner_map := PackedInt32Array()       # cell -> woodcutter id (0 = none)
 var editing := -1                         # woodcutter whose area is being painted
@@ -457,6 +466,7 @@ func _build_border() -> void:
 	for i in nav.border_data.size():
 		var r: Array = nav.border_data[i]
 		if Water.sample(Vector2(r[0], r[1])).y > 0.3: continue
+		if rng.randf() < BORDER_SKIP: continue
 		var kind: int = int(r[2])
 		var path: String = MODELS[kind][i % MODELS[kind].size()]
 		var s: float = float(r[3]) / BASE_H
