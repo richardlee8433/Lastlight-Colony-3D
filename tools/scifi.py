@@ -249,6 +249,51 @@ def weather(col, strength=1.0):
             c = mix_(0.12 * strength, c, (0.50, 0.38, 0.30))       # a film of fine dust over everything
             nt.links.new(c, bc)
 
+# ---------------- export with night lights ----------------
+GLOW_KINDS = {"window": "glow_window", "lamp": "glow_lamp", "glassgreen": "glow_grow"}
+
+def finish_glow(col, name, out_dir):
+    """Like hv.finish (at game scale), but surfaces made of window / lamp / grow-glass materials are kept
+    out of the bake as a separate "Glow" mesh with materials named glow_* — the game makes them light up
+    at night (scripts/world/day_night.gd). Everything else is joined and baked as usual."""
+    glow = []
+    for o in list(col.objects):
+        if o.type != "MESH" or not o.data.materials: continue
+        m = o.data.materials[0]
+        key = m.name.split(".")[0] if m else ""
+        if key in GLOW_KINDS:
+            glow.append((o, GLOW_KINDS[key]))
+    gcol = bpy.data.collections.new("glow"); bpy.context.scene.collection.children.link(gcol)
+    gm = {}
+    for o, kind in glow:
+        col.objects.unlink(o); gcol.objects.link(o)
+        if kind not in gm: gm[kind] = hv.mat_flat(kind, (0.5, 0.5, 0.5), 0.4)
+        o.data.materials.clear(); o.data.materials.append(gm[kind])
+    bpy.ops.object.select_all(action="DESELECT")
+    objs = [o for o in col.objects if o.type == "MESH"]
+    for o in objs: o.select_set(True)
+    bpy.context.view_layer.objects.active = objs[0]
+    bpy.ops.object.convert(target="MESH"); bpy.ops.object.join()
+    obj = bpy.context.object; obj.name = name
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    hv.bake(obj, name)
+    gobj = None
+    if glow:
+        bpy.ops.object.select_all(action="DESELECT")
+        for o, _ in glow: o.select_set(True)
+        bpy.context.view_layer.objects.active = glow[0][0]
+        bpy.ops.object.convert(target="MESH"); bpy.ops.object.join()
+        gobj = bpy.context.object; gobj.name = "Glow"
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    bpy.ops.object.select_all(action="DESELECT"); obj.select_set(True)
+    if gobj: gobj.select_set(True)
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, f"{name}.glb")
+    bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True,
+                              export_apply=True, export_image_format="JPEG", export_jpeg_quality=82)
+    print(f"exported {name}  faces {len(obj.data.polygons)}  glow parts {len(glow)}")
+    return path
+
 JOBS = [("pod", pod)]
 
 if __name__ == "__main__":
@@ -258,6 +303,6 @@ if __name__ == "__main__":
         col = bpy.data.collections.new(name); bpy.context.scene.collection.children.link(col)
         sx, sy = fn(col)
         weather(col)
-        hv.finish(col, name, sx, sy, fit_w=sx, fit_d=sy, out_dir=OUT_DIR)
+        finish_glow(col, name, OUT_DIR)
         if PREVIEW:
             hv.render_preview(os.path.join(OUT_DIR, f"_{name}_preview.png"))

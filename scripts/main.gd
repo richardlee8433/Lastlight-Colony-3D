@@ -6,10 +6,7 @@ func _ready() -> void:
 	if f == null:
 		return
 	var info: Dictionary = JSON.parse_string(f.get_as_text())
-	var d: Array = info.get("sun_dir", [0.3, -0.7, 0.4])
-	var dir := Vector3(d[0], d[1], d[2]).normalized()
-	var sun := $Sun as DirectionalLight3D
-	sun.look_at_from_position(-dir * 30.0, Vector3.ZERO, Vector3.UP)
+	# the sun is moved by DayNight now (it starts where data/scene.json used to put it)
 	_use_vertex_colors($Nature)
 
 ## Foliage colours are baked into vertex colours; make sure the material uses them.

@@ -243,6 +243,7 @@ func _build() -> void:
 		var node: Node3D
 		if ResourceLoader.exists(BRIDGE_MODEL):
 			node = (load(BRIDGE_MODEL) as PackedScene).instantiate()
+			DayNight.dress(node)
 		else:
 			var mi := MeshInstance3D.new(); var bm := BoxMesh.new(); bm.size = Vector3(1.8, 0.12, 6.0); mi.mesh = bm; node = mi
 		var d: Vector2 = b["dir"]

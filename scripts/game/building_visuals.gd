@@ -75,7 +75,23 @@ static func create(type: String, seed_val: int, stage := 2) -> Node3D:
 		"farm": _farm(root, rng)
 		"storehouse": _storehouse(root, rng)
 		"cart": _cart(root, rng)
+	# night: windows, lamps and grow lights glow; a small light spills onto the ground in front
+	DayNight.dress(root)
+	var front: float = Defs.half_extents(type).y + 0.4
+	if NIGHT_LIGHT.has(type):
+		var nl: Array = NIGHT_LIGHT[type]
+		DayNight.add_light(root, Vector3(0.0, nl[0], front), nl[1], nl[2], nl[3])
 	return root
+
+## per building type: [light height, energy, range, colour] of its night light
+const NIGHT_LIGHT := {
+	"house": [1.3, 0.7, 3.5, Color(1.0, 0.78, 0.5)],
+	"storehouse": [1.5, 1.0, 5.0, Color(0.9, 0.95, 1.0)],
+	"woodcutter": [1.4, 0.8, 4.0, Color(0.9, 0.95, 1.0)],
+	"farm": [1.2, 0.8, 4.5, Color(0.95, 0.5, 0.95)],
+	"quarry": [2.2, 1.2, 6.0, Color(0.9, 0.95, 1.0)],
+	"cart": [1.2, 0.5, 3.0, Color(1.0, 0.75, 0.5)],
+}
 
 const SITE_MODELS := ["res://models/site_0.glb", "res://models/site_1.glb"]
 
@@ -90,6 +106,7 @@ static func construction(type: String, stage: int) -> Node3D:
 		root.add_child(m)
 	else:
 		box(root, Vector3(h.x * 2, 0.1, h.y * 2), Vector3(0, 0.05, 0), soil())
+	DayNight.dress(root)
 	return root
 
 const HOUSE_VARIANTS := 6

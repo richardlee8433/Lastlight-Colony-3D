@@ -176,4 +176,6 @@ func _make(name: String) -> Node3D:
 	var path: String = DIR % name
 	if not ResourceLoader.exists(path): return null
 	if not _scenes.has(path): _scenes[path] = load(path)
-	return (_scenes[path] as PackedScene).instantiate()
+	var n: Node3D = (_scenes[path] as PackedScene).instantiate()
+	DayNight.dress(n)
+	return n

@@ -23,6 +23,7 @@ float fbm2(vec2 p) {
 	for (int i = 0; i < 6; i++) { s += a * n2(p); p = p * 2.02 + vec2(1.7, 9.2); a *= 0.5; }
 	return s;
 }
+uniform float day = 1.0;              // set by DayNight: 1 = day, 0 = night
 uniform float cloud_cover = 0.52;      // 0 = clear, 1 = overcast
 uniform vec2 cloud_wind = vec2(0.004, 0.0015);
 
@@ -32,14 +33,15 @@ void sky() {
 	// gradient: wide dusty band near the horizon
 	vec3 col = mix(horizon, zenith, pow(smoothstep(-0.02, 0.6, up), 0.6));   // thin air: the dust hugs the horizon
 	col = mix(col, ground_col, smoothstep(0.0, -0.25, up));
+	col *= mix(vec3(0.03, 0.04, 0.08), vec3(1.0), day);                // night sky
 	// haze brightens around the sun
 	vec3 sd = LIGHT0_DIRECTION;
 	float sdot = max(dot(d, sd), 0.0);
-	col += sun_col * (pow(sdot, 8.0) * 0.25 + pow(sdot, 64.0) * 0.4) * LIGHT0_ENERGY * 0.4;
+	col += sun_col * (pow(sdot, 8.0) * 0.25 + pow(sdot, 64.0) * 0.4) * LIGHT0_ENERGY * 0.4 * day;
 	// stars, faint near the horizon and in the sun's glare
 	vec3 sp = floor(d * 280.0);
 	float st = step(0.9955, hash(sp)) * smoothstep(0.04, 0.35, up) * (1.0 - pow(sdot, 3.0));
-	col += vec3(st) * (0.5 + 0.5 * hash(sp + 3.0));
+	col += vec3(st) * (0.5 + 0.5 * hash(sp + 3.0)) * (1.0 + 1.6 * (1.0 - day));
 	// gas giant: a lit disc with bands, terminator shading and a thin ring
 	vec3 pd = normalize(planet_dir);
 	float pc = dot(d, pd);
@@ -60,7 +62,7 @@ void sky() {
 		vec3 n = normalize(-pd * sqrt(max(0.0, 1.0 - dot(pl, pl))) + right * pl.x + pup * pl.y);
 		float lit = clamp(dot(n, sd) * 0.55 + 0.7, 0.25, 1.2);
 		float limb = sqrt(max(0.0, 1.0 - dot(pl, pl)));
-		pcol *= lit * (0.55 + 0.45 * limb);
+		pcol *= lit * (0.55 + 0.45 * limb) * mix(0.35, 1.0, day);
 		// the near half of the ring passes in front of the planet
 		if (rl.y < 0.0) pcol = mix(pcol, vec3(0.85, 0.78, 0.68) * 0.9, ring * 0.8);
 		// soak into the haze a little
@@ -94,9 +96,10 @@ void sky() {
 		vec3 shade = mix(vec3(0.42, 0.32, 0.34), vec3(1.0, 0.86, 0.72), lit);
 		shade += sun_col * pow(sdot, 6.0) * 0.6;                              // silver lining near the sun
 		shade *= mix(0.55, 1.0, smoothstep(0.0, 0.35, up));                   // dimmer towards the dusty horizon
+		shade *= mix(vec3(0.05, 0.06, 0.1), vec3(1.0), day);
 		col = mix(col, shade * (0.6 + 0.4 * LIGHT0_ENERGY / 2.5), c * 0.85);
 	}
 	// sun disc
-	col = mix(col, sun_col * 6.0, smoothstep(0.9993, 0.9997, sdot));
+	col = mix(col, sun_col * 6.0, smoothstep(0.9993, 0.9997, sdot) * day);
 	COLOR = col;
 }

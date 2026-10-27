@@ -16,6 +16,13 @@ Game="*res://scripts/game/game_state.gd"
 window/size/viewport_width=1600
 window/size/viewport_height=1000
 
+[shader_globals]
+
+night={
+"type": "float",
+"value": 0.0
+}
+
 [rendering]
 
 anti_aliasing/quality/msaa_3d=2

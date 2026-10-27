@@ -10,6 +10,7 @@ uniform vec2 wind_dir = vec2(1.0, 0.35);
 uniform float glow = 0.0;
 uniform vec3 glow_color : source_color = vec3(0.55, 1.0, 0.92);
 instance uniform vec4 tint : source_color = vec4(1.0);
+global uniform float night;
 
 varying vec3 vcol;
 varying float phase;
@@ -49,7 +50,7 @@ void fragment() {
 		float pulse = 0.75 + 0.25 * sin(TIME * 1.6 + phase);
 		vec3 g = mix(glow_color, vcol, 0.45);
 		ALBEDO = g * 0.35;
-		EMISSION = g * glow * 0.55 * pulse;
+		EMISSION = g * glow * 0.55 * pulse * (1.0 + 0.6 * night);
 	} else {
 		ALBEDO = base;
 		BACKLIGHT = base * 0.15;

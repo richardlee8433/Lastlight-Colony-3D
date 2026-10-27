@@ -11,6 +11,7 @@ render_mode cull_disabled, depth_draw_always;
 uniform vec3 shallow : source_color = vec3(0.50, 0.86, 0.82);
 uniform vec3 deep : source_color = vec3(0.04, 0.26, 0.30);
 uniform vec3 sky_tint : source_color = vec3(0.78, 0.66, 0.58);
+global uniform float night;
 uniform vec3 foam_color : source_color = vec3(0.93, 0.96, 0.94);
 uniform float flow = 0.35;                       // 0 for the pond
 uniform float ripple_strength = 0.18;
@@ -106,7 +107,7 @@ void fragment() {
 	foam = clamp(foam * foam_amount, 0.0, 1.0) * 0.85;
 
 	ALBEDO = mix(deep * 0.15, foam_color, foam);
-	EMISSION = water * (1.0 - foam);
+	EMISSION = water * (1.0 - foam) * (1.0 - 0.88 * night);
 	ROUGHNESS = mix(0.05, 0.9, foam);
 	ALPHA = 1.0;
 }

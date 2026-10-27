@@ -121,4 +121,4 @@ for name in NAMES:
     sx, sy = build(name, col, M)
     hv.TEX = 512
     sf.weather(col, 0.9)
-    hv.finish(col, name, sx, sy, fit_w=sx, fit_d=sy, out_dir=OUT_DIR)
+    sf.finish_glow(col, name, OUT_DIR)

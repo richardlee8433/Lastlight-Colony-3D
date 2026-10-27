@@ -17,7 +17,8 @@ OUT_DIR = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "models")
 PREVIEW = "preview" in sys.argv
 ONLY = [a for a in sys.argv[2:] if a != "preview"]
 
-ACCENTS = [(0.85, 0.36, 0.08), (0.10, 0.52, 0.55), (0.88, 0.66, 0.10), (0.62, 0.12, 0.10), (0.16, 0.28, 0.62), (0.80, 0.80, 0.78)]
+# Surviving-Mars-like palette: white hulls with soft pink, lavender, sky blue, peach and mint accents
+ACCENTS = [(0.86, 0.56, 0.70), (0.62, 0.56, 0.84), (0.46, 0.66, 0.88), (0.92, 0.62, 0.44), (0.52, 0.80, 0.70), (0.86, 0.86, 0.87)]
 
 # ---------------- extra materials ----------------
 def mat_solar():
@@ -555,6 +556,64 @@ def bridge(col):
         hv.cube(col, (0.08, 0.08, 0.08), (W / 2 + 0.02, y, arc(y) + 0.87), M["light"], bevel=0.01)
     return W + 0.4, L
 
+# ---------------- night lights and extra detail (added on top of each model) ----------------
+def lamp_post(col, M, x, y, h=1.4, arm=0.25, yaw=0.0):
+    """Slim colony lamp: pole, arm and a lamp head that lights up at night (glow_lamp)."""
+    tube(col, 0.03, (x, y, 0), (x, y, h), M["metal"], 8)
+    hv.cube(col, (0.12, 0.12, 0.06), (x, y, 0.03), M["hull_dark"], bevel=0.01)
+    ax, ay = x + math.cos(yaw) * arm, y + math.sin(yaw) * arm
+    hv.beam(col, (x, y, h), (ax, ay, h + 0.04), 0.03, M["metal"], 1)
+    hv.cube(col, (0.14, 0.09, 0.05), (ax, ay, h), M["hull"], rot=(0, 0, yaw), bevel=0.01)
+    hv.cube(col, (0.11, 0.07, 0.015), (ax, ay, h - 0.03), M["light"], rot=(0, 0, yaw), bevel=0.0)
+
+def light_panel(col, M, loc, size, rot=(0, 0, 0)):
+    hv.cube(col, size, loc, M["light"], rot=rot, bevel=0.0)
+
+def flood(col, M, loc, aim_yaw):
+    x, y, z = loc
+    hv.cube(col, (0.16, 0.1, 0.12), (x, y, z), M["hull_dark"], rot=(0.5, 0, aim_yaw), bevel=0.01)
+    hv.cube(col, (0.13, 0.02, 0.09), (x + math.cos(aim_yaw - math.pi / 2) * 0.05, y + math.sin(aim_yaw - math.pi / 2) * 0.05, z - 0.02),
+            M["light"], rot=(0.5, 0, aim_yaw), bevel=0.0)
+
+def x_hab(col, M):
+    lamp_post(col, M, 0.95, -1.35, 1.2, 0.22, math.pi)
+    hv.cube(col, (0.22, 0.14, 0.3), (-1.2, -0.75, 0.15), M["hull_dark"], bevel=0.02)
+    hv.cube(col, (0.08, 0.02, 0.05), (-1.2, -0.83, 0.24), M["light"], bevel=0.0)
+
+def x_depot(col, M):
+    for y in (-0.4, 0.4, 1.1):
+        light_panel(col, M, (0.0, y, 0.18 + 1.18), (0.9, 0.12, 0.02))
+    flood(col, M, (-0.98, -0.98, 1.45), math.pi / 2)
+    flood(col, M, (0.98, -0.98, 1.45), math.pi / 2)
+    tube(col, 0.05, (-1.45, -0.6, 0.35), (-1.45, 1.2, 0.35), M["metal"], 10)
+    tube(col, 0.2, (-1.45, 1.25, 0.0), (-1.45, 1.25, 0.8), M["hull"], 16)
+    sf.sphere(col, 0.2, (-1.45, 1.25, 0.8), M["hull"], (1, 1, 0.45), 16)
+    lamp_post(col, M, 1.4, -1.45, 1.3, 0.25, math.pi)
+
+def x_harvester(col, M):
+    for sx in (-1, 1):
+        hv.cube(col, (0.04, 0.42, 0.22), (sx * 1.04, 0.2, 1.05), M["window"], bevel=0.01)
+    light_panel(col, M, (0.0, 0.0, 1.5), (1.3, 0.12, 0.02))
+    lamp_post(col, M, -1.35, -1.2, 1.3, 0.25, 0.0)
+
+def x_agri(col, M):
+    lamp_post(col, M, 0.55, -1.2, 1.2, 0.2, math.pi)
+    tube(col, 0.035, (0.95, 0.05, 0.12), (0.62, 0.05, 0.12), M["metal"], 8)
+
+def x_rig(col, M):
+    flood(col, M, (-1.2, 0.85, 2.2), -0.7)
+    flood(col, M, (-1.6, 1.2, 1.6), -0.9)
+    hv.cube(col, (0.08, 0.08, 0.08), (-1.45, 1.05, 3.12), M["light"], bevel=0.01)
+    lamp_post(col, M, 1.7, -1.6, 1.4, 0.25, math.pi)
+
+def x_site(col, M):
+    for (x, y) in ((-1.35, -1.15), (1.35, 1.15)):
+        tube(col, 0.025, (x, y, 0), (x, y, 0.7), M["hazard"], 8)
+        hv.cube(col, (0.07, 0.07, 0.07), (x, y, 0.74), M["light"], bevel=0.01)
+
+EXTRAS = {"hab": x_hab, "storehouse": x_depot, "woodcutter": x_harvester, "farmhouse": x_agri, "quarry": x_rig,
+          "site_0": x_site, "site_1": x_site}
+
 JOBS = [(f"hab_{k}", (lambda kk: (lambda c: hab(c, kk)))(k), f"houses/house_{k}") for k in range(6)] + [
     ("storehouse", depot, "storehouse"), ("woodcutter", harvester, "woodcutter"), ("farmhouse", agri, "farmhouse"),
     ("quarry", rig, "quarry"),
@@ -572,8 +631,9 @@ if __name__ == "__main__":
         od = os.path.join(OUT_DIR, os.path.dirname(out))
         base = os.path.basename(out)
         # fit = own size -> scale 1 (everything is modelled at game scale)
-        big = 1000.0
+        if name in EXTRAS or name.startswith("hab"):
+            EXTRAS["hab" if name.startswith("hab") else name](col, mats_all(ACCENTS[0]))
         sf.weather(col, 0.8 if name.startswith("site") else 1.0)
-        hv.finish(col, base, big, big, fit_w=big, fit_d=big, out_dir=od)
+        sf.finish_glow(col, base, od)
         if PREVIEW:
             hv.render_preview(os.path.join(OUT_DIR, f"_{name}_preview.png"))
