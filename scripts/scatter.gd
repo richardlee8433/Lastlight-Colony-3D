@@ -10,8 +10,11 @@ const KINDS := {
 	"flower_petal_w": {"model": "res://models/crystal_b.glb", "tint": false, "per_m2": 0.2, "scale": Vector2(0.5, 1.1)},
 	# loose stones and gravel all over the regolith (mesh made in code)
 	"pebble": {"proc": true, "tint": true, "rock": true, "per_m2": 4.0, "scale": Vector2(0.025, 0.11)},
+	# half-buried boulders, few and far between
+	"boulder": {"proc": true, "tint": true, "rock": true, "per_m2": 0.035, "scale": Vector2(0.2, 0.75)},
 }
 const TUFT_SHADER := preload("res://scripts/world/grass_tuft.gdshader")
+const ROCK_SHADER := preload("res://scripts/world/rock.gdshader")
 const CHUNK := 8.0                       # metres
 const GROUND_HALF := 40.0                # grass grows out under the border forest too
 const BUCKET := 0.5                      # trample / field buckets: the zone grid
@@ -35,7 +38,7 @@ var _origin := Vector2.ZERO
 func _ready() -> void:
 	for kind in KINDS:
 		if KINDS[kind].get("proc", false):
-			_meshes[kind] = _pebble_mesh()
+			_meshes[kind] = _pebble_mesh(kind == "boulder")
 			continue
 		var src: Node = (load(KINDS[kind]["model"]) as PackedScene).instantiate()
 		_meshes[kind] = _find_mesh(src)
@@ -56,14 +59,19 @@ func _start() -> void:
 	grow_around(Defs.CART_SPOT, 22.0)
 
 ## A low-poly stone: a dented ball (squashed and scaled per instance).
-static func _pebble_mesh() -> Mesh:
+static func _pebble_mesh(detailed := false) -> Mesh:
 	var sm := SphereMesh.new()
-	sm.radius = 1.0; sm.height = 2.0; sm.radial_segments = 7; sm.rings = 4
+	sm.radius = 1.0; sm.height = 2.0
+	sm.radial_segments = 16 if detailed else 7; sm.rings = 9 if detailed else 4
 	var arr := sm.get_mesh_arrays()
 	var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
 	var n := FastNoiseLite.new(); n.seed = 9; n.frequency = 1.3
 	for i in v.size():
-		v[i] = v[i] * (1.0 + 0.28 * n.get_noise_3dv(v[i] * 1.7))
+		var k := 0.28 * n.get_noise_3dv(v[i] * 1.7)
+		if detailed:
+			k += 0.1 * n.get_noise_3dv(v[i] * 5.0)
+			k = floorf(k * 9.0) / 9.0 * 0.6 + k * 0.4          # faceted, fractured faces
+		v[i] = v[i] * (1.0 + k)
 	var out := []; out.resize(Mesh.ARRAY_MAX)
 	out[Mesh.ARRAY_VERTEX] = v
 	out[Mesh.ARRAY_INDEX] = arr[Mesh.ARRAY_INDEX]
@@ -186,8 +194,8 @@ func _grow_chunk(key: Vector2i) -> void:
 		mmi.visibility_range_end_margin = 10.0
 		mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 		if cfg.get("rock", false):
-			var rm := StandardMaterial3D.new()
-			rm.vertex_color_use_as_albedo = true; rm.vertex_color_is_srgb = true; rm.roughness = 0.92
+			var rm := ShaderMaterial.new()
+			rm.shader = ROCK_SHADER
 			mmi.material_override = rm
 		elif cfg["tint"]:
 			var mat := ShaderMaterial.new()

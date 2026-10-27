@@ -13,6 +13,18 @@ uniform vec3 planet_b : source_color = vec3(0.55, 0.38, 0.32);
 uniform vec3 planet_c : source_color = vec3(0.86, 0.80, 0.70);
 
 float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n2(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y);
+}
+float fbm2(vec2 p) {
+	float s = 0.0; float a = 0.5;
+	for (int i = 0; i < 6; i++) { s += a * n2(p); p = p * 2.02 + vec2(1.7, 9.2); a *= 0.5; }
+	return s;
+}
+uniform float cloud_cover = 0.52;      // 0 = clear, 1 = overcast
+uniform vec2 cloud_wind = vec2(0.004, 0.0015);
 
 void sky() {
 	vec3 d = normalize(EYEDIR);
@@ -67,6 +79,22 @@ void sky() {
 		float crater = hash(floor(vec3(ml * 5.0, 1.0))) * 0.25;
 		vec3 mcol = vec3(0.62, 0.60, 0.58) * (0.85 - crater) * clamp(dot(mn, sd) * 0.9 + 0.2, 0.06, 1.0);
 		col = mix(col, mcol, smoothstep(mdisc, mdisc + 0.00008, mc));
+	}
+	// thin high clouds (cirrus-like streaks and a few denser banks), lit by the sun from behind
+	if (up > 0.0) {
+		vec2 cuv = d.xz / (up + 0.12) * 0.9 + TIME * cloud_wind;
+		vec2 warp = vec2(fbm2(cuv * 0.6), fbm2(cuv * 0.6 + 5.3)) - 0.5;
+		vec2 suv = (cuv + warp * 1.2) * vec2(1.0, 2.6);                     // stretched into streaks
+		float dens = fbm2(suv * 1.3);
+		float c = smoothstep(cloud_cover, cloud_cover + 0.28, dens);
+		c *= smoothstep(0.0, 0.12, up) * (1.0 - smoothstep(0.65, 0.95, up) * 0.6);
+		// light: brighter edges towards the sun, warm rim, cool shadowed bellies
+		float dens2 = fbm2(suv * 1.3 + sd.xz * 0.15);
+		float lit = clamp(0.55 + (dens - dens2) * 6.0, 0.0, 1.0);
+		vec3 shade = mix(vec3(0.42, 0.32, 0.34), vec3(1.0, 0.86, 0.72), lit);
+		shade += sun_col * pow(sdot, 6.0) * 0.6;                              // silver lining near the sun
+		shade *= mix(0.55, 1.0, smoothstep(0.0, 0.35, up));                   // dimmer towards the dusty horizon
+		col = mix(col, shade * (0.6 + 0.4 * LIGHT0_ENERGY / 2.5), c * 0.85);
 	}
 	// sun disc
 	col = mix(col, sun_col * 6.0, smoothstep(0.9993, 0.9997, sdot));

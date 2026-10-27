@@ -18,12 +18,15 @@
 [ext_resource type="Script" path="res://scripts/world/water.gd" id="18_water"]
 [ext_resource type="Script" path="res://scripts/world/shore.gd" id="19_fishing"]
 [ext_resource type="Shader" path="res://scripts/world/alien_sky.gdshader" id="20_sky"]
+[ext_resource type="Script" path="res://scripts/world/backdrop.gd" id="21_backdrop"]
 
 [sub_resource type="ShaderMaterial" id="sky_mat"]
 shader = ExtResource("20_sky")
 
 [sub_resource type="Sky" id="sky"]
 sky_material = SubResource("sky_mat")
+process_mode = 2
+radiance_size = 1
 
 [sub_resource type="Environment" id="env"]
 background_mode = 2
@@ -76,6 +79,9 @@ far = 300.0
 script = ExtResource("2_cam")
 
 [node name="Ground" parent="." instance=ExtResource("7_ground")]
+
+[node name="Backdrop" type="MeshInstance3D" parent="."]
+script = ExtResource("21_backdrop")
 
 [node name="Nature" parent="." instance=ExtResource("6_nature")]
 

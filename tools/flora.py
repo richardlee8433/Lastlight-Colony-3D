@@ -224,7 +224,7 @@ def discs(seed=5):
         tilt = rnd.uniform(-0.08, 0.08)
         prof = [(z - 0.06, 0.12), (z + 0.02, r * 0.6), (z + 0.08, r), (z + 0.12, r * 0.97), (z + 0.1, r * 0.55), (z + 0.08, 0.1)]
         o = part(lathe(prof, 26, center=(cx, cy, 0)), F, lambda co, z=z: lerp3((0.32, 0.30, 0.34), (0.62, 0.60, 0.62), (co.z - z + 0.06) / 0.2))
-        g = part(lathe([(z + 0.07, r * 1.0), (z + 0.12, r * 1.03)], 26, center=(cx, cy, 0)), G, lambda co: (1, 1, 1))
+        g = part(lathe([(z + 0.07, r * 1.0), (z + 0.12, r * 1.03)], 26, center=(cx, cy, 0), close=(False, False)), G, lambda co: (1, 1, 1))
 
 def stump(name, kind):
     reset()
