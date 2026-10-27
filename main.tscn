@@ -20,6 +20,7 @@
 [ext_resource type="Shader" path="res://scripts/world/alien_sky.gdshader" id="20_sky"]
 [ext_resource type="Script" path="res://scripts/world/backdrop.gd" id="21_backdrop"]
 [ext_resource type="Script" path="res://scripts/world/day_night.gd" id="22_daynight"]
+[ext_resource type="Script" path="res://scripts/world/utilities.gd" id="23_util"]
 
 [sub_resource type="ShaderMaterial" id="sky_mat"]
 shader = ExtResource("20_sky")
@@ -73,6 +74,9 @@ shadow_bias = 0.08
 shadow_normal_bias = 4.0
 directional_shadow_mode = 2
 directional_shadow_max_distance = 70.0
+
+[node name="Utilities" type="Node3D" parent="."]
+script = ExtResource("23_util")
 
 [node name="DayNight" type="Node" parent="."]
 script = ExtResource("22_daynight")

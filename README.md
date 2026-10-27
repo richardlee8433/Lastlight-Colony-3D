@@ -37,6 +37,7 @@ One sol (a full day-night cycle) lasts four in-game days (`scripts/world/day_nig
 - **Supply depot**: a quonset storage hangar; build one near production to shorten hauling.
 - **Habitat zones**: habs aren't placed by hand. Paint zones, and when beds run low, food suffices and fibre and ore cover the cost, colonists assemble a **hab** (+4 beds) in the best spot: cylinder modules on cradles or regolith-bermed domes, six variants.
 - **Construction**: every building goes up in two stages — a staked pad with survey tripod and panel bundles, then a steel frame with a jib crane — before it is finished. Cancelling refunds everything.
+- **Utility lines**: finished buildings are linked by elevated pipe runs on slim trestles (white main pipe, pastel service line, marker lights that come on at night), as a minimum spanning tree that never crosses a building and only spans up to 16 m (`scripts/world/utilities.gd`). Purely visual: colonists walk underneath.
 - **Roads**: none to build. Where colonists walk often the lichen wears away into paths; unused paths grow back.
 - **Colony life**: weather masts, hydroponic planters, gas cylinders, cargo cases and fibre bales appear around finished buildings (`scripts/world/clutter.gd`).
 - **Population**: each colonist eats 1 food per day (a day is 30 s). With free beds and enough food a new colonist arrives each day. When food runs out only agronomists keep working.
@@ -59,6 +60,7 @@ godot --headless --path . --script res://tests/test_construction.gd # constructi
 godot --headless --path . --script res://tests/test_deposits.gd     # ore deposits and mining rigs
 godot --headless --path . --script res://tests/test_forest.gd       # harvest areas, cutting, regrowth
 godot --headless --path . --script res://tests/test_fields.gd       # crop fields
+godot --headless --path . --script res://tests/test_utilities.gd    # pipe network between buildings
 ```
 Screenshot scripts (`tests/shot_*.gd`) need a display; headless servers can use lavapipe:
 `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json xvfb-run -a godot --path . --rendering-driver vulkan --rendering-method forward_plus --script res://tests/shot_horizon.gd`
